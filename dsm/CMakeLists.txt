@@ -35,6 +35,8 @@ include(CompilerFlags)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(cvo REQUIRED)
+message("cvo include dir is ${cvo_INCLUDE_DIRS}, cvo libs are ${cvo_LIBRARIES}")
 
 # Set the name of the Library
 set(LIBRARY_NAME dsm)
@@ -162,6 +164,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/src
 	${CMAKE_SOURCE_DIR}/thirdparty/Sophus
 	${EIGEN3_INCLUDE_DIR}
+        ${cvo_INCLUDE_DIRS}
 	${CERES_INCLUDE_DIRS}	
 	)
 
@@ -176,6 +179,7 @@ add_library(${LIBRARY_NAME} SHARED
 # Define the link libraries used in the project
 target_link_libraries(${LIBRARY_NAME} 
 	${OpenCV_LIBS}
-	${CERES_LIBRARIES})
+	${CERES_LIBRARIES}
+        ${cvo_LIBRARIES})
 	
 set_target_properties(${LIBRARY_NAME} PROPERTIES FOLDER "DSM")
