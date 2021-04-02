@@ -180,6 +180,8 @@ namespace dsm
 		Frame* trackingParent_;					// coarse tracking parent
 		Sophus::SE3f thisToParentPose_;				// coarse tracking result
 		AffineLight thisToParentLight_;			// from coarse tracking
+                std::shared_ptr<cvo::CvoPointCloud> cvo_pcd; // for CVO coarse tracking
+                
 
 		// global parameters for keyframes
 		std::mutex globalParamMutex_;

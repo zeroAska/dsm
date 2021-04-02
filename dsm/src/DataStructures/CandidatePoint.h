@@ -33,7 +33,7 @@
 #include "AffineLight.h"
 #include "Utils/LossFunction.h"
 #include "FullSystem/DSMLib.h"
-
+#include "utils/CvoPointCloud.hpp"
 namespace dsm
 {
 	class Frame;
@@ -62,6 +62,7 @@ namespace dsm
 
 		CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& refFrame);
 
+
 		~CandidatePoint();
 
 		// point in reference frame
@@ -69,6 +70,8 @@ namespace dsm
 		float v0() const;
 
 		int32_t detectedLevel() const;
+
+              
 
 		// point reference image
 		// the first image in which the point was observed
@@ -97,6 +100,8 @@ namespace dsm
 
 		// optimize point inverse depth using all active keyframes
 		void optimize(const std::vector<std::shared_ptr<Frame>>& activeKeyframes);
+
+          
 
 	private:
 

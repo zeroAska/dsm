@@ -77,6 +77,48 @@ namespace dsm
 		this->setErrorDistribution(errorDist);
 	}
 
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  std::shared_ptr<cvo::CvoPointCloud> new_frame_pcd) :
+		frameID_(id),
+		timestamp_(timestamp),
+		trackingParent_(nullptr),
+		affineLight_(0.f, 0.f),
+		thisToParentLight_(0.f, 0.f),
+		type_(Type::FRAME),
+		status_(Status::INACTIVE),
+                cvo_pcd(new_frame_pcd)
+	{
+		const auto& settings = Settings::getInstance();
+		const auto& calib = GlobalCalibration::getInstance();
+
+		// image pyramids
+		this->images_ = std::make_unique<ImagePyramid<float>>(calib.levels(), image);
+
+		// gradient pyramids
+		this->gradients_ = std::make_unique<GradientPyramid<float>>(calib.levels(), *this->images_);
+
+		// identity poses
+		this->thisToParentPose_ = Sophus::SE3f();
+		this->camToWorld_ = Sophus::SE3f();
+
+		this->graphNode = nullptr;
+
+		this->flaggedToDrop_ = false;
+
+		// error distribution
+		std::shared_ptr<IDistribution> errorDist;
+		if (settings.useTDistribution)
+		{
+			errorDist = std::make_shared<TDistribution>(settings.defaultNu, settings.defaultMu, settings.defaultSigma);
+		}
+		else
+		{
+			errorDist = std::make_shared<RobustNormalDistribution>(settings.defaultMu, settings.defaultSigma);
+		}
+
+		this->setErrorDistribution(errorDist);
+	}
+
+  
 	Frame::~Frame()
 	{
 	}

@@ -87,8 +87,8 @@ namespace dsm
 		// output: relative affine light to reference keyframe
 		// output: photometric error distribution
 		bool trackFrame(const std::shared_ptr<FrameTrackerReference>& reference, const std::shared_ptr<Frame>& newFrame,
-						Sophus::SE3f& inOutFrameToRef, AffineLight& inOutLight, std::shared_ptr<IDistribution>& errorDistribution,
-						IVisualizer* outputWrapper = nullptr);
+                                Sophus::SE3f& inOutFrameToRef, AffineLight& inOutLight, std::shared_ptr<IDistribution>& errorDistribution,
+                                IVisualizer* outputWrapper = nullptr, bool updateLightOnly=false);
 
 		// Accessors
 		float pointUsage() const;

@@ -25,5 +25,6 @@ cmake_minimum_required(VERSION 3.5)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+add_subdirectory(KittiExample)
 add_subdirectory(EurocExample)
 add_subdirectory(VideoExample)

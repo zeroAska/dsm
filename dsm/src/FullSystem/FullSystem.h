@@ -75,6 +75,7 @@ namespace dsm
 
 		// Tracks the stereo frame. It calculates the system pose and the 3D scene*/
 		void trackFrame(int id, double timestamp, unsigned char* image);
+                void trackFrame(int id, double timestamp, unsigned char* gray_img, std::shared_ptr<cvo::RawImage> color_img,  std::shared_ptr<cvo::CvoPointCloud> new_frame_pcd);
 
 		////////////////////////////////////////
 		//		       ACCESORS	 	          //
@@ -158,6 +159,7 @@ namespace dsm
 
 		// tracker, only in tracking thread
 		std::unique_ptr<FrameTracker> tracker;
+                std::unique_ptr<cvo::CvoGPU> cvo_align;
 
 		// parallelization
 		std::shared_ptr<WorkerThreadPool> threadPool;
