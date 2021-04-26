@@ -304,6 +304,7 @@ namespace dsm
 	{
 		std::lock_guard<std::mutex> lock(this->processImgMutex);
 		image.copyTo(this->processImage);
+                cv::imwrite("processed.png", this->processImage);
 		emit updateProcessImage();
 	}
 

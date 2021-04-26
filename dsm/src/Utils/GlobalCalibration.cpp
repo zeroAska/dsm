@@ -83,8 +83,8 @@ namespace dsm
 			const float cy = (this->K_[0](1, 2) + 0.5f) / ((int)1 << level) - 0.5f;
 
 			this->K_[level] <<	fx, 0.f, cx,
-								0.f, fy, cy,
-								0.f, 0.f, 1.f;
+                          0.f, fy, cy,
+                          0.f, 0.f, 1.f;
 
 			this->KInv_[level] = this->K_[level].inverse();
 

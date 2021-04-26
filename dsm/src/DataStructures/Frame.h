@@ -37,7 +37,8 @@
 #include "AffineLight.h"
 #include "Statistics/IDistribution.h"
 #include "FullSystem/DSMLib.h"
-
+#include "utils/CvoPoint.hpp"
+#include "utils/RawImage.hpp"
 namespace dsm
 {
 	class CandidatePoint;
@@ -60,6 +61,7 @@ namespace dsm
 		enum Status { ACTIVE = 0, INACTIVE = 1 };
 
 		Frame(int id, double timestamp, unsigned char* image);
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
 		~Frame();
 
 		// activation or desactivation
@@ -145,6 +147,9 @@ namespace dsm
 		// get optimization parameter block
 		const std::unique_ptr<FrameParameterBlock>& frameBlock() const;
 
+                // access cvo points
+                pcl::PointCloud<cvo::CvoPoint>::Ptr get_cvo_pcd() {return cvo_pcd;}
+
 		// Reference in covisibility graph
 		CovisibilityNode* graphNode;
 			
@@ -180,7 +185,7 @@ namespace dsm
 		Frame* trackingParent_;					// coarse tracking parent
 		Sophus::SE3f thisToParentPose_;				// coarse tracking result
 		AffineLight thisToParentLight_;			// from coarse tracking
-                std::shared_ptr<cvo::CvoPointCloud> cvo_pcd; // for CVO coarse tracking
+                pcl::PointCloud<cvo::CvoPoint>::Ptr cvo_pcd; // for CVO coarse tracking
                 
 
 		// global parameters for keyframes

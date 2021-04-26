@@ -36,6 +36,6 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${DSM_LIB_INCLUDE_DIR}
 	)
 
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} QtVisualizer dsm)
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} QtVisualizer dsm boost_system)
 
 set_target_properties(${PROGRAM_NAME} PROPERTIES FOLDER "Examples")

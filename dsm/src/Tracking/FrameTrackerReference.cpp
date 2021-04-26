@@ -313,14 +313,14 @@ namespace dsm
 			float* iDepthDest = this->iDepthMap_[lvl];
 			bool* validDest = this->validMap_[lvl];
 
-			for (int32_t y = 0; y < height; y += 2)
+			for (int32_t y = 0; y < height - 1; y += 2)
 			{
 				const int rowIdx = y * width;
 				for (int32_t x = 0; x < width; x += 2)
 				{
 					*validDest = Kernel::convolve<Kernel::Box2x2>(iDepthSource, validSource, 
-																  rowIdx + x, width,
-																  *iDepthDest);
+                                                                                      rowIdx + x, width,
+                                                                                      *iDepthDest);
 					validDest++;
 					iDepthDest++;
 				}

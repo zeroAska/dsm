@@ -37,7 +37,7 @@
 #include "Statistics/TDistribution.h"
 #include "Settings.h"
 #include "FullSystem/DSMLib.h"
-
+#include "sophus/se3.hpp"
 #include <sys/stat.h>
 
 namespace dsm
@@ -406,7 +406,7 @@ namespace dsm
 
     inline Eigen::Matrix4f sophusToEigen(const Sophus::SE3f T_se3) {
       Eigen::Vector3f transVec = T_se3.translation();
-      Eigen::Matrix3f rotationMatrix = T_se3.so3();
+      Eigen::Matrix3f rotationMatrix = T_se3.so3().matrix();
 
       Eigen::Matrix4f T_eigen;
       T_eigen.block<3,3>(0,0) = rotationMatrix;

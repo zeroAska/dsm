@@ -149,7 +149,7 @@ namespace dsm
     float solveTime = 0.f;
 
     // for each pyramid level
-    int lvl = Settings.trackingMaxLevel;
+    int lvl = settings.trackingMaxLevel;
     if (updateLightOnly) lvl = 0;
     for (; lvl >= 0; --lvl)
     {

@@ -25,6 +25,7 @@ cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+
 # Build Flags
 include(BuildFlags)
 
@@ -35,8 +36,9 @@ include(CompilerFlags)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
-find_package(cvo REQUIRED)
-message("cvo include dir is ${cvo_INCLUDE_DIRS}, cvo libs are ${cvo_LIBRARIES}")
+find_package(UnifiedCvo REQUIRED)
+#message("cvo include dir is ${UnifiedCvo_INCLUDE_DIRS}, cvo libs are ${UnifiedCvo_LIBRARIES}")
+#find_package(Sophus REQUIRED) 
 
 # Set the name of the Library
 set(LIBRARY_NAME dsm)
@@ -162,9 +164,10 @@ set(DSM_LIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src PARENT_SCOPE)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}	#required to include "BuildFlags.h"
 	${CMAKE_CURRENT_SOURCE_DIR}/src
+        #${Sophus_INCLUDE_DIRS}
 	${CMAKE_SOURCE_DIR}/thirdparty/Sophus
 	${EIGEN3_INCLUDE_DIR}
-        ${cvo_INCLUDE_DIRS}
+#        ${UnifiedCvo_INCLUDE_DIR}
 	${CERES_INCLUDE_DIRS}	
 	)
 
@@ -177,9 +180,14 @@ add_library(${LIBRARY_NAME} SHARED
 	${RESOURCES_RCC})
 
 # Define the link libraries used in the project
-target_link_libraries(${LIBRARY_NAME} 
+target_link_libraries(${LIBRARY_NAME}
+  PUBLIC
 	${OpenCV_LIBS}
 	${CERES_LIBRARIES}
-        ${cvo_LIBRARIES})
-	
+        #${UnifiedCvo_LIBRARIES}
+        UnifiedCvo::cvo_utils_lib
+        UnifiedCvo::cvo_gpu_img_lib
+        UnifiedCvo::elas
+        )
+target_compile_definitions(${LIBRARY_NAME} PUBLIC ${PCL_DEFINITIONS})   	
 set_target_properties(${LIBRARY_NAME} PROPERTIES FOLDER "DSM")

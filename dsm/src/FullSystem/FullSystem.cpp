@@ -194,6 +194,14 @@ namespace dsm
     BufferPool<float>::getInstance().clearPool();				// float pool
   }
 
+  FullSystem::FullSystem(int w, int h, const Eigen::Matrix3f &calib,
+                         const std::string &cvoParamsFile,
+                         const std::string &settingsFile,
+                         IVisualizer *outputWrapper) : FullSystem(w, h, calib, settingsFile, outputWrapper) {
+    this->cvo_align.reset(new cvo::CvoGPU(cvoParamsFile));
+  }
+  
+
   bool FullSystem::isInitialized() const
   {
     return this->initialized;
@@ -325,7 +333,7 @@ namespace dsm
     return this->lastWasKF;
   }
 
-  bool FullSystem::initialize(const std::shared_ptr<Frame>& frame)
+  bool FullSystem::initialize(const std::shared_ptr<Frame>& frame, bool isUsingCvo)
   {
     if (this->initialized) return true;
 
@@ -335,7 +343,8 @@ namespace dsm
 
     if (allKeyframes.empty())
     {
-      // insert frame as first keyframe
+      // insert frame as first keyframe. Just set the reference frame, not actually tracking
+      // is involved
       frame->setTrackingResult(nullptr, Sophus::SE3f(), AffineLight());
       this->lmcw->insertNewKeyframe(frame);
 
@@ -349,19 +358,41 @@ namespace dsm
     {
       // try to initialize
       Sophus::SE3f firstToSecond;
-      if (this->initializer->initialize(frame, firstToSecond))
+      if (isUsingCvo) {
+        Eigen::Matrix4f trackingPoseResult;
+        double trackingTime;
+        cvo::CvoParams & init_param = cvo_align->get_params();
+        std::swap(init_param.ell_init, init_param.ell_init_first_frame);
+        std::swap(init_param.ell_decay_rate, init_param.ell_decay_rate_first_frame);
+        std::swap(init_param.ell_decay_start, init_param.ell_decay_start_first_frame);
+        cvo_align->write_params(&init_param);
+        int cvoTrackingResult = cvo_align->align(*(this->initializer->getReference()->get_cvo_pcd()),
+                                                 *(frame->get_cvo_pcd()),
+                                                 firstToSecond.matrix(),
+                                                 // outputs
+                                                 trackingPoseResult,&trackingTime);
+        Sophus::SE3f resultSophus(trackingPoseResult.block<3,3>(0,0), trackingPoseResult.block<3,1>(0,3));
+        firstToSecond = resultSophus.inverse(); // convert back to sophus
+        std::swap(init_param.ell_init, init_param.ell_init_first_frame);
+        std::swap(init_param.ell_decay_rate, init_param.ell_decay_rate_first_frame);
+        std::swap(init_param.ell_decay_start, init_param.ell_decay_start_first_frame);
+        cvo_align->write_params(&init_param);
+        
+      }
+      if (isUsingCvo || this->initializer->initialize(frame, firstToSecond))
       {
         // rescale to norm(t) = 0.1m
-        firstToSecond.translation() /= firstToSecond.translation().norm();
-        firstToSecond.translation() *= 0.1f;
+        //firstToSecond.translation() /= firstToSecond.translation().norm();
+        //firstToSecond.translation() *= 0.1f;
 
         // set initialization pose as tracking result
         const auto& firstKF = allKeyframes[0];
+        //std::cout<<"\nInit: set track result firstToSecond "<<firstToSecond.matrix()<<std::endl;
         frame->setTrackingResult(firstKF.get(), firstToSecond.inverse(), AffineLight());
 
         // initialize some values: motion, flags
         this->lastTrackedFrame = frame;
-        this->lastTrackedMotion = Sophus::SE3f();
+        this->lastTrackedMotion = firstToSecond.inverse(); //Sophus::SE3f();
 
         Utils::Time t2 = std::chrono::steady_clock::now();
         std::cout << "Done initialization in " << Utils::elapsedTime(t1, t2) << "ms" << std::endl;
@@ -418,7 +449,7 @@ namespace dsm
     // initialization
     if (!this->initialized)
     {
-      this->initialized = this->initialize(trackingNewFrame);
+      this->initialized = this->initialize(trackingNewFrame, false);
       return;
     }
 
@@ -516,7 +547,7 @@ namespace dsm
     }
   }
 
-  void FullSystem::trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  std::shared_ptr<cvo::CvoPointCloud> new_frame_pcd)
+  void FullSystem::trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd)
   {
     this->lastWasKF = false;
 
@@ -543,7 +574,7 @@ namespace dsm
     // initialization: TODO
     if (!this->initialized)
     {
-      this->initialized = this->initialize(trackingNewFrame);
+      this->initialized = this->initialize(trackingNewFrame, true);
       return;
     }
 
@@ -616,7 +647,7 @@ namespace dsm
       }
 
       t2 = std::chrono::steady_clock::now();
-
+      
       this->doMapping(trackingNewFrame);
     }
 
@@ -746,7 +777,7 @@ namespace dsm
   }
   */
   
-  void FullSystem::trackModelToFrameCvo(const std::shared_ptr<Frame>& frame, std::shared_ptr< cvo::CvoPointCloud > new_frame_pcd ){
+  void FullSystem::trackModelToFrameCvo(const std::shared_ptr<Frame>& frame, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd ){
 
     Utils::Time t1 = std::chrono::steady_clock::now();
 
@@ -792,9 +823,10 @@ namespace dsm
     Frame* const reference = this->trackingReference->reference();
 
     // pose prior -> constant velocity model
+    std::cout<<"camToWorld is "<<reference->camToWorld().matrix()<<"\n, lastToWorldPose is "<<lastToWorldPose.matrix()<<std::endl;
     const Sophus::SE3f lastToRef = reference->camToWorld().inverse() * lastToWorldPose;
     Sophus::SE3f frameToRefPose = lastToRef * this->lastTrackedMotion;
-    Eigen::Matrix4f frameToRefPoseEigen = frameToRefPose.matrix();
+    Eigen::Matrix4f frameToRefPoseEigen = frameToRefPose.matrix().inverse();
 
     // affine light prior
     AffineLight frameToRefLight = AffineLight::calcRelative(reference->affineLight(),
@@ -805,23 +837,22 @@ namespace dsm
 
     // Track
     // relative pose to reference keyframe
-    // relative affine light to reference keyframe
-    //bool goodTracked = this->tracker->trackFrame(this->trackingReference, frame, frameToRefPose, frameToRefLight,
-    //                                             errorDistribution, this->outputWrapper);
     Eigen::Matrix4f trackingPoseResult;
     double trackingTime;
-    int cvoTrackingResult = cvo_align->align(*(reference->cvo_pcd),
+    int cvoTrackingResult = cvo_align->align(*(reference->get_cvo_pcd()),
                                              *(new_frame_pcd),
                                              frameToRefPoseEigen,
                                              // outputs
-                                             trackingPoseResult,trackingTime);
-    frameToRefPose = trackingPoseResult; // convert back to sophus
+                                             trackingPoseResult,&trackingTime);
+    Sophus::SE3f resultSophus(trackingPoseResult.block<3,3>(0,0), trackingPoseResult.block<3,1>(0,3));
+    frameToRefPose = resultSophus; // convert back to sophus
+    
     // track relative affine light to reference keyframe
     bool goodTrackedLight = this->tracker->trackFrame(this->trackingReference, frame, frameToRefPose, frameToRefLight,                                                                                                                 errorDistribution, this->outputWrapper, true);      
 
 
     //tracking lost? - reset tracking internal data
-    goodTracked = (cvoTrackingResult == 0 && goodTrackedLight);
+    bool goodTracked = (cvoTrackingResult == 0 && goodTrackedLight);
     if (!goodTracked)
     {
       this->trackingIsGood = false;
@@ -838,6 +869,7 @@ namespace dsm
     }
 
     // save result to the latest frame
+    std::cout<<"CVO result frameToRefPose is "<<frameToRefPose.matrix()<<std::endl;
     frame->setTrackingResult(reference, frameToRefPose, frameToRefLight);
 
     // error distribution
@@ -907,8 +939,10 @@ namespace dsm
     Frame* const reference = this->trackingReference->reference();
 
     // pose prior -> constant velocity model
+    std::cout<<"camToWorld is "<<reference->camToWorld().matrix()<<"\n, lastToWorldPose is "<<lastToWorldPose.matrix()<<std::endl;    
     const Sophus::SE3f lastToRef = reference->camToWorld().inverse() * lastToWorldPose;
     Sophus::SE3f frameToRefPose = lastToRef * this->lastTrackedMotion;
+    std::cout<<"frameToRefPose is "<<frameToRefPose.matrix()<<std::endl;
 
     // affine light prior
     AffineLight frameToRefLight = AffineLight::calcRelative(reference->affineLight(),
@@ -940,6 +974,7 @@ namespace dsm
     }
 
     // save result to the latest frame
+    std::cout<<"Image Alignment frameToRefPose is "<<frameToRefPose.matrix()<<std::endl;
     frame->setTrackingResult(reference, frameToRefPose, frameToRefLight);
 
     // error distribution

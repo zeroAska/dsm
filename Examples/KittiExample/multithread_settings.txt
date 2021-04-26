@@ -35,7 +35,7 @@ optErrorDistDir = ./ErrorDistribution
 saveOptErrorDist = true
 
 blockUntilMapped = false
-singleThreaded = true
+singleThreaded = false
 mappingThreads = 6
 
 minimizeMemory = false

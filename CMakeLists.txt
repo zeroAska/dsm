@@ -23,15 +23,18 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+
 
 set(PROJECT_NAME DSM)
 
-project(${PROJECT_NAME})
 
-IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE Release)
-ENDIF()
+project(${PROJECT_NAME} LANGUAGES CXX CUDA)
+#project(${PROJECT_NAME} LANGUAGES CXX )
+
+#IF(NOT CMAKE_BUILD_TYPE)
+#  SET(CMAKE_BUILD_TYPE Release)
+#ENDIF()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -41,18 +44,30 @@ if(${WIN32})
 	add_definitions(-DNOMINMAX)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SSE_FLAGS} -O2 -pthread -march=native")
+  #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SSE_FLAGS} -O2 -pthread -march=native")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+#set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+enable_language(CUDA)
+include(CheckLanguage)
+set(CUDACXX nvcc)
+check_language(CUDA)
+set(CUDA_VERBOSE_BUILD ON )
+set(    CUDA_SEPERABLE_COMPILATION ON)
+
+find_package(UnifiedCvo REQUIRED )
+find_package(PCL REQUIRED)
 
 add_subdirectory(dsm)
 add_subdirectory(QtVisualizer)

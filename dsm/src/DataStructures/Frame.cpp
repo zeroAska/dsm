@@ -77,7 +77,7 @@ namespace dsm
 		this->setErrorDistribution(errorDist);
 	}
 
-  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  std::shared_ptr<cvo::CvoPointCloud> new_frame_pcd) :
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd) :
 		frameID_(id),
 		timestamp_(timestamp),
 		trackingParent_(nullptr),

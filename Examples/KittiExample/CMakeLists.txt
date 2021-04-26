@@ -24,7 +24,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 # Set the name of the Program
-set(PROGRAM_NAME EurocExample)
+set(PROGRAM_NAME KittiExample)
 
 add_executable(${PROGRAM_NAME} main.cpp)
 
@@ -34,9 +34,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${EIGEN3_INCLUDE_DIR}
 	${QT_VISUALIZER_LIB_INCLUDE_DIR}
 	${DSM_LIB_INCLUDE_DIR}
-        ${cvo_INCLUDE_DIRS} 
+        #${UnifiedCvo_INCLUDE_DIR} 
 	)
 
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} QtVisualizer dsm)
-
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} QtVisualizer dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::kitti UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
+target_compile_definitions(${PROGRAM_NAME} PUBLIC ${PCL_DEFINITIONS})
 set_target_properties(${PROGRAM_NAME} PROPERTIES FOLDER "Examples")

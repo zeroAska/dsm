@@ -54,6 +54,7 @@ namespace dsm
 
 		// initial frame as reference
 		void setReference(const std::shared_ptr<Frame>& firstFrame);
+          std::shared_ptr<Frame> getReference() {return reference;};
 
 		// sequetial frames until convergence
 		bool initialize(const std::shared_ptr<Frame>& frame, Sophus::SE3f& pose);

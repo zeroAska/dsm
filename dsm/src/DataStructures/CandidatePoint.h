@@ -33,7 +33,7 @@
 #include "AffineLight.h"
 #include "Utils/LossFunction.h"
 #include "FullSystem/DSMLib.h"
-#include "utils/CvoPointCloud.hpp"
+//#include "utils/CvoPointCloud.hpp"
 namespace dsm
 {
 	class Frame;

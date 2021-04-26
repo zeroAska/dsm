@@ -492,7 +492,10 @@ namespace dsm
 				}
 #endif
 				// compute threshold using median value plus an additive constant
-				this->thresholdMapDuplication[row*this->numBlockWidth + col] = sqrt(dsm::median(allGradientMag)) + this->additiveThreshold;
+                                if (allGradientMag.size())
+                                  this->thresholdMapDuplication[row*this->numBlockWidth + col] = sqrt(dsm::median(allGradientMag)) + this->additiveThreshold;
+                                else
+                                  this->thresholdMapDuplication[row*this->numBlockWidth + col] = sqrt( this->additiveThreshold);
 			}
 		}
 	}
