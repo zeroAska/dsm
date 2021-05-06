@@ -34,9 +34,9 @@ saveDepthMaps = true
 optErrorDistDir = ./ErrorDistribution
 saveOptErrorDist = true
 
-blockUntilMapped = false
+blockUntilMapped = true
 singleThreaded = false
-mappingThreads = 6
+mappingThreads = 7
 
 minimizeMemory = false
 
@@ -92,13 +92,13 @@ minBAIterations = 1
 maxBAIterations = 100
 optMaxLevel = 2				
 
-numActivePoints = 1500
+numActivePoints = 2000
 
 maxTemporalKeyframes = 5
 maxCovisibleKeyframes = 3
 numAlwaysKeepKeyframes = 3
 
-minPointCovisible = 0.05
+minPointCovisible = 0.1
 maxLightCovisible = 0.7
 
 minNumKFToConsiderNew = 2

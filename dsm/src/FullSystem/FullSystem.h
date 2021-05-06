@@ -167,6 +167,7 @@ namespace dsm
     // tracker, only in tracking thread
     std::unique_ptr<FrameTracker> tracker; // normal tracker
     std::unique_ptr<cvo::CvoGPU> cvo_align; // cvo tracker
+    float lastTrackingCos;
 
     // parallelization
     std::shared_ptr<WorkerThreadPool> threadPool;

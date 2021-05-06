@@ -28,78 +28,6 @@ extern "C"
 }
 #endif
 
-namespace cvo {
-  
-  void CvoPointCloud_to_pcl(const CvoPointCloud & cvo_cloud,
-                            pcl::PointCloud<CvoPoint> &pcl_cloud
-                            ) {
-    int num_points = cvo_cloud.num_points();
-    const ArrayVec3f & positions = cvo_cloud.positions();
-    const Eigen::Matrix<float, Eigen::Dynamic, FEATURE_DIMENSIONS> & features = cvo_cloud.features();
-    const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> & normals = cvo_cloud.normals();
-    // const Eigen::Matrix<float, Eigen::Dynamic, 2> & types = cvo_cloud.types();
-    auto & labels = cvo_cloud.labels();
-    // set basic informations for pcl_cloud
-    pcl_cloud.resize(num_points);
-
-    //int actual_num = 0;
-    for(int i=0; i<num_points; ++i){
-      //memcpy(&host_cloud[i], &cvo_cloud[i], sizeof(CvoPoint));
-      (pcl_cloud)[i].x = positions[i](0);
-      (pcl_cloud)[i].y = positions[i](1);
-      (pcl_cloud)[i].z = positions[i](2);
-      if (FEATURE_DIMENSIONS >= 3) {
-        (pcl_cloud)[i].r = (uint8_t)std::min(255.0, (features(i,0) * 255.0));
-        (pcl_cloud)[i].g = (uint8_t)std::min(255.0, (features(i,1) * 255.0));
-        (pcl_cloud)[i].b = (uint8_t)std::min(255.0, (features(i,2) * 255.0));
-      }
-
-      for (int j = 0; j < FEATURE_DIMENSIONS; j++)
-        pcl_cloud[i].features[j] = features(i,j);
-
-      if (cvo_cloud.num_classes() > 0) {
-        labels.row(i).maxCoeff(&pcl_cloud[i].label);
-        for (int j = 0; j < cvo_cloud.num_classes(); j++)
-          pcl_cloud[i].label_distribution[j] = labels(i,j);
-      }
-      
-      if (normals.rows() > 0 && normals.cols()>0) {
-        for (int j = 0; j < 3; j++)
-          pcl_cloud[i].normal[j] = normals(i,j);
-      }
-
-      if (cvo_cloud.covariance().size() > 0 )
-        memcpy(pcl_cloud[i].covariance, cvo_cloud.covariance().data()+ i*9, sizeof(float)*9  );
-      if (cvo_cloud.eigenvalues().size() > 0 )
-        memcpy(pcl_cloud[i].cov_eigenvalues, cvo_cloud.eigenvalues().data() + i*3, sizeof(float)*3);
-
-      //if (i == 1000) {
-      //  printf("Total %d, Raw input from pcl at 1000th: \n", num_points);
-      //  print_point(pcl_cloud[i]);
-      //}
-      
-    }
-    //gpu_cloud->points = host_cloud;
-
-    /*
-      #ifdef IS_USING_COVARIANCE    
-      auto covariance = &cvo_cloud.covariance();
-      auto eigenvalues = &cvo_cloud.eigenvalues();
-      thrust::device_vector<float> cov_gpu(cvo_cloud.covariance());
-      thrust::device_vector<float> eig_gpu(cvo_cloud.eigenvalues());
-      copy_covariances<<<host_cloud.size()/256 +1, 256>>>(thrust::raw_pointer_cast(cov_gpu.data()),
-      thrust::raw_pointer_cast(eig_gpu.data()),
-      host_cloud.size(),
-      thrust::raw_pointer_cast(gpu_cloud->points.data()));
-      #endif    
-    */
-    return;
-  }
-
-
-
-}
-
 
 namespace dsm
 {
@@ -111,7 +39,8 @@ namespace dsm
     inline ~KittiProcessor() { this->join(); }
 
     inline void run(cvo::KittiHandler & reader, QtVisualizer& visualizer, std::string& settingsFile,
-                    std::string & cvoConfigFile, cvo::Calibration  &cvo_calib
+                    std::string & cvoConfigFile, cvo::Calibration  &cvo_calib, int startFrameId,
+                    std::string & trajFileName
                     )
     {
       this->processThread = std::make_unique<std::thread>(&KittiProcessor::doRun, this,
@@ -119,7 +48,9 @@ namespace dsm
                                                           std::ref(visualizer),
                                                           std::ref(settingsFile),
                                                           std::ref(cvoConfigFile),
-                                                          std::ref(cvo_calib));
+                                                          std::ref(cvo_calib),
+                                                          startFrameId,
+                                                          trajFileName);
     }
 
     inline void join()
@@ -143,17 +74,22 @@ namespace dsm
                       QtVisualizer& visualizer,
                       std::string& settingsFile,
                       std::string & cvoConfigFile,
-                      cvo::Calibration  &cvo_calib)
+                      cvo::Calibration  &cvo_calib,
+                      int startFrameId,
+                      std::string & trajFileName)
     {
-      int id = 0;
+      int id = startFrameId;
       cv::Mat image;
       double timestamp;
+
+      std::ofstream trajFile(trajFileName);
 
       const double fps = 0.1;//reader.fps();
 
       // create DSM
       std::unique_ptr<FullSystem> DSM;
-
+      reader.set_start_index(id);
+      
       while (!this->shouldStop)
       {
         // reset
@@ -163,7 +99,7 @@ namespace dsm
           DSM.reset();
 
           // reset variables
-          id = 0;
+          id = startFrameId;
           timestamp = 0;
           image.release();
 
@@ -171,7 +107,7 @@ namespace dsm
           visualizer.reset();
 
           // reset dataset reader
-          reader.set_start_index(0);
+          reader.set_start_index(id);
         }
 
         cv::Mat source_left, source_right;
@@ -186,16 +122,17 @@ namespace dsm
         //cvo::RawImage source_raw(source_left));
 
         
-        std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
-        pcl::PointCloud<cvo::CvoPoint>::Ptr source(new pcl::PointCloud<cvo::CvoPoint>); 
-        cvo::CvoPointCloud source_cvo(*source_raw, source_right, cvo_calib);
-        cvo::CvoPointCloud_to_pcl(source_cvo, *source);
         
         // capture
         //if (visualizer.getDoProcessing() && !read_fails)
 
         if ( !read_fails)
         {
+          std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
+          pcl::PointCloud<cvo::CvoPoint>::Ptr source(new pcl::PointCloud<cvo::CvoPoint>); 
+          cvo::CvoPointCloud source_cvo(*source_raw, source_right, cvo_calib);
+          cvo::CvoPointCloud_to_pcl(source_cvo, *source);
+          
           double time = (double)cv::getTickCount();
 
           //gray image from source
@@ -250,8 +187,30 @@ namespace dsm
       // print log
       if (DSM)
       {
-        DSM->printLog();
+
+
+        std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
+        std::vector<double> timestamps;
+        DSM->getTrajectory(poses, timestamps);
+
+        for (auto && accum_output : poses) {
+          trajFile << accum_mat(0,0)<<" "<<accum_mat(0,1)<<" "<<accum_mat(0,2)<<" "<<accum_mat(0,3)<<" "
+                       <<accum_mat(1,0)<<" " <<accum_mat(1,1)<<" "<<accum_mat(1,2)<<" "<<accum_mat(1,3)<<" "
+                       <<accum_mat(2,0)<<" " <<accum_mat(2,1)<<" "<<accum_mat(2,2)<<" "<<accum_mat(2,3);
+          trajFile<<"\n";
+          trajFile<<std::flush;
+          DSM->printLog();          
+
+        }
+        
+        
       }
+
+
+      
+      
+      trajFile.close();
+      
     }
 
   private:
@@ -266,19 +225,24 @@ int main(int argc, char *argv[])
 {
   // input arguments
   std::string imageFolder, cvoConfigFile, calibFile, settingsFile;
-
+  int startFrameId;
   // Configuration
-  if (argc == 4)
+  if (argc >= 5)
   {
     imageFolder = argv[1];
     cvoConfigFile = argv[2];
     settingsFile = argv[3];
+    startFrameId = std::stoi(argv[4]);
   }
   else
   {
-    std::cout << "The KittiExample requires at least 3 arguments: imageFolder, cvoSettingFile, dsmCettingsFile (optional)\n";
+    std::cout << "The KittiExample requires at least 4 arguments: imageFolder, cvoConfigFile, dsmCettingsFile, startFrameIndex\n";
     return 0;
   }
+
+  string trajFileName;
+  if (argc == 6)
+    trajFileName = std::string(argv[5]);
 
   // Initialize logging
   google::InitGoogleLogging(argv[0]);
@@ -305,7 +269,7 @@ int main(int argc, char *argv[])
 
   // run processing in a second thread
   dsm::KittiProcessor processor;
-  processor.run(kitti,  visualizer, settingsFile, cvoConfigFile, calib);
+  processor.run(kitti,  visualizer, settingsFile, cvoConfigFile, calib, startFrameId, trajFileName);
 
   // run main window
   // it will block the main thread until closed

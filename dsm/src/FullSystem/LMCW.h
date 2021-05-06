@@ -70,6 +70,9 @@ namespace dsm
 		// all keyframes
 		inline const std::vector<std::shared_ptr<Frame>>& allKeyframes() const { return this->allKeyframes_; }
 
+                inline int getTemporalWindowSize() const {return temporalWindowIndex; }
+                inline int getActiveWindowSize() const {return activeKeyframes_.size(); }
+          
 		// temporally connected keyframes
 		inline std::vector<std::shared_ptr<Frame>> temporalWindow() const 
 		{ 

@@ -62,7 +62,8 @@ namespace dsm
     numMappedFramesFromLastKF(0),
     shouldStop(false),
     newFrameMappedDone(true),
-    outputWrapper(outputWrapper)
+    outputWrapper(outputWrapper),
+    lastTrackingCos(1)
   {
     // First: initialize pattern types
     Pattern::initialize();
@@ -199,6 +200,7 @@ namespace dsm
                          const std::string &settingsFile,
                          IVisualizer *outputWrapper) : FullSystem(w, h, calib, settingsFile, outputWrapper) {
     this->cvo_align.reset(new cvo::CvoGPU(cvoParamsFile));
+    lastTrackingCos = 1;
   }
   
 
@@ -823,7 +825,7 @@ namespace dsm
     Frame* const reference = this->trackingReference->reference();
 
     // pose prior -> constant velocity model
-    std::cout<<"camToWorld is "<<reference->camToWorld().matrix()<<"\n, lastToWorldPose is "<<lastToWorldPose.matrix()<<std::endl;
+    std::cout<<"\nCvo tracking init values: reference id "<<reference->frameID()<<" camToWorld is \n"<<reference->camToWorld().matrix()<<"\n last frame id "<<lastTrackedFrame->frameID()<<"'s lastToWorldPose is "<<lastToWorldPose.matrix()<<std::endl;
     const Sophus::SE3f lastToRef = reference->camToWorld().inverse() * lastToWorldPose;
     Sophus::SE3f frameToRefPose = lastToRef * this->lastTrackedMotion;
     Eigen::Matrix4f frameToRefPoseEigen = frameToRefPose.matrix().inverse();
@@ -837,6 +839,7 @@ namespace dsm
 
     // Track
     // relative pose to reference keyframe
+    std::cout<<"Cvo trying to align frame "<<reference->frameID()<<" and frame "<<frame->frameID()<<std::endl;
     Eigen::Matrix4f trackingPoseResult;
     double trackingTime;
     int cvoTrackingResult = cvo_align->align(*(reference->get_cvo_pcd()),
@@ -849,7 +852,7 @@ namespace dsm
     
     // track relative affine light to reference keyframe
     bool goodTrackedLight = this->tracker->trackFrame(this->trackingReference, frame, frameToRefPose, frameToRefLight,                                                                                                                 errorDistribution, this->outputWrapper, true);      
-
+    
 
     //tracking lost? - reset tracking internal data
     bool goodTracked = (cvoTrackingResult == 0 && goodTrackedLight);
@@ -869,7 +872,14 @@ namespace dsm
     }
 
     // save result to the latest frame
-    std::cout<<"CVO result frameToRefPose is "<<frameToRefPose.matrix()<<std::endl;
+    std::cout<<"Just aligned frame "<<reference->frameID()<<" and "<<frame->frameID()<<std::endl;
+    this->lastTrackingCos = cvo_align->function_angle(*(reference->get_cvo_pcd()),
+                                                      *(new_frame_pcd),
+                                                      trackingPoseResult.inverse(),
+                                                      false);
+    std::cout<<"Tracking cvo function_angle is "<<lastTrackingCos<<std::endl;
+    //std::cout<<"CVO result frameToRefPose is "<<frameToRefPose.matrix()<<std::endl;
+    
     frame->setTrackingResult(reference, frameToRefPose, frameToRefLight);
 
     // error distribution
@@ -1016,7 +1026,8 @@ namespace dsm
     if ((dist.norm()*settings.newKFDistWeight +
          (1.f - pointUsage) * settings.newKFUsageWeight +
          fabs(relativeLight.alpha()) * settings.newKFAffineWeight) > 1.f ||
-        settings.newKFResidualWeight*this->trackingReference->firstFrameResidual() < this->lastTrackedResidual)
+        settings.newKFResidualWeight*this->trackingReference->firstFrameResidual() < this->lastTrackedResidual ||
+        lastTrackingCos < 0.051)
     {
       return true;
     }
@@ -1040,6 +1051,7 @@ namespace dsm
       // or when shutting down
       {
         std::unique_lock<std::mutex> unMappedLock(this->unmappedTrackedFramesMutex);
+        std::cout<<" unmappedTrackedFrames size is "<<this->unmappedTrackedFrames.size()<<std::endl;
         if (this->unmappedTrackedFrames.empty())
         {
           // signal to stop blocking
@@ -1563,6 +1575,18 @@ namespace dsm
         this->outputWrapper->publishKeyframe(kf, KeyframeType::COVISIBILITY);
       }
     }
+
+    std::cout<<"Just finish optimization, keyframe to world pose results are: \n";
+    auto & active_windows = this->lmcw->activeWindow();
+    for (int j = 0 ; j < this->lmcw->getActiveWindowSize(); j++ ) {
+      if (j < this->lmcw->getTemporalWindowSize())
+        std::cout<<"Covisible KF id ";
+      else
+        std::cout<<"Temporal KF id ";
+      std::cout<<active_windows[j]->frameID()<<" with pose \n"<<active_windows[j]->camToWorld().matrix()<<std::endl;
+    }
+    std::cout<<"\n";
+    
     Utils::Time t16 = std::chrono::steady_clock::now();
     //std::cout << "Visualization time: " << Utils::elapsedTime(t15, t16) << std::endl;
 
@@ -1696,6 +1720,23 @@ namespace dsm
 
       // change from gray to bgr
       cv::cvtColor(images[i], images[i], cv::COLOR_GRAY2BGR);
+
+      std::string keyframeTypeStr;
+      if (i < this->lmcw->getTemporalWindowSize())
+        keyframeTypeStr = "Covisible Window: frame id ";
+      else
+        keyframeTypeStr = "Temporal Widnow: frame id ";
+
+      int frameId = this->lmcw->activeWindow()[i]->frameID();
+      std::string imageLabel = keyframeTypeStr + std::to_string(frameId);
+      
+      cv::putText(images[i], //target image
+                  imageLabel, //text
+                  cv::Point(10, images[i].rows - 10), //top-left position
+                  cv::FONT_HERSHEY_DUPLEX,
+                  1.0,
+                  CV_RGB(118, 185, 0), //font color
+                  2);
     }
 
     const int rectSize = 6;
