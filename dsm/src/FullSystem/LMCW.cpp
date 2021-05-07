@@ -354,7 +354,7 @@ namespace dsm
         allCovisibleKeyframes.push_back(kf);
         numVisiblePoints.push_back(numVisible);
         numTotalVisiblePoints.push_back(numTotalVisible);
-        std::cout<<"Add frame "<<kf->frameID()<<" to covisible window\n";
+        std::cout<<"Covisible projection ratio "<<ratio <<", Add frame "<<kf->frameID()<<" to covisible window\n";
       }
     }
 

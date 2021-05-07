@@ -50,7 +50,7 @@ namespace dsm
                                                           std::ref(cvoConfigFile),
                                                           std::ref(cvo_calib),
                                                           startFrameId,
-                                                          trajFileName);
+                                                          std::ref(trajFileName));
     }
 
     inline void join()
@@ -189,11 +189,12 @@ namespace dsm
       {
 
 
-        std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
+        //std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
+        std::vector<Eigen::Matrix4f> poses;
         std::vector<double> timestamps;
         DSM->getTrajectory(poses, timestamps);
 
-        for (auto && accum_output : poses) {
+        for (auto && accum_mat : poses) {
           trajFile << accum_mat(0,0)<<" "<<accum_mat(0,1)<<" "<<accum_mat(0,2)<<" "<<accum_mat(0,3)<<" "
                        <<accum_mat(1,0)<<" " <<accum_mat(1,1)<<" "<<accum_mat(1,2)<<" "<<accum_mat(1,3)<<" "
                        <<accum_mat(2,0)<<" " <<accum_mat(2,1)<<" "<<accum_mat(2,2)<<" "<<accum_mat(2,3);
@@ -240,7 +241,7 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  string trajFileName;
+  std::string trajFileName;
   if (argc == 6)
     trajFileName = std::string(argv[5]);
 

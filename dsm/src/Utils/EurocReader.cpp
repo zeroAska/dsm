@@ -90,7 +90,7 @@ namespace dsm
   {
     if (this->id < this->files.size() && this->id >= 0)
     {
-      img = cv::imread(this->files[this->id], cv::IMREAD_UNCHANGED);
+      left = cv::imread(this->files[this->id], cv::IMREAD_UNCHANGED);
       timestamp = this->timestamps[this->id];
 
       this->id += this->inc;
