@@ -44,7 +44,9 @@ namespace dsm
 		affineLight_(0.f, 0.f),
 		thisToParentLight_(0.f, 0.f),
 		type_(Type::FRAME),
-		status_(Status::INACTIVE)
+		status_(Status::INACTIVE),
+                depthType(DepthType::MONO),
+                depthScale(1.0)
 	{
 		const auto& settings = Settings::getInstance();
 		const auto& calib = GlobalCalibration::getInstance();
@@ -77,7 +79,7 @@ namespace dsm
 		this->setErrorDistribution(errorDist);
 	}
 
-  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd) :
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,std::vector<float> & disparity) :
 		frameID_(id),
 		timestamp_(timestamp),
 		trackingParent_(nullptr),
@@ -85,7 +87,11 @@ namespace dsm
 		thisToParentLight_(0.f, 0.f),
 		type_(Type::FRAME),
 		status_(Status::INACTIVE),
-                cvo_pcd(new_frame_pcd)
+                cvo_pcd(new_frame_pcd),
+                rawImg(color_img),
+                stereoDisparity(disparity.begin(), disparity.end()),
+                depthType(DepthType::STEREO),
+                depthScale(1.0)
 	{
 		const auto& settings = Settings::getInstance();
 		const auto& calib = GlobalCalibration::getInstance();
@@ -118,6 +124,55 @@ namespace dsm
 		this->setErrorDistribution(errorDist);
 	}
 
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale) :
+
+    frameID_(id),
+    timestamp_(timestamp),
+    trackingParent_(nullptr),
+    affineLight_(0.f, 0.f),
+    thisToParentLight_(0.f, 0.f),
+    type_(Type::FRAME),
+    status_(Status::INACTIVE),
+    cvo_pcd(new_frame_pcd),
+    rawImg(color_img),
+    rgbdDepth(depth.begin(), depth.end()),
+    depthType(DepthType::RGBD),
+    depthScale(depth_scale)
+  {
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+
+    // image pyramids
+    this->images_ = std::make_unique<ImagePyramid<float>>(calib.levels(), image);
+
+    // gradient pyramids
+    this->gradients_ = std::make_unique<GradientPyramid<float>>(calib.levels(), *this->images_);
+
+    // identity poses
+    this->thisToParentPose_ = Sophus::SE3f();
+    this->camToWorld_ = Sophus::SE3f();
+
+    this->graphNode = nullptr;
+
+    this->flaggedToDrop_ = false;
+
+    // error distribution
+    std::shared_ptr<IDistribution> errorDist;
+    if (settings.useTDistribution)
+    {
+      errorDist = std::make_shared<TDistribution>(settings.defaultNu, settings.defaultMu, settings.defaultSigma);
+    }
+    else
+    {
+      errorDist = std::make_shared<RobustNormalDistribution>(settings.defaultMu, settings.defaultSigma);
+    }
+
+    this->setErrorDistribution(errorDist);
+
+  }
+
+  
+  
   
 	Frame::~Frame()
 	{

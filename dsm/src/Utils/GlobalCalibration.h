@@ -63,6 +63,15 @@ namespace dsm
 		GlobalCalibration(GlobalCalibration const&) = delete;
 		void operator=(GlobalCalibration const&) = delete;
 
+                // Stereo Camera:
+                float getBaseline() const {return baseline_;}
+                void setBaseline(float newBaseline) {baseline_ = newBaseline;}
+
+                // RGBD Camera:
+                float getDepthScale()  const {return depthScale_;}
+                void setDepthScale(float newDepthScale) {depthScale_ = newDepthScale;}
+                
+
 	private:
 
 		GlobalCalibration();
@@ -86,5 +95,12 @@ namespace dsm
 
 		// numer of pyramid levels
 		int32_t levels_;
+
+                // Stereo Camera: baselines at depth 0 
+                float baseline_;
+
+                // RGBD Camera: depth scale
+                float depthScale_;
+                
 	};
 }
