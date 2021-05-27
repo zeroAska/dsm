@@ -26,6 +26,10 @@
 #include <vector>
 #include <memory>
 
+namespace cvo {
+  class CvoGPU;
+}
+
 namespace dsm
 {
 	class Frame;
@@ -33,6 +37,7 @@ namespace dsm
 	class CeresPhotometricBA;
 	class CovisibilityGraph;
 	class IVisualizer;
+  
 
 	// optimization window
 
@@ -41,6 +46,7 @@ namespace dsm
 	public:
 
 		LMCW(int width, int height, IVisualizer *visualizer = nullptr);
+          LMCW(int width, int height, const cvo::CvoGPU * align, IVisualizer *visualizer);          
 		~LMCW();
 
 		// reset all keyframes
@@ -91,7 +97,7 @@ namespace dsm
 		void selectTemporalWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
 		// selects the covisible window part
-		void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
+          void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
 	private:
 		
@@ -118,5 +124,7 @@ namespace dsm
 
 		// visualizer
 		IVisualizer* const outputWrapper_;
+
+          const cvo::CvoGPU * cvo_align;
 	};
 }

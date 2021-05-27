@@ -98,7 +98,7 @@ maxTemporalKeyframes = 5
 maxCovisibleKeyframes = 3
 numAlwaysKeepKeyframes = 3
 
-minPointCovisible = 0.2
+minPointCovisible = 0.25
 maxLightCovisible = 0.7
 
 minNumKFToConsiderNew = 2
@@ -112,3 +112,5 @@ minNumMappedFramesToCreateKF = 1
 
 showDepthMap = true
 showDepthMapLvl = 0
+
+iDepthUncertainty = 0.025

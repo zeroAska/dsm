@@ -61,6 +61,7 @@ namespace dsm
 		enum ObserveStatus { GOOD = 0, BAD_ERROR = 1, BAD_EPILINE = 2, OOB = 3, SKIPPED = 4, BAD_CONDITIONED = 5 };
 
 		CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& refFrame);
+                CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& frame, float invDepth);
 
 
 		~CandidatePoint();

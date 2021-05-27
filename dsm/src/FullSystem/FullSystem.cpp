@@ -43,7 +43,7 @@
 #include "Optimization/PhotometricBA.h"
 #include "Optimization/PhotometricResidual.h"
 #include "Visualizer/IVisualizer.h"
-
+#include "utils/StaticStereo.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
 
@@ -65,6 +65,7 @@ namespace dsm
     outputWrapper(outputWrapper),
     lastTrackingCos(1)
   {
+    std::cout<<"FullSystem default constructor...\n";
     // First: initialize pattern types
     Pattern::initialize();
 
@@ -195,12 +196,20 @@ namespace dsm
     BufferPool<float>::getInstance().clearPool();				// float pool
   }
 
-  FullSystem::FullSystem(int w, int h, const Eigen::Matrix3f &calib,
+  FullSystem::FullSystem(int w, int h, const cvo::Calibration &calib, 
                          const std::string &cvoParamsFile,
                          const std::string &settingsFile,
-                         IVisualizer *outputWrapper) : FullSystem(w, h, calib, settingsFile, outputWrapper) {
+                         IVisualizer *outputWrapper) : FullSystem(w, h, calib.intrinsic(), settingsFile, outputWrapper) {
+
+    std::cout<<"FullSystem Cvo constructor..\n";
     this->cvo_align.reset(new cvo::CvoGPU(cvoParamsFile));
+    
+    auto& globalCalib = GlobalCalibration::getInstance();
+    globalCalib.setBaseline(calib.baseline());
+    globalCalib.setDepthScale(calib.scaling_factor());
     lastTrackingCos = 1;
+
+    this->lmcw.reset(new LMCW(w, h, cvo_align.get(), outputWrapper) );    
   }
   
 
@@ -549,7 +558,7 @@ namespace dsm
     }
   }
 
-  void FullSystem::trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd)
+  void FullSystem::trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const cv::Mat & right_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd)
   {
     this->lastWasKF = false;
 
@@ -559,7 +568,9 @@ namespace dsm
     Utils::Time t1 = std::chrono::steady_clock::now();
 
     // Create new frame
-    std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, image, color_img, new_frame_pcd);
+    std::vector<float> stereoDisparity;
+    cvo::StaticStereo::disparity(left_img->image(), right_img, stereoDisparity );
+    std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, image, left_img, new_frame_pcd, stereoDisparity);
 
     if (settings.debugPrintLog)
     {
@@ -675,6 +686,133 @@ namespace dsm
     }
   }
 
+  void FullSystem::trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const std::vector<uint16_t> & depth_img, float depth_scale,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd)
+  {
+    this->lastWasKF = false;
+
+    auto& settings = Settings::getInstance();
+
+    // track frame
+    Utils::Time t1 = std::chrono::steady_clock::now();
+
+    // Create new frame
+    std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, image, left_img, new_frame_pcd, depth_img, depth_scale);
+
+    if (settings.debugPrintLog)
+    {
+      auto& log = Log::getInstance();
+      log.addNewLog(trackingNewFrame->frameID());
+    }
+
+    if (!this->trackingIsGood)
+    {
+      std::cout << "LOST..." << std::endl;
+      return;
+    }
+
+    // initialization: TODO
+    if (!this->initialized)
+    {
+      this->initialized = this->initialize(trackingNewFrame, true);
+      return;
+    }
+
+    // track
+    //this->trackNewFrame(trackingNewFrame);
+    this->trackModelToFrameCvo(trackingNewFrame, new_frame_pcd );
+
+    if (!this->trackingIsGood)
+    {
+      std::cout << "Tracking LOST!!" << std::endl;
+      return;
+    }
+
+    if (settings.debugPrintLog && settings.debugLogTracking)
+    {
+      const float* pose = trackingNewFrame->thisToParentPose().data();
+      const AffineLight& light = trackingNewFrame->thisToParentLight();
+      const float energy = this->tracker->totalResidual();
+
+      std::string msg = "trackingPose: " + std::to_string(pose[0]) + "\t" + std::to_string(pose[1]) + "\t" + std::to_string(pose[2]) + "\t" + std::to_string(pose[3]) + "\t"
+        + std::to_string(pose[4]) + "\t" + std::to_string(pose[5]) + "\t" + std::to_string(pose[6]) + "\t";
+      msg += "affineLight: " + std::to_string(light.alpha()) + "\t" + std::to_string(light.beta()) + "\t";
+      msg += "cost: " + std::to_string(energy) + "\t";
+
+      auto& log = Log::getInstance();
+      log.addCurrentLog(trackingNewFrame->frameID(), msg);
+    }
+
+    // Keyframe selection
+    // If we have already asked to create one, dont do it again
+    bool localCreateNewKeyframe = false;
+    if (!this->createNewKeyframe)
+    {
+      if(this->numMappedFramesFromLastKF >= settings.minNumMappedFramesToCreateKF)
+      {
+        localCreateNewKeyframe = this->isNewKeyframeRequired(trackingNewFrame);
+      }
+						
+      this->createNewKeyframe = localCreateNewKeyframe;
+    }
+
+    // insert current frame to unmapped queue
+    Utils::Time t2;
+    if (!settings.singleThreaded)
+    {
+      {
+        std::lock_guard<std::mutex> unMappedLock(this->unmappedTrackedFramesMutex);
+        this->unmappedTrackedFrames.push_back(trackingNewFrame);
+
+        if (localCreateNewKeyframe)
+        {
+          this->createNewKeyframeID = trackingNewFrame->frameID();
+        }
+
+        // control flag for blocking
+        {
+          std::lock_guard<std::mutex> newFrameMappedLock(this->newFrameMappedMutex);
+          this->newFrameMappedDone = false;
+        }
+      }
+      this->unmappedTrackedFramesSignal.notify_one();
+
+      t2 = std::chrono::steady_clock::now();
+    }
+    else
+    {
+      if (localCreateNewKeyframe)
+      {
+        this->createNewKeyframeID = trackingNewFrame->frameID();
+      }
+
+      t2 = std::chrono::steady_clock::now();
+      
+      this->doMapping(trackingNewFrame);
+    }
+
+    const float time = Utils::elapsedTime(t1, t2);
+    this->camTrackingTime.push_back(time);
+
+    if (this->outputWrapper)
+    {
+      // current camera pose
+      const Eigen::Matrix4f camPose = (this->lastTrackedFrame->parent()->camToWorld() * 
+                                       this->lastTrackedFrame->thisToParentPose()).matrix();
+      this->outputWrapper->publishCurrentFrame(camPose);
+
+      //timings			
+      this->outputWrapper->publishCamTrackingTime(time);
+    }
+
+    // implement blocking
+    // required for debugging
+    if (!settings.singleThreaded && settings.blockUntilMapped && this->trackingIsGood)
+    {
+      this->waitUntilMappingFinished();
+    }
+  }
+
+  
   /*  
   void FullSystem::trackFrameToFrameCvo(const std::shared_ptr<Frame>& frame, const cvo::CvoPointCloud & new_frame_pcd ){
 
@@ -1163,6 +1301,8 @@ namespace dsm
   void FullSystem::createCandidates(const std::shared_ptr<Frame>& frame)
   {
     const auto& calib = GlobalCalibration::getInstance();
+    const auto & intrinsic = calib.matrix3f(0);
+    float baseline = calib.getBaseline();
     const auto& settings = Settings::getInstance();
 
     const int32_t width = calib.width(0);
@@ -1189,7 +1329,16 @@ namespace dsm
         if (this->pixelMask[idx] < 0) continue;
 
         // create a point
-        candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, this->pixelMask[idx], frame));
+        if (cvo_align!=nullptr) {
+          float idepth = 0;
+          if (frame->depthType == Frame::DepthType::STEREO)
+            idepth = frame->getStereoDisparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
+          else if (frame->depthType == Frame::DepthType::RGBD)
+            idepth =  frame->depthScale / (frame->getRgbdDepth()[width * row + col]); 
+          if ( std::isnan(idepth) || idepth < 0.01f ) continue;
+          candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, this->pixelMask[idx], frame, idepth));
+        } else
+          candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, this->pixelMask[idx], frame));
       }
     }
 

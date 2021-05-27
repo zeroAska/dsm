@@ -41,6 +41,12 @@
 #include "cvo/CvoGPU.hpp"
 #include "utils/CvoPoint.hpp"
 #include <pcl/point_cloud.h>
+
+namespace cvo {
+  class CvoGPU;
+  class Calibration;
+}
+
 namespace dsm
 {
   class Frame;
@@ -63,11 +69,11 @@ namespace dsm
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     FullSystem(int w, int h, const Eigen::Matrix3f &calib,
-               const std::string &settingsFile = "",
+               const std::string &settingsFile,
                IVisualizer *outputWrapper = nullptr);    
-    FullSystem(int w, int h, const Eigen::Matrix3f &calib,
-               const std::string &cvoParamsFile = "",
-               const std::string &settingsFile = "",
+    FullSystem(int w, int h, const cvo::Calibration &calib,
+               const std::string &cvoParamsFile,
+               const std::string &settingsFile,
                IVisualizer *outputWrapper = nullptr);
 
     FullSystem(const FullSystem&) = delete;
@@ -81,7 +87,8 @@ namespace dsm
 
     // Tracks the stereo frame. It calculates the system pose and the 3D scene*/
     void trackFrame(int id, double timestamp, unsigned char* image);
-    void trackFrame(int id, double timestamp, unsigned char* gray_img, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
+    void trackFrame(int id, double timestamp, unsigned char* gray_img, std::shared_ptr<cvo::RawImage> left_img, const cv::Mat & right_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
+    void trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const std::vector<uint16_t> & depth_img, float depth_scale,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);    
     void trackModelToFrameCvo(const std::shared_ptr<Frame>& frame, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd );
 
     ////////////////////////////////////////

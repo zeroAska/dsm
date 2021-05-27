@@ -176,6 +176,8 @@ namespace dsm
 		this->showDepthMap = true;										// true
 		this->showDepthMapLvl = 0;										// 0
 
+                this->iDepthUncertainty = 0.025f;
+
 		// update the rest
 		this->updateNonIndependentParameters();
 	}
@@ -325,6 +327,10 @@ namespace dsm
 		if (this->checkParameter("minnummappedframestocreatekf", name, value, this->minNumMappedFramesToCreateKF)) return;
 		if (this->checkParameter("showdepthmap", name, value, this->showDepthMap)) return;
 		if (this->checkParameter("showdepthmaplvl", name, value, this->showDepthMapLvl)) return;
+                if (this->checkParameter("idepthuncertainty", name, value, this->iDepthUncertainty)) {
+                  std::cout<<"iDepthUncertainty is "<<this->iDepthUncertainty<<std::endl;
+                  return; 
+                }
 
 		// not found
 		std::cout << "Could not parse argument: " << argument << std::endl;

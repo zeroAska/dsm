@@ -129,9 +129,9 @@ namespace dsm
         if ( !read_fails)
         {
           std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
-          pcl::PointCloud<cvo::CvoPoint>::Ptr source(new pcl::PointCloud<cvo::CvoPoint>); 
+          pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>); 
           cvo::CvoPointCloud source_cvo(*source_raw, source_right, cvo_calib);
-          cvo::CvoPointCloud_to_pcl(source_cvo, *source);
+          cvo::CvoPointCloud_to_pcl(source_cvo, *source_pcd);
           
           double time = (double)cv::getTickCount();
 
@@ -150,14 +150,14 @@ namespace dsm
           {
             DSM = std::make_unique<FullSystem>(color_img.cols,
                                                color_img.rows,
-                                               cvo_calib.intrinsic(), cvoConfigFile,
+                                               cvo_calib, cvoConfigFile,
                                                settingsFile,
                                                &visualizer);
           }
 
           // process
           //DSM->trackFrame(id, timestamp, gray_img.data);
-          DSM->trackFrame(id, timestamp, gray_img.data, source_raw, source);
+          DSM->trackFrame(id, timestamp, gray_img.data, source_raw, source_right, source_pcd);
           
           //cv::imwrite("new_tracked_gray.png", gray_img);
           // visualize image

@@ -199,6 +199,8 @@ namespace dsm
 		bool showDepthMap;							// shows depth map in the gui
 		int showDepthMapLvl;
 
+          float iDepthUncertainty;
+
 		// Secure Division
 		static const float DIVISION_EPS;
 

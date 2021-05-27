@@ -44,7 +44,22 @@ namespace dsm
 {
   namespace Utils
   {
+    
     typedef std::chrono::steady_clock::time_point Time;
+
+
+    inline Eigen::Matrix4f SE3ToEigen(const Sophus::SE3f & input) {
+    
+      const Eigen::Matrix3f R = input.rotationMatrix();
+      const Eigen::Vector3f t = input.translation();
+      Eigen::Matrix4f output = Eigen::Matrix4f::Identity();
+      output.block<3,3>(0,0) = R;
+      output.block<3,1>(0,3) = t;
+      return output;
+    
+    }
+
+    
 
     inline float elapsedTime(const Time &t1, const Time &t2)
     {

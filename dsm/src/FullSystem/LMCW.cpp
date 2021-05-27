@@ -34,12 +34,17 @@
 #include "Utils/Projection.h"
 #include "Utils/Settings.h"
 #include "Utils/UtilFunctions.h"
+#include "cvo/CvoGPU.hpp"
 
 namespace dsm
 {
   LMCW::LMCW(int width, int height, IVisualizer *visualizer) :
-    temporalWindowIndex(0), numActivePoints(0), outputWrapper_(visualizer)
+    LMCW(width, height, nullptr, visualizer)
   {
+  }
+
+  LMCW::LMCW(int width, int height,  const cvo::CvoGPU * align, IVisualizer *visualizer)
+    : cvo_align(align) ,     temporalWindowIndex(0), numActivePoints(0), outputWrapper_(visualizer) {
     const auto& settings = Settings::getInstance();
     const int levels = settings.pyramidLevels;
 
@@ -49,6 +54,8 @@ namespace dsm
 
     // covisibility graph
     this->covisibilityGraph_ = std::make_unique<CovisibilityGraph>();
+
+    
   }
 
   LMCW::~LMCW()
@@ -282,6 +289,7 @@ namespace dsm
   }
 
   void LMCW::selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
+
   {
     assert(this->temporalWindowIndex == 0);
 
@@ -315,6 +323,7 @@ namespace dsm
       const Sophus::SE3f kfToLast = worldToLast * kf->camToWorld();
       const Eigen::Matrix3f R = kfToLast.rotationMatrix();
       const Eigen::Vector3f t = kfToLast.translation();
+      Eigen::Matrix4f kfToLastEigen = Utils::SE3ToEigen(kfToLast);
 
       int numVisible = 0;
       int numTotalVisible = 0;
@@ -354,7 +363,14 @@ namespace dsm
         allCovisibleKeyframes.push_back(kf);
         numVisiblePoints.push_back(numVisible);
         numTotalVisiblePoints.push_back(numTotalVisible);
-        std::cout<<"Covisible projection ratio "<<ratio <<", Add frame "<<kf->frameID()<<" to covisible window\n";
+
+        if (cvo_align != nullptr ) {
+          float ip = cvo_align->function_angle(*(kf->get_cvo_pcd()),
+                                               *(lastActKeyframe->get_cvo_pcd()),
+                                               kfToLastEigen,
+                                               false);
+        std::cout<<"Covisible projection ratio "<<ratio <<", with inner product between "<<kf->frameID()<<" and "<<lastActKeyframe->frameID()<<" being "<<ip<<", Add frame "<<kf->frameID()<<" to covisible window\n";
+        }
       }
     }
 
@@ -377,6 +393,7 @@ namespace dsm
 			
       // update map
       this->distanceMap_->add(selectedKeyframe, lastActKeyframe);
+      std::cout<<"LMCW add frame "<<selectedKeyframe->frameID()<<", number of Visible points is "<<numVisiblePoints[position]<<std::endl;
 			
       // remove from vectors
       allCovisibleKeyframes[position] = allCovisibleKeyframes.back();

@@ -54,14 +54,19 @@ namespace dsm
 	class DSM_EXPORTS_DLL Frame
 	{
 	public:
+
 		EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+                enum DepthType { MONO = 0, STEREO = 1, RGBD = 2};
 
 		// control flag
 		enum Type { FRAME = 0, KEYFRAME = 1};
 		enum Status { ACTIVE = 0, INACTIVE = 1 };
 
 		Frame(int id, double timestamp, unsigned char* image);
-                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, std::vector<float> & disparity);
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale);
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
 		~Frame();
 
 		// activation or desactivation
@@ -149,6 +154,11 @@ namespace dsm
 
                 // access cvo points
                 pcl::PointCloud<cvo::CvoPoint>::Ptr get_cvo_pcd() {return cvo_pcd;}
+                std::shared_ptr<cvo::RawImage> getRawImage() {return rawImg;}
+                const std::vector <float> & getStereoDisparity() {return stereoDisparity;}
+                const std::vector<uint16_t> & getRgbdDepth() {return rgbdDepth;}
+                const float depthScale;
+                const DepthType depthType;
 
 		// Reference in covisibility graph
 		CovisibilityNode* graphNode;
@@ -185,7 +195,12 @@ namespace dsm
 		Frame* trackingParent_;					// coarse tracking parent
 		Sophus::SE3f thisToParentPose_;				// coarse tracking result
 		AffineLight thisToParentLight_;			// from coarse tracking
+                
                 pcl::PointCloud<cvo::CvoPoint>::Ptr cvo_pcd; // for CVO coarse tracking
+                std::shared_ptr<cvo::RawImage> rawImg;
+                std::vector<float> stereoDisparity;
+                std::vector<uint16_t> rgbdDepth;
+
                 
 
 		// global parameters for keyframes
