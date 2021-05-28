@@ -89,8 +89,6 @@ namespace dsm
       // create DSM
       std::unique_ptr<FullSystem> DSM;
       reader.set_start_index(id);
-
-      std::vector<std::string> vstrRGBName = reader.get_rgb_name_list();
       
       while (!this->shouldStop)
       {
@@ -125,8 +123,6 @@ namespace dsm
 
         if ( !read_fails)
         {
-          if (id == 0)
-            std::cout<<"depth scaling factor is "<<cvo_calib.scaling_factor()<<std::endl;
           
           std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
           std::vector<uint16_t> source_dep_data(source_dep.begin<uint16_t>(), source_dep.end<uint16_t>());
@@ -135,7 +131,7 @@ namespace dsm
           cvo::CvoPointCloud source_cvo(*source_raw, source_dep_data, cvo_calib);
 
           if (id <= 2) source_cvo.write_to_color_pcd("color_"+std::to_string(id)+".pcd");
-          
+
           cvo::CvoPointCloud_to_pcl(source_cvo, *source_pcd);
           
           double time = (double)cv::getTickCount();
@@ -195,6 +191,7 @@ namespace dsm
         std::vector<double> timestamps;
         DSM->getTrajectory(poses, timestamps);
 
+<<<<<<< HEAD
         int l = 0;
         for (auto && accum_mat : poses) {
 
@@ -206,6 +203,16 @@ namespace dsm
           
           DSM->printLog();          
           l++;
+=======
+        for (auto && accum_mat : poses) {
+          trajFile << accum_mat(0,0)<<" "<<accum_mat(0,1)<<" "<<accum_mat(0,2)<<" "<<accum_mat(0,3)<<" "
+                       <<accum_mat(1,0)<<" " <<accum_mat(1,1)<<" "<<accum_mat(1,2)<<" "<<accum_mat(1,3)<<" "
+                       <<accum_mat(2,0)<<" " <<accum_mat(2,1)<<" "<<accum_mat(2,2)<<" "<<accum_mat(2,3);
+          trajFile<<"\n";
+          trajFile<<std::flush;
+          DSM->printLog();          
+
+>>>>>>> 9dc590133a424a3ad36e333fe9fbb36abadf362f
         }
         
         
@@ -268,7 +275,11 @@ int main(int argc, char *argv[])
 
 
   std::string cvo_calib_file = imageFolder + "/cvo_calib.txt"; 
+<<<<<<< HEAD
   cvo::Calibration calib(cvo_calib_file, cvo::Calibration::RGBD);
+=======
+  cvo::Calibration calib(cvo_calib_file);
+>>>>>>> 9dc590133a424a3ad36e333fe9fbb36abadf362f
 
   // add image size to the visualizer
   visualizer.setImageSize(calib.image_cols(), calib.image_rows());
