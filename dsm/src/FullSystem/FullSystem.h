@@ -102,6 +102,10 @@ namespace dsm
     float getCamTrackingMeanTime() const;
     float getPointTrackingMeanTime() const;
     float getLocalBAMeanTime() const;
+    float getTotalBackendMeanTime() const;
+    float getWindowConstructionMeanTime() const;
+    float getCvoBAMeanTime() const;
+    float getMeanTime(const std::vector<float> & timeVec) const;
 
     int getNumPoints() const;
     int getNumKeyframes() const;
@@ -137,6 +141,7 @@ namespace dsm
 
     // Optimization
     void createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame);
+    void cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes);
 
     // visualization
     void drawTrackDepthMap(const std::shared_ptr<FrameTrackerReference>& trackRef, cv::Mat& depthMapBGR, int lvl);
@@ -152,7 +157,7 @@ namespace dsm
     private:
 
     // control variables
-    std::atomic_bool initialized;
+    std::atomic_bool initialized; // check first frame to intialize
     std::atomic_bool trackingIsGood;
 
     // threads
@@ -211,6 +216,9 @@ namespace dsm
     std::vector<float> camTrackingTime;
     std::vector<float> pointTrackingTime;
     std::vector<float> localBATime;
+    std::vector<float> windowConstructionTime;
+    std::vector<float> cvoBATime;
+    std::vector<float> totalBackendTime;
     bool lastWasKF;
 
     // visualization

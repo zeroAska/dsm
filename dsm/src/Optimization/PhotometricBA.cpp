@@ -73,7 +73,7 @@ namespace dsm
 	}
 
 	CeresPhotometricBA::CeresPhotometricBA(const PhotometricBAConfig &config,
-										   IVisualizer *outWrapper) :
+                                               IVisualizer *outWrapper) :
 		options(config), 
 		numFrames(0), 
 		numPoints(0), 
@@ -199,10 +199,10 @@ namespace dsm
 			this->activeKeyframes.push_back(kf.get());
 
 			// fix first camera, this fixes unobservable gauge freedoms
-			if (kf->keyframeID() == 0)
+			if (kf->keyframeID() == 0 || this->options.fixFramePoses)
 			{
 				problem.setParameterBlockConstant(kf->frameBlock().get());
-			}			
+			}
 
 			for (const auto& point : kf->activePoints())
 			{

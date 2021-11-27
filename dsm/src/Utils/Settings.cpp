@@ -154,6 +154,7 @@ namespace dsm
 		this->minBAIterations = 1;										// 1
 		this->maxBAIterations = 100;									// 100
 		this->optMaxLevel = 2;											// 2
+                this->fixFramePoses = false;
 
 		this->numActivePoints = 1500;									// 1500
 
@@ -177,6 +178,7 @@ namespace dsm
 		this->showDepthMapLvl = 0;										// 0
 
                 this->iDepthUncertainty = 0.025f;
+                this->trackingCosLimit = 0.75f;
 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -327,10 +329,16 @@ namespace dsm
 		if (this->checkParameter("minnummappedframestocreatekf", name, value, this->minNumMappedFramesToCreateKF)) return;
 		if (this->checkParameter("showdepthmap", name, value, this->showDepthMap)) return;
 		if (this->checkParameter("showdepthmaplvl", name, value, this->showDepthMapLvl)) return;
+                if (this->checkParameter("fixFramePoses", name, value, this->fixFramePoses)) return;
                 if (this->checkParameter("idepthuncertainty", name, value, this->iDepthUncertainty)) {
                   std::cout<<"iDepthUncertainty is "<<this->iDepthUncertainty<<std::endl;
                   return; 
                 }
+                if (this->checkParameter("trackingCosLimit", name, value, this->trackingCosLimit)) {
+                  std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
+                  return; 
+                }
+                
 
 		// not found
 		std::cout << "Could not parse argument: " << argument << std::endl;

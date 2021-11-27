@@ -518,7 +518,7 @@ namespace dsm
         CandidatePoint::PointStatus status = cand->status();
 
         // check status
-        if (status == CandidatePoint::OPTIMIZED)
+        if (status == CandidatePoint::OPTIMIZED )
         {
           // project into new keyframe
           Eigen::Vector2f pointInFrame;

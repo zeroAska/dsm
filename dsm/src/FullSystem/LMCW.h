@@ -76,6 +76,8 @@ namespace dsm
 		// all keyframes
 		inline const std::vector<std::shared_ptr<Frame>>& allKeyframes() const { return this->allKeyframes_; }
 
+          //void active_keyframes_to_cvoframes(std::vector<>)
+
                 inline int getTemporalWindowSize() const {return temporalWindowIndex; }
                 inline int getActiveWindowSize() const {return activeKeyframes_.size(); }
           

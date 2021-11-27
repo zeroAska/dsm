@@ -163,6 +163,7 @@ namespace dsm
 		int minBAIterations;					// minimum number of bundle adjustment iterations
 		int maxBAIterations;					// maximum number of bundle adjustment iterations
 		int optMaxLevel;
+                bool fixFramePoses;
 
 		// Optimization scale factors
 		float varScaleRot;
@@ -200,6 +201,8 @@ namespace dsm
 		int showDepthMapLvl;
 
           float iDepthUncertainty;
+
+          float trackingCosLimit;
 
 		// Secure Division
 		static const float DIVISION_EPS;

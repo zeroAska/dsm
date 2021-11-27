@@ -282,6 +282,34 @@ namespace dsm
     }
   }
 
+  float FullSystem::getMeanTime(const std::vector<float> & timeVec)const  {
+    
+    float time = 0.f;
+    if (timeVec.size() > 0)
+    {
+      for (int i = 0; i < timeVec.size(); ++i)
+      {
+        time += timeVec[i];
+      }
+      time /= timeVec.size();
+    }
+    return time;
+    
+  }
+
+  float FullSystem::getLocalBAMeanTime() const {
+    return getMeanTime(localBATime);
+  }
+  float FullSystem::getTotalBackendMeanTime() const {
+    return getMeanTime(totalBackendTime);
+  }
+  float FullSystem::getWindowConstructionMeanTime() const {
+    return getMeanTime(windowConstructionTime);
+  }
+  float FullSystem::getCvoBAMeanTime() const {
+    return getMeanTime(cvoBATime);
+  }
+  
   float FullSystem::getCamTrackingMeanTime() const
   {
     float time = 0.f;
@@ -306,20 +334,6 @@ namespace dsm
         time += this->pointTrackingTime[i];
       }
       time /= this->pointTrackingTime.size();
-    }
-    return time;
-  }
-
-  float FullSystem::getLocalBAMeanTime() const
-  {
-    float time = 0.f;
-    if (this->localBATime.size() > 0)
-    {
-      for (int i = 0; i < this->localBATime.size(); ++i)
-      {
-        time += this->localBATime[i];
-      }
-      time /= this->localBATime.size();
     }
     return time;
   }
@@ -534,10 +548,9 @@ namespace dsm
       {
         this->createNewKeyframeID = trackingNewFrame->frameID();
       }
-
-      t2 = std::chrono::steady_clock::now();
-
+      
       this->doMapping(trackingNewFrame);
+      t2 = std::chrono::steady_clock::now();      
     }
 
     const float time = Utils::elapsedTime(t1, t2);
@@ -731,6 +744,11 @@ namespace dsm
       return;
     }
 
+    Utils::Time t2;
+    const float time = Utils::elapsedTime(t1, t2);
+    this->camTrackingTime.push_back(time);
+    
+    
     if (settings.debugPrintLog && settings.debugLogTracking)
     {
       const float* pose = trackingNewFrame->thisToParentPose().data();
@@ -744,7 +762,10 @@ namespace dsm
 
       auto& log = Log::getInstance();
       log.addCurrentLog(trackingNewFrame->frameID(), msg);
+
     }
+
+    
 
     // Keyframe selection
     // If we have already asked to create one, dont do it again
@@ -759,8 +780,10 @@ namespace dsm
       this->createNewKeyframe = localCreateNewKeyframe;
     }
 
+    std::cout<<"Create new keyframe is "<<localCreateNewKeyframe<<std::endl;
+
     // insert current frame to unmapped queue
-    Utils::Time t2;
+    Utils::Time t3;
     if (!settings.singleThreaded)
     {
       {
@@ -780,7 +803,7 @@ namespace dsm
       }
       this->unmappedTrackedFramesSignal.notify_one();
 
-      t2 = std::chrono::steady_clock::now();
+      t3 = std::chrono::steady_clock::now();
     }
     else
     {
@@ -794,8 +817,8 @@ namespace dsm
       this->doMapping(trackingNewFrame);
     }
 
-    const float time = Utils::elapsedTime(t1, t2);
-    this->camTrackingTime.push_back(time);
+    //const float time = Utils::elapsedTime(t1, t2);
+    //this->camTrackingTime.push_back(time);
 
     if (this->outputWrapper)
     {
@@ -1000,7 +1023,8 @@ namespace dsm
     
 
     //tracking lost? - reset tracking internal data
-    bool goodTracked = (cvoTrackingResult == 0 && goodTrackedLight);
+    bool goodTracked = (cvoTrackingResult == 0);
+    //bool goodTracked = (cvoTrackingResult == 0 && goodTrackedLight);
     if (!goodTracked)
     {
       this->trackingIsGood = false;
@@ -1034,9 +1058,9 @@ namespace dsm
     this->lastTrackedResidual = this->tracker->totalResidual();
 
     if (this->trackingReference->firstFrameResidual() < 0.f)
-    {
+     {
       this->trackingReference->setFirstFrameResidual(this->lastTrackedResidual);
-    }
+     }
 
     // save info for tracking priors
     this->lastTrackedMotion = lastToRef.inverse() * frameToRefPose;
@@ -1168,11 +1192,11 @@ namespace dsm
     const AffineLight& relativeLight = frame->thisToParentLight();
 
     // new keyframe required?
-    if ((dist.norm()*settings.newKFDistWeight +
-         (1.f - pointUsage) * settings.newKFUsageWeight +
-         fabs(relativeLight.alpha()) * settings.newKFAffineWeight) > 1.f ||
-        settings.newKFResidualWeight*this->trackingReference->firstFrameResidual() < this->lastTrackedResidual ||
-        lastTrackingCos < 0.051)
+    if (//(dist.norm()*settings.newKFDistWeight +
+        // (1.f - pointUsage) * settings.newKFUsageWeight +
+        // fabs(relativeLight.alpha()) * settings.newKFAffineWeight) > 1.f ||
+        //settings.newKFResidualWeight*this->trackingReference->firstFrameResidual() < this->lastTrackedResidual ||
+        lastTrackingCos < settings.trackingCosLimit)
     {
       return true;
     }
@@ -1274,7 +1298,7 @@ namespace dsm
 
       Utils::Time t2 = std::chrono::steady_clock::now();
       const float time = Utils::elapsedTime(t1, t2);
-      this->localBATime.push_back(time);
+      this->totalBackendTime.push_back(time);
 
       if (this->outputWrapper)
       {
@@ -1283,7 +1307,8 @@ namespace dsm
     }
     else
     {
-      // track candidates with the tracked frame
+      // track previous keyframes's candidates with the tracked frame.
+      // The newly tracked frame is not a keyframe
       this->trackCandidates(frame);
       this->numMappedFramesFromLastKF++;
 
@@ -1342,8 +1367,12 @@ namespace dsm
             idepth = frame->getStereoDisparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
           else if (frame->depthType == Frame::DepthType::RGBD)
             idepth =  frame->depthScale / (frame->getRgbdDepth()[width * row + col]); 
-          if ( std::isnan(idepth) || idepth < 0.01f ) continue;
-          candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, this->pixelMask[idx], frame, idepth));
+          if ( ! std::isfinite(idepth) || idepth < 0.01f ) continue;
+          //candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, this->pixelMask[idx], frame, idepth));
+          std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, this->pixelMask[idx], frame, idepth));
+          //      if (new_candidate->status() != CandidatePoint::PointStatus::OUTLIER) {
+          candidates.emplace_back(std::move(new_candidate));
+            //D}
         } else
           candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, this->pixelMask[idx], frame));
       }
@@ -1364,10 +1393,14 @@ namespace dsm
     // reserve memory
     auto& activePoints = frame->activePoints();
     activePoints.reserve(candidates.size());
-		
+
+    std::string fname("candidates_after_creation.pcd");
+    frame->dump_candidates_to_pcd(fname);
     //std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }
 
+
+  // depth filtering by tracing the active KF's candidate points on the new non-keyframe
   void FullSystem::trackCandidates(const std::shared_ptr<Frame>& frame)
   {
     const auto& settings = Settings::getInstance();
@@ -1496,7 +1529,9 @@ namespace dsm
 
     // vector of candidates to proccess
     std::vector<CandidatePoint*> toOptimize;
-
+    int counter_uninit = 0;
+    int counter_OOB = 0;
+    int counter_proj = 0;
     for (int j = 0; j < temporalKeyframes.size() - 1; ++j)
     {
       // relative pose
@@ -1516,7 +1551,8 @@ namespace dsm
             lastObs == CandidatePoint::ObserveStatus::BAD_ERROR || 
             lastObs == CandidatePoint::ObserveStatus::BAD_EPILINE)
         {
-          cand = nullptr;
+          //cand = nullptr;
+          counter_uninit ++;
           continue;
         }
 
@@ -1529,9 +1565,9 @@ namespace dsm
           if (lastObs == CandidatePoint::OOB ||
               temporalKeyframes[j]->flaggedToDrop())
           {
-            cand = nullptr;
+            //  cand = nullptr;
           }
-
+          counter_OOB++;
           continue;
         }
 
@@ -1540,7 +1576,8 @@ namespace dsm
         if (!Utils::project(cand->u0(), cand->v0(), cand->iDepth(),
                             width, height, KRKinv, Kt, pointInFrame))
         {
-          cand = nullptr;
+          counter_proj++;
+          //cand = nullptr;
           continue;
         }
 
@@ -1563,7 +1600,7 @@ namespace dsm
         toOptimize[i]->optimize(activeKeyframes);
 
         if (toOptimize[i]->status() == CandidatePoint::PointStatus::OPTIMIZED) numGood++;
-        else if (toOptimize[i]->status() == CandidatePoint::PointStatus::INITIALIZED) numSkipped++;
+        else if (toOptimize[i]->status() == CandidatePoint::PointStatus::TRACED) numSkipped++;
         else if (toOptimize[i]->status() == CandidatePoint::PointStatus::OUTLIER) numBad++;
       }
 
@@ -1615,10 +1652,51 @@ namespace dsm
           i--;
         }
       }
+      temporalKeyframes[j]->dump_candidates_to_pcd("candidates_after_optimize.pcd");
     }
 
     // wait until finish
+    
     this->threadPool->wait();
+  }
+
+  void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes) {
+    if (activeKeyframes.size() < 3) return;
+    std::vector<cvo::CvoPointCloud> cvo_pcs;
+    std::vector<cvo::CvoFrame::Ptr> cvo_frames;      
+    cvo_pcs.resize(activeKeyframes.size());
+    for (int i = 0; i < activeKeyframes.size(); i++) {
+      auto kf = activeKeyframes[i];
+      
+      kf->activePointsToCvoPointCloud(cvo_pcs[i]);
+
+      Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
+      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data()));
+      cvo_frames.push_back(cvo_ptr);
+    }
+
+    // read edges to construct graph
+    std::list<std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr>> edges;
+    for (int i = 0; i < cvo_frames.size(); i++) {
+      for (int j = i+1; j < cvo_frames.size(); j++) {
+        std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[i], cvo_frames[j]);
+        edges.push_back(p);
+      }
+    }
+
+    double time = 0;
+    cvo_align->align(cvo_frames, edges, &time);
+    std::cout<<"cvo BA time is "<<time<<", for "<<cvo_frames.size()<<" frames\n";
+
+    for (int i = 0; i < activeKeyframes.size(); i++) {
+      auto kf = activeKeyframes[i];
+      Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = Eigen::Matrix<double, 4,4, Eigen::RowMajor>::Identity();
+      kf_to_world.block<3,4>(0,0) = Eigen::Map<Eigen::Matrix<double, 3,4, Eigen::RowMajor>>(cvo_frames[i]->pose_vec);
+      Eigen::Matrix4f kf_to_world_f = kf_to_world.cast<float>();
+      Sophus::SE3f pose_BA(kf_to_world_f);
+      kf->setCamToWorld(pose_BA);
+    }
+    std::cout<<"just written CVO BA results to all frames\n";
   }
 
   void FullSystem::createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame)
@@ -1630,6 +1708,7 @@ namespace dsm
     Utils::Time t1 = std::chrono::steady_clock::now();
 
     // initialize candidates
+    //this->createCandidates(frame);    
     this->trackCandidates(frame);
 
     // insert new keyframe
@@ -1637,14 +1716,18 @@ namespace dsm
 
     if (settings.debugPrintLog && settings.debugLogKeyframes)
     {
-      const std::string msg = "Keyframe: " + std::to_string(frame->keyframeID()) + "\t";
+      const std::string msg = "Keyframe: " + std::to_string(frame->keyframeID()) + "\t number of candidates in new keyframe is " + std::to_string(frame->candidates().size());
 
       auto& log = Log::getInstance();
       log.addCurrentLog(frame->frameID(), msg);
+
     }
 
     // select window
+    Utils::Time t_window_init = std::chrono::steady_clock::now();    
     this->lmcw->selectWindow(this->ceresOptimizer);
+    Utils::Time t_window_end = std::chrono::steady_clock::now();
+    windowConstructionTime.push_back(Utils::elapsedTime(t_window_init, t_window_end));
 
     // refine candidates from the temporal window
     Utils::Time t_refine_init = std::chrono::steady_clock::now();
@@ -1657,8 +1740,21 @@ namespace dsm
 
     // optimize
     const auto& activeKeyframes = this->lmcw->activeWindow();
-    this->ceresOptimizer->solve(activeKeyframes);
 
+
+    // cvo BA
+    if (cvo_align) {
+      Utils::Time t_cvoba_init =  std::chrono::steady_clock::now();
+      this->cvoMultiAlign(activeKeyframes);
+      Utils::Time t_cvoba_end =  std::chrono::steady_clock::now();
+      cvoBATime.push_back(Utils::elapsedTime(t_cvoba_init, t_cvoba_end));    
+    }
+
+    Utils::Time t_ba_init =  std::chrono::steady_clock::now();
+    //this->ceresOptimizer->solve(activeKeyframes);
+    Utils::Time t_ba_end =  std::chrono::steady_clock::now();
+    localBATime.push_back(Utils::elapsedTime(t_ba_init, t_ba_end));    
+    
     // remove outliers
     this->lmcw->removeOutliers();
 

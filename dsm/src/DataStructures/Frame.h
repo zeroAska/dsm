@@ -38,7 +38,10 @@
 #include "Statistics/IDistribution.h"
 #include "FullSystem/DSMLib.h"
 #include "utils/CvoPoint.hpp"
+#include "utils/CvoPointCloud.hpp"
 #include "utils/RawImage.hpp"
+
+
 namespace dsm
 {
 	class CandidatePoint;
@@ -50,6 +53,8 @@ namespace dsm
 	class FrameParameterBlock;
 
 	struct CovisibilityNode;
+
+
 
 	class DSM_EXPORTS_DLL Frame
 	{
@@ -144,16 +149,22 @@ namespace dsm
 		// access points candidates
 		const std::vector<std::unique_ptr<CandidatePoint>>& candidates() const;
 		std::vector<std::unique_ptr<CandidatePoint>>& candidates();
+                void dump_candidates_to_pcd(const std::string & fname);
 
 		// access active points
 		const std::vector<std::unique_ptr<ActivePoint>>& activePoints() const;
 		std::vector<std::unique_ptr<ActivePoint>>& activePoints();
+                void dump_active_points_to_pcd(const std::string & fname);                
 
 		// get optimization parameter block
 		const std::unique_ptr<FrameParameterBlock>& frameBlock() const;
 
                 // access cvo points
                 pcl::PointCloud<cvo::CvoPoint>::Ptr get_cvo_pcd() {return cvo_pcd;}
+                void activePointsToCvoPointCloud(cvo::CvoPointCloud & output);
+                void candidatesToCvoPointCloud(cvo::CvoPointCloud & output);
+                
+                
                 std::shared_ptr<cvo::RawImage> getRawImage() {return rawImg;}
                 const std::vector <float> & getStereoDisparity() {return stereoDisparity;}
                 const std::vector<uint16_t> & getRgbdDepth() {return rgbdDepth;}

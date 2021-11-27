@@ -112,6 +112,11 @@ namespace dsm
 		float parallax() const;
 		void setParallax(float p);
 
+
+                Eigen::Vector3f xyz();
+                Eigen::VectorXf features() {return features_;}
+                Eigen::VectorXf semantics() {return semantics_;}
+
 	private:
 
 		// keyframeID at the moment the point was created
@@ -145,6 +150,12 @@ namespace dsm
 
 		// ceres optimization data
 		std::unique_ptr<PointParameterBlock> pointBlock_;
+
+
+                // cvo data
+                Eigen::VectorXf features_;
+                Eigen::VectorXf semantics_;
+                
 
 		// optimization statistics
 		float iDepthHessian_;				// sum of all the inverse depth hessians

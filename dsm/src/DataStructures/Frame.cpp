@@ -1,25 +1,25 @@
 /**
-* This file is part of DSM.
-*
-* Copyright (C) 2019 CEIT (Universidad de Navarra) and Universidad de Zaragoza
-* Developed by Jon Zubizarreta,
-* for more information see <https://github.com/jzubizarreta/dsm>.
-* If you use this code, please cite the respective publications as
-* listed on the above website.
-*
-* DSM is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* DSM is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with DSM. If not, see <http://www.gnu.org/licenses/>.
-*/
+ * This file is part of DSM.
+ *
+ * Copyright (C) 2019 CEIT (Universidad de Navarra) and Universidad de Zaragoza
+ * Developed by Jon Zubizarreta,
+ * for more information see <https://github.com/jzubizarreta/dsm>.
+ * If you use this code, please cite the respective publications as
+ * listed on the above website.
+ *
+ * DSM is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * DSM is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DSM. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "Frame.h"
 #include "ActivePoint.h"
@@ -32,97 +32,97 @@
 #include "Optimization/FrameParameterBlock.h"
 
 #include "dsm/BuildFlags.h"
-
+#include "utils/CvoPointCloud.hpp"
 #include <iostream>
 
 namespace dsm
 {
-	Frame::Frame(int id, double timestamp, unsigned char* image) :
-		frameID_(id),
-		timestamp_(timestamp),
-		trackingParent_(nullptr),
-		affineLight_(0.f, 0.f),
-		thisToParentLight_(0.f, 0.f),
-		type_(Type::FRAME),
-		status_(Status::INACTIVE),
-                depthType(DepthType::MONO),
-                depthScale(1.0)
-	{
-		const auto& settings = Settings::getInstance();
-		const auto& calib = GlobalCalibration::getInstance();
+  Frame::Frame(int id, double timestamp, unsigned char* image) :
+    frameID_(id),
+    timestamp_(timestamp),
+    trackingParent_(nullptr),
+    affineLight_(0.f, 0.f),
+    thisToParentLight_(0.f, 0.f),
+    type_(Type::FRAME),
+    status_(Status::INACTIVE),
+    depthType(DepthType::MONO),
+    depthScale(1.0)
+  {
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
 
-		// image pyramids
-		this->images_ = std::make_unique<ImagePyramid<float>>(calib.levels(), image);
+    // image pyramids
+    this->images_ = std::make_unique<ImagePyramid<float>>(calib.levels(), image);
 
-		// gradient pyramids
-		this->gradients_ = std::make_unique<GradientPyramid<float>>(calib.levels(), *this->images_);
+    // gradient pyramids
+    this->gradients_ = std::make_unique<GradientPyramid<float>>(calib.levels(), *this->images_);
 
-		// identity poses
-		this->thisToParentPose_ = Sophus::SE3f();
-		this->camToWorld_ = Sophus::SE3f();
+    // identity poses
+    this->thisToParentPose_ = Sophus::SE3f();
+    this->camToWorld_ = Sophus::SE3f();
 
-		this->graphNode = nullptr;
+    this->graphNode = nullptr;
 
-		this->flaggedToDrop_ = false;
+    this->flaggedToDrop_ = false;
 
-		// error distribution
-		std::shared_ptr<IDistribution> errorDist;
-		if (settings.useTDistribution)
-		{
-			errorDist = std::make_shared<TDistribution>(settings.defaultNu, settings.defaultMu, settings.defaultSigma);
-		}
-		else
-		{
-			errorDist = std::make_shared<RobustNormalDistribution>(settings.defaultMu, settings.defaultSigma);
-		}
+    // error distribution
+    std::shared_ptr<IDistribution> errorDist;
+    if (settings.useTDistribution)
+    {
+      errorDist = std::make_shared<TDistribution>(settings.defaultNu, settings.defaultMu, settings.defaultSigma);
+    }
+    else
+    {
+      errorDist = std::make_shared<RobustNormalDistribution>(settings.defaultMu, settings.defaultSigma);
+    }
 
-		this->setErrorDistribution(errorDist);
-	}
+    this->setErrorDistribution(errorDist);
+  }
 
   Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,std::vector<float> & disparity) :
-		frameID_(id),
-		timestamp_(timestamp),
-		trackingParent_(nullptr),
-		affineLight_(0.f, 0.f),
-		thisToParentLight_(0.f, 0.f),
-		type_(Type::FRAME),
-		status_(Status::INACTIVE),
-                cvo_pcd(new_frame_pcd),
-                rawImg(color_img),
-                stereoDisparity(disparity.begin(), disparity.end()),
-                depthType(DepthType::STEREO),
-                depthScale(1.0)
-	{
-		const auto& settings = Settings::getInstance();
-		const auto& calib = GlobalCalibration::getInstance();
+    frameID_(id),
+    timestamp_(timestamp),
+    trackingParent_(nullptr),
+    affineLight_(0.f, 0.f),
+    thisToParentLight_(0.f, 0.f),
+    type_(Type::FRAME),
+    status_(Status::INACTIVE),
+    cvo_pcd(new_frame_pcd),
+    rawImg(color_img),
+    stereoDisparity(disparity.begin(), disparity.end()),
+    depthType(DepthType::STEREO),
+    depthScale(1.0)
+  {
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
 
-		// image pyramids
-		this->images_ = std::make_unique<ImagePyramid<float>>(calib.levels(), image);
+    // image pyramids
+    this->images_ = std::make_unique<ImagePyramid<float>>(calib.levels(), image);
 
-		// gradient pyramids
-		this->gradients_ = std::make_unique<GradientPyramid<float>>(calib.levels(), *this->images_);
+    // gradient pyramids
+    this->gradients_ = std::make_unique<GradientPyramid<float>>(calib.levels(), *this->images_);
 
-		// identity poses
-		this->thisToParentPose_ = Sophus::SE3f();
-		this->camToWorld_ = Sophus::SE3f();
+    // identity poses
+    this->thisToParentPose_ = Sophus::SE3f();
+    this->camToWorld_ = Sophus::SE3f();
 
-		this->graphNode = nullptr;
+    this->graphNode = nullptr;
 
-		this->flaggedToDrop_ = false;
+    this->flaggedToDrop_ = false;
 
-		// error distribution
-		std::shared_ptr<IDistribution> errorDist;
-		if (settings.useTDistribution)
-		{
-			errorDist = std::make_shared<TDistribution>(settings.defaultNu, settings.defaultMu, settings.defaultSigma);
-		}
-		else
-		{
-			errorDist = std::make_shared<RobustNormalDistribution>(settings.defaultMu, settings.defaultSigma);
-		}
+    // error distribution
+    std::shared_ptr<IDistribution> errorDist;
+    if (settings.useTDistribution)
+    {
+      errorDist = std::make_shared<TDistribution>(settings.defaultNu, settings.defaultMu, settings.defaultSigma);
+    }
+    else
+    {
+      errorDist = std::make_shared<RobustNormalDistribution>(settings.defaultMu, settings.defaultSigma);
+    }
 
-		this->setErrorDistribution(errorDist);
-	}
+    this->setErrorDistribution(errorDist);
+  }
 
   Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale) :
 
@@ -174,235 +174,287 @@ namespace dsm
   
   
   
-	Frame::~Frame()
-	{
-	}
+  Frame::~Frame()
+  {
+  }
 
-	void Frame::activate()
-	{
-		this->status_ = Status::ACTIVE;
-	}
+  void Frame::activate()
+  {
+    this->status_ = Status::ACTIVE;
+  }
 
-	void Frame::deactivate()
-	{
-		this->status_ = Status::INACTIVE;
+  void Frame::deactivate()
+  {
+    this->status_ = Status::INACTIVE;
 
-		if (Settings::getInstance().minimizeMemory)
-		{
-			this->minimizeMemory();
-		}
-	}
+    if (Settings::getInstance().minimizeMemory)
+    {
+      this->minimizeMemory();
+    }
+  }
 
-	bool Frame::isActive()
-	{
-		return (this->status_ == Status::ACTIVE);
-	}
+  bool Frame::isActive()
+  {
+    return (this->status_ == Status::ACTIVE);
+  }
 
-	int Frame::frameID() const
-	{
-		return this->frameID_;
-	}
+  int Frame::frameID() const
+  {
+    return this->frameID_;
+  }
 
-	int Frame::keyframeID() const
-	{
-		return this->keyframeID_;
-	}
+  int Frame::keyframeID() const
+  {
+    return this->keyframeID_;
+  }
 
-	void Frame::setKeyframeID(int id)
-	{
-		this->keyframeID_ = id;
-	}
+  void Frame::setKeyframeID(int id)
+  {
+    this->keyframeID_ = id;
+  }
 
-	int Frame::activeID() const
-	{
-		return this->activeID_;
-	}
+  int Frame::activeID() const
+  {
+    return this->activeID_;
+  }
 
-	void Frame::setActiveID(int id)
-	{
-		this->activeID_ = id;
-	}
+  void Frame::setActiveID(int id)
+  {
+    this->activeID_ = id;
+  }
 
-	double Frame::timestamp() const
-	{
-		return this->timestamp_;
-	}
+  double Frame::timestamp() const
+  {
+    return this->timestamp_;
+  }
 
-	Frame::Type Frame::type() const
-	{
-		return this->type_;
-	}
+  Frame::Type Frame::type() const
+  {
+    return this->type_;
+  }
 
-	void Frame::evolveToKeyframe()
-	{
-		// change flag
-		this->type_ = Frame::Type::KEYFRAME;
+  void Frame::evolveToKeyframe()
+  {
+    // change flag
+    this->type_ = Frame::Type::KEYFRAME;
 
-		// obtain global variables
-		if (this->trackingParent_)
-		{
-			this->camToWorld_ = this->trackingParent_->camToWorld() * this->thisToParentPose_;
+    // obtain global variables
+    if (this->trackingParent_)
+    {
+      this->camToWorld_ = this->trackingParent_->camToWorld() * this->thisToParentPose_;
 
-			this->affineLight_ = AffineLight::calcGlobal(this->trackingParent_->affineLight(),
-														 this->thisToParentLight_);
-		}	
-		else
-		{
-			// first keyframe
-			this->camToWorld_ = this->thisToParentPose_;
-			this->affineLight_ = this->thisToParentLight_;
-		}
+      this->affineLight_ = AffineLight::calcGlobal(this->trackingParent_->affineLight(),
+                                                   this->thisToParentLight_);
+    }	
+    else
+    {
+      // first keyframe
+      this->camToWorld_ = this->thisToParentPose_;
+      this->affineLight_ = this->thisToParentLight_;
+    }
 
-		// initialize optimization data
-		this->frameBlock_ = std::make_unique<FrameParameterBlock>(this->camToWorld_.cast<double>(), this->affineLight_);
-	}
+    // initialize optimization data
+    this->frameBlock_ = std::make_unique<FrameParameterBlock>(this->camToWorld_.cast<double>(), this->affineLight_);
+  }
 
-	void Frame::minimizeMemory()
-	{
-		// free memory
-		this->images_->freeMemory(true);
-		this->gradients_->freeMemory();
-	}
+  void Frame::minimizeMemory()
+  {
+    // free memory
+    this->images_->freeMemory(true);
+    this->gradients_->freeMemory();
+  }
 
-	const float* Frame::image(int32_t level) const
-	{
-		return this->images_->image(level);
-	}
+  const float* Frame::image(int32_t level) const
+  {
+    return this->images_->image(level);
+  }
 
-	const float* Frame::gx(int32_t level) const
-	{
-		return this->gradients_->gx(level);
-	}
+  const float* Frame::gx(int32_t level) const
+  {
+    return this->gradients_->gx(level);
+  }
 
-	const float* Frame::gy(int32_t level) const
-	{
-		return this->gradients_->gy(level);
-	}
+  const float* Frame::gy(int32_t level) const
+  {
+    return this->gradients_->gy(level);
+  }
 
-	const float* Frame::gradient(int32_t level) const
-	{
-		return this->gradients_->gradient(level);
-	}
+  const float* Frame::gradient(int32_t level) const
+  {
+    return this->gradients_->gradient(level);
+  }
 
-	Frame* const Frame::parent() const
-	{
-		return this->trackingParent_;
-	}
+  Frame* const Frame::parent() const
+  {
+    return this->trackingParent_;
+  }
 
-	const Sophus::SE3f& Frame::thisToParentPose() const
-	{
-		return this->thisToParentPose_;
-	}
+  const Sophus::SE3f& Frame::thisToParentPose() const
+  {
+    return this->thisToParentPose_;
+  }
 
-	const AffineLight& Frame::thisToParentLight() const
-	{
-		return this->thisToParentLight_;
-	}
+  const AffineLight& Frame::thisToParentLight() const
+  {
+    return this->thisToParentLight_;
+  }
 
-	void Frame::setTrackingResult(Frame* const parent, const Sophus::SE3f& thisToParentPose,
-								  const AffineLight& thisToParentAffineLight)
-	{
-		// only valid for frames
-		assert(this->type_ == Type::FRAME);
+  void Frame::dump_candidates_to_pcd(const std::string & fname) {
+    cvo::CvoPointCloud to_dump;
+    candidatesToCvoPointCloud(to_dump);
+    to_dump.write_to_color_pcd(fname);
+  }
 
-		this->trackingParent_ = parent;
-		this->thisToParentPose_ = thisToParentPose;
-		this->thisToParentLight_ = thisToParentAffineLight;
-	}	
+  void Frame::dump_active_points_to_pcd(const std::string & fname) {
+    cvo::CvoPointCloud to_dump;
+    activePointsToCvoPointCloud(to_dump);
+    to_dump.write_to_color_pcd(fname);
+  }
+  
 
-	void Frame::setCamToWorld(const Sophus::SE3f& pose)
-	{
-		// only valid for keyframes
-		assert(this->type_ == Type::KEYFRAME);
+  void Frame::setTrackingResult(Frame* const parent, const Sophus::SE3f& thisToParentPose,
+                                const AffineLight& thisToParentAffineLight)
+  {
+    // only valid for frames
+    assert(this->type_ == Type::FRAME);
 
-		std::lock_guard<std::mutex> lock(this->globalParamMutex_);
-		this->camToWorld_ = pose;
-	}
+    this->trackingParent_ = parent;
+    this->thisToParentPose_ = thisToParentPose;
+    this->thisToParentLight_ = thisToParentAffineLight;
+  }	
 
-	const Sophus::SE3f& Frame::camToWorld()
-	{
-		// only valid for keyframes
-		assert(this->type_ == Type::KEYFRAME);
+  void Frame::setCamToWorld(const Sophus::SE3f& pose)
+  {
+    // only valid for keyframes
+    assert(this->type_ == Type::KEYFRAME);
 
-		std::lock_guard<std::mutex> lock(this->globalParamMutex_);
-		return this->camToWorld_;
-	}
+    std::lock_guard<std::mutex> lock(this->globalParamMutex_);
+    this->camToWorld_ = pose;
+  }
 
-	void Frame::setAffineLight(const AffineLight& newAffineLight)
-	{
-		// only valid for keyframes
-		assert(this->type_ == Type::KEYFRAME);
+  const Sophus::SE3f& Frame::camToWorld()
+  {
+    // only valid for keyframes
+    assert(this->type_ == Type::KEYFRAME);
 
-		std::lock_guard<std::mutex> lock(this->globalParamMutex_);
-		this->affineLight_ = newAffineLight;
-	}
+    std::lock_guard<std::mutex> lock(this->globalParamMutex_);
+    return this->camToWorld_;
+  }
 
-	const AffineLight& Frame::affineLight()
-	{
-		// only valid for keyframes
-		assert(this->type_ == Type::KEYFRAME);
+  void Frame::setAffineLight(const AffineLight& newAffineLight)
+  {
+    // only valid for keyframes
+    assert(this->type_ == Type::KEYFRAME);
 
-		std::lock_guard<std::mutex> lock(this->globalParamMutex_);
-		return this->affineLight_;
-	}
+    std::lock_guard<std::mutex> lock(this->globalParamMutex_);
+    this->affineLight_ = newAffineLight;
+  }
 
-	void Frame::setFlaggedToDrop(bool flag)
-	{
-		this->flaggedToDrop_ = flag;
-	}
+  const AffineLight& Frame::affineLight()
+  {
+    // only valid for keyframes
+    assert(this->type_ == Type::KEYFRAME);
 
-	bool Frame::flaggedToDrop() const
-	{
-		return this->flaggedToDrop_;
-	}
+    std::lock_guard<std::mutex> lock(this->globalParamMutex_);
+    return this->affineLight_;
+  }
 
-	void Frame::setErrorDistribution(const std::shared_ptr<IDistribution>& dist)
-	{
-		const auto& settings = Settings::getInstance();
-		this->errorDistribution_ = dist;
-		this->energyThreshold_ = this->errorDistribution_->icdf(settings.inlierPercentile);
-	}
+  void Frame::setFlaggedToDrop(bool flag)
+  {
+    this->flaggedToDrop_ = flag;
+  }
 
-	const std::shared_ptr<IDistribution>& Frame::errorDistribution()
-	{
-		return this->errorDistribution_;
-	}
+  bool Frame::flaggedToDrop() const
+  {
+    return this->flaggedToDrop_;
+  }
 
-	float Frame::energyThreshold() const
-	{
-		assert(this->errorDistribution_);
+  void Frame::setErrorDistribution(const std::shared_ptr<IDistribution>& dist)
+  {
+    const auto& settings = Settings::getInstance();
+    this->errorDistribution_ = dist;
+    this->energyThreshold_ = this->errorDistribution_->icdf(settings.inlierPercentile);
+  }
 
-		return this->energyThreshold_;
-	}
+  const std::shared_ptr<IDistribution>& Frame::errorDistribution()
+  {
+    return this->errorDistribution_;
+  }
 
-	const std::vector<std::unique_ptr<CandidatePoint>>& Frame::candidates() const
-	{
-		return this->candidates_;
-	}
+  float Frame::energyThreshold() const
+  {
+    assert(this->errorDistribution_);
 
-	std::vector<std::unique_ptr<CandidatePoint>>& Frame::candidates()
-	{
-		return this->candidates_;
-	}
+    return this->energyThreshold_;
+  }
 
-	const std::vector<std::unique_ptr<ActivePoint>>& Frame::activePoints() const
-	{
-		return this->activePoints_;
-	}
+  const std::vector<std::unique_ptr<CandidatePoint>>& Frame::candidates() const
+  {
+    return this->candidates_;
+  }
 
-	std::vector<std::unique_ptr<ActivePoint>>& Frame::activePoints()
-	{
-		return this->activePoints_;
-	}
+  std::vector<std::unique_ptr<CandidatePoint>>& Frame::candidates()
+  {
+    return this->candidates_;
+  }
 
-	const std::unique_ptr<FrameParameterBlock>& Frame::frameBlock() const
-	{
-		return this->frameBlock_;
-	}
+  const std::vector<std::unique_ptr<ActivePoint>>& Frame::activePoints() const
+  {
+    return this->activePoints_;
+  }
 
-	void Frame::mergeOptimizationResult()
-	{
-		this->setCamToWorld(this->frameBlock_->getPose().cast<float>());
-		this->setAffineLight(this->frameBlock_->getAffineLight());
-	}
+  std::vector<std::unique_ptr<ActivePoint>>& Frame::activePoints()
+  {
+    return this->activePoints_;
+  }
+
+  const std::unique_ptr<FrameParameterBlock>& Frame::frameBlock() const
+  {
+    return this->frameBlock_;
+  }
+
+  void Frame::mergeOptimizationResult()
+  {
+    this->setCamToWorld(this->frameBlock_->getPose().cast<float>());
+    this->setAffineLight(this->frameBlock_->getAffineLight());
+  }
+
+  void Frame::candidatesToCvoPointCloud(cvo::CvoPointCloud & output) {
+    int num_points = candidates_.size();
+    if (num_points < 1) return;
+    int num_features = candidates_[0]->features().size();
+    int num_semantics = candidates_[0]->semantics().size();
+    output.reserve(num_points, num_features, num_semantics);
+
+    for (int i = 0; i < num_points; i++) {
+      auto & p = *candidates_[i];
+      Eigen::Vector3f xyz = p.xyz();
+      Eigen::VectorXf features = p.features();
+      Eigen::VectorXf semantics = p.semantics();
+      output.add_point(i, xyz, features, semantics);
+    }
+      
+    
+  }
+
+
+  
+  void Frame::activePointsToCvoPointCloud(cvo::CvoPointCloud & output) {
+    int num_points = activePoints_.size();
+    if (num_points < 1) return;
+    int num_features = activePoints_[0]->features().size();
+    int num_semantics = activePoints_[0]->semantics().size();
+    output.reserve(num_points, num_features, num_semantics);
+
+    for (int i = 0; i < num_points; i++) {
+      auto & p = *activePoints_[i];
+      Eigen::Vector3f xyz = p.xyz();
+      Eigen::VectorXf features = p.features();
+      Eigen::VectorXf semantics = p.semantics();
+      output.add_point(i, xyz, features, semantics);
+    }
+      
+    
+  }
+
 }

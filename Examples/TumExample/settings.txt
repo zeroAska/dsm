@@ -2,10 +2,10 @@ debugPrintLog = true
 debugLogTracking = true
 debugLogKeyframes = true
 debugLogPixelDetection = false
-debugLogCandidatesTracking = false
+debugLogCandidatesTracking = true
 debugLogCandidatesOpt = true
 debugLogDistanceMap = false
-debugLogActivePoints = false
+debugLogActivePoints = true
 
 debugCandidates = true
 
@@ -112,3 +112,6 @@ minNumMappedFramesToCreateKF = 1
 
 showDepthMap = true
 showDepthMapLvl = 0
+
+iDepthUncertainty = 0.1
+trackingCosLimit = 0.8

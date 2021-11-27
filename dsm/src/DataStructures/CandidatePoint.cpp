@@ -125,9 +125,6 @@ namespace dsm
                                  this->u_[1]*invK(1, 1) + invK(1, 2),
                                  1.f);
 
-    // initialize geometric parameters to invalid values
-    this->iDepth_ = invDepth; //0.f;
-    this->iDepthSigma_ = settings.iDepthUncertainty; //std::numeric_limits<float>::max();
 
     // observation evaluation
     this->matchQuality_ = 0.f;
@@ -142,6 +139,43 @@ namespace dsm
     const int width = calib.width(this->detectedLevel_);
     const int height = calib.height(this->detectedLevel_);
     const float weightConstant = settings.weightConstant;
+
+    // CVO features and semantics
+    auto & rawImage = *frame->getRawImage();
+    int u = u0_[0];
+    int v = u0_[1];
+    int w = rawImage.cols();
+    cv::Vec3b avg_pixel = rawImage.image().at<cv::Vec3b>(v,u);
+    float gradient_0 = rawImage.gradient()[v * w + u];
+    float gradient_1 = rawImage.gradient()[v * w + u + 1];
+    features_.resize(5);
+    features_[0] = ((float)(avg_pixel[0]) )/255.0;
+    features_[1] = ((float)(avg_pixel[1]) )/255.0;
+    features_[2] = ((float)(avg_pixel[2]) )/255.0;
+    features_[3] = gradient_0/ 511.0 + 0.5;
+    features_[4] = gradient_1/ 511.0 + 0.5;
+    int num_classes = rawImage.num_class();
+    if (num_classes) {
+      semantics_.resize(num_classes);
+      //std::copy(rawImage.semantic_image().begin() + (v * w + u)*num_classes,
+      //          rawImage.semantic_image().begin() + (v * w + u + 1)*num_classes,
+      //          semantics_);
+      semantics_ = Eigen::Map<const Eigen::VectorXf>((rawImage.semantic_image().data()+ (v * w + u)*rawImage.num_class()), rawImage.num_class() );
+    }
+    if (std::isnan(invDepth) == false) {
+      status_ = PointStatus::TRACED;
+      // initialize geometric parameters to invalid values
+      this->iDepth_ = invDepth; //0.f;
+      this->iDepthSigma_ = settings.iDepthUncertainty; //std::numeric_limits<float>::max();
+    
+    } else {
+          // initialize geometric parameters to invalid values
+      this->iDepth_ = 0.f;
+      this->iDepthSigma_ = std::numeric_limits<float>::max();
+
+    }
+    
+    
 
     this->color_.resize(Pattern::size());
     this->weights_.resize(Pattern::size());
@@ -182,9 +216,11 @@ namespace dsm
     this->gx2 /= norm;
     this->gy2 /= norm;
     this->gxy /= norm;
+
+
+
   }
 
-  
   CandidatePoint::~CandidatePoint()
   {}
 
@@ -240,6 +276,7 @@ namespace dsm
 
   Visibility CandidatePoint::visibility(int activeID) const
   {
+    //std::cout<<"Query visibility: size is "<<visibility_.size()<<std::endl;
     return this->visibility_[activeID];
   }
 
@@ -314,10 +351,11 @@ namespace dsm
     const float disparitySigma = sqrt(settings.epiLineSigma / (gradDotLine2 + std::numeric_limits<float>::epsilon()));
 
     // check bad conditioned configuration if [-2*disparitySigma, 2*disparitySigma] is bigger than the epipolar line
-    if (disparitySigma*4.f > epiLineLength)
-    {
-      return this->lastObservation_ = ObserveStatus::BAD_CONDITIONED;
-    }
+    // TODO??? waht does this mean>?
+    //if (disparitySigma*4.f > epiLineLength)
+    // {
+    //  return this->lastObservation_ = ObserveStatus::BAD_CONDITIONED;
+   //}
 
     const Eigen::Matrix3f KRKinv = KR * Kinv;
 
@@ -448,9 +486,11 @@ namespace dsm
 
     // baseline in pixels
     const float baseline = (bestMatch - pxInf).norm();
+    //std::cout<<"tracking baseline: "<<baseline<<std::endl;
 
-    if (baseline > this->matchBaseline_)
+    if (baseline > this->matchBaseline_ && this->iDepthSigma_ < iDepthSigmaHypo)
     {
+      std::cout<<"bestMatch depth from "<<1/this->iDepth_<<" to "<<1/bestMatchIDepth<<", uncertainty from "<<this->iDepthSigma_<<" to "<<iDepthSigmaHypo<<std::endl;
       this->iDepth_ = bestMatchIDepth;
       this->iDepthSigma_ = iDepthSigmaHypo;
       this->matchUncertainty_ = disparitySigma;
@@ -458,13 +498,14 @@ namespace dsm
 
       // store always the worst quality
       if (this->status_ == PointStatus::UNINITIALIZED ||
+          this->status_ == PointStatus::TRACED ||
           newQuality < this->matchQuality_)
       {
         this->matchQuality_ = newQuality;
       }
     }
 
-    this->status_ = PointStatus::INITIALIZED;
+    //this->status_ = PointStatus::TRACED;
     return this->lastObservation_ = ObserveStatus::GOOD;
   }
 
@@ -478,7 +519,7 @@ namespace dsm
 
     // If initialized, use the uncertainty to reduce the search range
     float iDepthMin, iDepthMax;
-    if (this->status_ == PointStatus::INITIALIZED)
+    if (this->status_ != PointStatus::UNINITIALIZED)
     {
       // obtain inverse depth search range from uncertainty
       // range = +- 2*sigma
@@ -523,7 +564,7 @@ namespace dsm
 
     // limit search range
     const float maxSearchRange = sqrtf((float)width*width + (float)height*height)*settings.maxEplLengthFactor;
-    if (this->status_ == PointStatus::INITIALIZED)
+    if (this->status_ != PointStatus::UNINITIALIZED)
     {
       // check if search distance is too short
       if (epiLineLength < settings.minEplLengthSkip)
@@ -624,7 +665,7 @@ namespace dsm
     // check that there are good values for optimization H != 0
     if (fabs(H) < 1e-03f)
     {
-      this->status_ = PointStatus::INITIALIZED;
+      this->status_ = PointStatus::TRACED;
       return;
     }
 
@@ -658,7 +699,7 @@ namespace dsm
 
       if (fabs(H) < 1e-03f)
       {
-        this->status_ = PointStatus::INITIALIZED;
+        this->status_ = PointStatus::TRACED;
         return;
       }
 
@@ -696,6 +737,7 @@ namespace dsm
     }
 
     // store new values
+    std::cout<<"Update candidate depth from "<<1/this->iDepth_<<" to "<<currentIDepth<<std::endl;
     this->iDepth_ = currentIDepth;
     this->status_ = PointStatus::OPTIMIZED;
   }
@@ -786,4 +828,19 @@ namespace dsm
 
     return vis;
   }
+
+  Eigen::Vector3f CandidatePoint::xyz() {
+    const auto& calib = GlobalCalibration::getInstance();
+    const Eigen::Matrix3f& invK = calib.invMatrix3f(0);
+
+    Eigen::Vector3f xyz;
+    xyz << u0_[0], u0_[1], 1;
+    xyz = (xyz / iDepth_).eval();
+
+    xyz = (invK * xyz).eval();
+
+    return xyz;
+    
+  }
 }
+
