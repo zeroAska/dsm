@@ -87,7 +87,7 @@ namespace dsm
     thisToParentLight_(0.f, 0.f),
     type_(Type::FRAME),
     status_(Status::INACTIVE),
-    cvo_pcd(new_frame_pcd),
+    trackingPoints_(new_frame_pcd),
     rawImg(color_img),
     stereoDisparity(disparity.begin(), disparity.end()),
     depthType(DepthType::STEREO),
@@ -133,7 +133,7 @@ namespace dsm
     thisToParentLight_(0.f, 0.f),
     type_(Type::FRAME),
     status_(Status::INACTIVE),
-    cvo_pcd(new_frame_pcd),
+    trackingPoints_(new_frame_pcd),
     rawImg(color_img),
     rgbdDepth(depth.begin(), depth.end()),
     depthType(DepthType::RGBD),
@@ -323,6 +323,17 @@ namespace dsm
     this->thisToParentLight_ = thisToParentAffineLight;
   }	
 
+  void Frame::setTrackingResult(Frame* const parent, const Sophus::SE3f& thisToParentPose)
+  {
+    // only valid for frames
+    assert(this->type_ == Type::FRAME);
+
+    this->trackingParent_ = parent;
+    this->thisToParentPose_ = thisToParentPose;
+    //this->thisToParentLight_ = thisToParentAffineLight;
+  }	
+
+  
   void Frame::setCamToWorld(const Sophus::SE3f& pose)
   {
     // only valid for keyframes
@@ -437,9 +448,13 @@ namespace dsm
     
   }
 
-
+  void Frame::initCandidateQualityFlag() {
+    int num_candidates = this->candidates_.size();
+    this->candidatesHighQuaity_.resize(num_candidates, CandidatePoint::PointStatus::UNINITIALIZED);
+  }
   
-  void Frame::activePointsToCvoPointCloud(cvo::CvoPointCloud & output) {
+  void Frame::activePointsToCvoPointCloud(cvo::CvoPointCloud & output
+                                          ) {
     int num_points = activePoints_.size();
     if (num_points < 1) return;
     int num_features = activePoints_[0]->features().size();

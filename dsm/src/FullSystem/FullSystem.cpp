@@ -43,6 +43,7 @@
 #include "Optimization/PhotometricBA.h"
 #include "Optimization/PhotometricResidual.h"
 #include "Visualizer/IVisualizer.h"
+#include "cvo/Association.hpp"
 #include "utils/StaticStereo.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
@@ -61,7 +62,7 @@ namespace dsm
     trackingIsGood(true),
     createNewKeyframe(false),
     createNewKeyframeID(-1),
-    numMappedFramesFromLastKF(0),
+    numTrackedFramesFromLastKF(0),
     shouldStop(false),
     newFrameMappedDone(true),
     outputWrapper(outputWrapper),
@@ -108,8 +109,8 @@ namespace dsm
 
     // Fourth: initialize member variables
     this->tracker = std::make_unique<FrameTracker>(width, height);
-    this->trackingReference = std::make_shared<FrameTrackerReference>(width, height);
-    this->newTrackingReference = std::make_shared<FrameTrackerReference>(width, height);
+    //this->trackingReference = std::make_shared<FrameTrackerReference>(width, height);
+    //this->newTrackingReference = std::make_shared<FrameTrackerReference>(width, height);
     this->trackingReferenceUpdated = false;
 
     // optimization window
@@ -122,10 +123,8 @@ namespace dsm
     // initial tracking priors
     this->lastTrackedMotion = Sophus::SE3f();
     this->lastTrackedFrame = nullptr;
-
-    this->lastTrackedResidual = std::numeric_limits<float>::max();
-
-    this->lastWasKF = false;
+    this->lastTrackingCos = 0;
+    //this->lastTrackedResidual = std::numeric_limits<float>::max();
 
     // depth map save counter
     this->saveID = 0;
@@ -355,12 +354,7 @@ namespace dsm
     return (int)this->lmcw->allKeyframes().size();
   }
 
-  bool FullSystem::getLastWasKF() const
-  {
-    return this->lastWasKF;
-  }
-
-  bool FullSystem::initialize(const std::shared_ptr<Frame>& frame, bool isUsingCvo)
+  bool FullSystem::initialize_lmcw(const std::shared_ptr<Frame>& frame)
   {
     if (this->initialized) return true;
 
@@ -377,62 +371,72 @@ namespace dsm
 
       // create candidates
       this->createCandidates(frame);
-
+      this->lastTrackedFrame = frame;
+      
       // set as initializer reference
-      this->initializer->setReference(frame);
+      //this->initializer->setReference(frame);
+      return false;
     }
     else
     {
       // try to initialize
       Sophus::SE3f firstToSecond;
-      if (isUsingCvo) {
-        Eigen::Matrix4f trackingPoseResult;
-        double trackingTime;
-        cvo::CvoParams & init_param = cvo_align->get_params();
-        std::swap(init_param.ell_init, init_param.ell_init_first_frame);
-        std::swap(init_param.ell_decay_rate, init_param.ell_decay_rate_first_frame);
-        std::swap(init_param.ell_decay_start, init_param.ell_decay_start_first_frame);
-        cvo_align->write_params(&init_param);
-        pcl::io::savePCDFileASCII ("source.pcd",      *this->initializer->getReference()->get_cvo_pcd());
-        pcl::io::savePCDFileASCII ("target.pcd",      *frame->get_cvo_pcd());
-        int cvoTrackingResult = cvo_align->align(*(this->initializer->getReference()->get_cvo_pcd()),
-                                                 *(frame->get_cvo_pcd()),
-                                                 firstToSecond.matrix(),
-                                                 // outputs
-                                                 trackingPoseResult,&trackingTime);
-        Sophus::SE3f resultSophus(trackingPoseResult.block<3,3>(0,0), trackingPoseResult.block<3,1>(0,3));
-        firstToSecond = resultSophus.inverse(); // convert back to sophus
-        std::swap(init_param.ell_init, init_param.ell_init_first_frame);
-        std::swap(init_param.ell_decay_rate, init_param.ell_decay_rate_first_frame);
-        std::swap(init_param.ell_decay_start, init_param.ell_decay_start_first_frame);
-        cvo_align->write_params(&init_param);
+      Eigen::Matrix4f trackingPoseResult;
+      double trackingTime;
+      cvo::CvoParams & init_param = cvo_align->get_params();
+      std::swap(init_param.ell_init, init_param.ell_init_first_frame);
+      std::swap(init_param.ell_decay_rate, init_param.ell_decay_rate_first_frame);
+      std::swap(init_param.ell_decay_start, init_param.ell_decay_start_first_frame);
+      cvo_align->write_params(&init_param);
+      //pcl::io::savePCDFileASCII ("source.pcd",      *this->initializer->getReference()->get_cvo_pcd());
+      //pcl::io::savePCDFileASCII ("target.pcd",      *frame->get_cvo_pcd());
+      std::shared_ptr<Frame>  last_KF = this->lmcw->activeWindow()[this->lmcw->getActiveWindowSize()-1];
+      int cvoTrackingResult = cvo_align->align(*(last_KF->getTrackingPoints()),
+                                               *(frame->getTrackingPoints()),
+                                               firstToSecond.matrix(),
+                                               // outputs
+                                               trackingPoseResult,
+                                               nullptr,
+                                               &trackingTime);
+      Sophus::SE3f resultSophus(trackingPoseResult.block<3,3>(0,0), trackingPoseResult.block<3,1>(0,3));
+      firstToSecond = resultSophus.inverse(); // convert back to sophus
+      std::swap(init_param.ell_init, init_param.ell_init_first_frame);
+      std::swap(init_param.ell_decay_rate, init_param.ell_decay_rate_first_frame);
+      std::swap(init_param.ell_decay_start, init_param.ell_decay_start_first_frame);
+      cvo_align->write_params(&init_param);
+
+      
+
+      //if (isUsingCvo) {// || this->initializer->initialize(frame, firstToSecond))
+      
+      // rescale to norm(t) = 0.1m
+      //firstToSecond.translation() /= firstToSecond.translation().norm();
+      //firstToSecond.translation() *= 0.1f;
+      
+      // set initialization pose as tracking result
+      const auto& firstKF = allKeyframes[0];
+      //std::cout<<"\nInit: set track result firstToSecond "<<firstToSecond.matrix()<<std::endl;
+      frame->setTrackingResult(firstKF.get(), firstToSecond.inverse(), AffineLight());
+      
+      // initialize some values: motion, flags
+      this->lastTrackedFrame = frame;
+      this->lastTrackedMotion = firstToSecond.inverse(); //Sophus::SE3f();
+      
+      //Utils::Time t2 = std::chrono::steady_clock::now();
+      //std::cout << "Done initialization in " << Utils::elapsedTime(t1, t2) << "ms" << std::endl;
+      
+      // insert frame as keyframe and optimize
+      this->createKeyframeAndOptimize(frame);
+
+      
+      Utils::Time t2 = std::chrono::steady_clock::now();
+      std::cout << "Trying to initialize... " << Utils::elapsedTime(t1, t2) << "ms" << std::endl;
+
+      
+      return true;
         
-      }
-      if (isUsingCvo || this->initializer->initialize(frame, firstToSecond))
-      {
-        // rescale to norm(t) = 0.1m
-        //firstToSecond.translation() /= firstToSecond.translation().norm();
-        //firstToSecond.translation() *= 0.1f;
-
-        // set initialization pose as tracking result
-        const auto& firstKF = allKeyframes[0];
-        //std::cout<<"\nInit: set track result firstToSecond "<<firstToSecond.matrix()<<std::endl;
-        frame->setTrackingResult(firstKF.get(), firstToSecond.inverse(), AffineLight());
-
-        // initialize some values: motion, flags
-        this->lastTrackedFrame = frame;
-        this->lastTrackedMotion = firstToSecond.inverse(); //Sophus::SE3f();
-
-        Utils::Time t2 = std::chrono::steady_clock::now();
-        std::cout << "Done initialization in " << Utils::elapsedTime(t1, t2) << "ms" << std::endl;
-
-        // insert frame as keyframe and optimize
-        this->createKeyframeAndOptimize(frame);
-
-        return true;
-      }
     }
-
+    /*
     // reset if it cannot initialize and start again
     if (this->initializer->isResetRequired())
     {
@@ -445,15 +449,13 @@ namespace dsm
       this->initializer->reset();
     }
 
-    Utils::Time t2 = std::chrono::steady_clock::now();
-    std::cout << "Trying to initialize... " << Utils::elapsedTime(t1, t2) << "ms" << std::endl;
+    */
 
-    return false;
   }
 
+  /*
   void FullSystem::trackFrame(int id, double timestamp, unsigned char* image)
   {
-    this->lastWasKF = false;
 
     auto& settings = Settings::getInstance();
 
@@ -574,10 +576,10 @@ namespace dsm
       this->waitUntilMappingFinished();
     }
   }
-
+  */
+  /*
   void FullSystem::trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const cv::Mat & right_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd)
   {
-    this->lastWasKF = false;
 
     auto& settings = Settings::getInstance();
 
@@ -604,14 +606,12 @@ namespace dsm
     // initialization: TODO
     if (!this->initialized)
     {
-      this->initialized = this->initialize(trackingNewFrame, true);
+      this->initialized = this->initialize_lmcw(trackingNewFrame);
       return;
     }
 
     // track
-    //this->trackNewFrame(trackingNewFrame);
     this->trackModelToFrameCvo(trackingNewFrame, new_frame_pcd );
-
     if (!this->trackingIsGood)
     {
       std::cout << "Tracking LOST!!" << std::endl;
@@ -638,7 +638,7 @@ namespace dsm
     bool localCreateNewKeyframe = false;
     if (!this->createNewKeyframe)
     {
-      if(this->numMappedFramesFromLastKF >= settings.minNumMappedFramesToCreateKF)
+      if(this->numTrackedFramesFromLastKF >= settings.minNumTrackedFramesToCreateKF)
       {
         localCreateNewKeyframe = this->isNewKeyframeRequired(trackingNewFrame);
       }
@@ -703,10 +703,10 @@ namespace dsm
     }
   }
 
-  void FullSystem::trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const std::vector<uint16_t> & depth_img, float depth_scale,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd)
+  void FullSystem::trackFrame(int id, double timestamp,
+                             unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const std::vector<uint16_t> & depth_img, float depth_scale,
+                             pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd)
   {
-    this->lastWasKF = false;
-
     auto& settings = Settings::getInstance();
 
     // track frame
@@ -730,7 +730,7 @@ namespace dsm
     // initialization: TODO
     if (!this->initialized)
     {
-      this->initialized = this->initialize(trackingNewFrame, true);
+      this->initialized = this->initialize_lmcw(trackingNewFrame);
       return;
     }
 
@@ -772,7 +772,7 @@ namespace dsm
     bool localCreateNewKeyframe = false;
     if (!this->createNewKeyframe)
     {
-      if(this->numMappedFramesFromLastKF >= settings.minNumMappedFramesToCreateKF)
+      if(this->numTrackedFramesFromLastKF >= settings.minNumTrackedFramesToCreateKF)
       {
         localCreateNewKeyframe = this->isNewKeyframeRequired(trackingNewFrame);
       }
@@ -839,7 +839,143 @@ namespace dsm
     }
   }
 
-  
+
+  void FullSystem::trackFrame(int id, double timestamp, Frame::Ptr trackingNewFrame) {
+                              //unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const std::vector<uint16_t> & depth_img, float depth_scale,
+                              //pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd)
+  {
+    auto& settings = Settings::getInstance();
+
+    // track frame
+    Utils::Time t1 = std::chrono::steady_clock::now();
+
+    // Create new frame
+    //std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, image, left_img, new_frame_pcd, depth_img, depth_scale);
+
+    if (settings.debugPrintLog)
+    {
+      auto& log = Log::getInstance();
+      log.addNewLog(trackingNewFrame->frameID());
+    }
+
+    if (!this->trackingIsGood)
+    {
+      std::cout << "LOST..." << std::endl;
+      return;
+    }
+
+    // initialization: TODO
+    if (!this->initialized)
+    {
+      this->initialized = this->initialize_lmcw(trackingNewFrame);
+      return;
+    }
+
+    // track
+    //this->trackNewFrame(trackingNewFrame);
+    this->trackModelToFrameCvo(trackingNewFrame);
+
+    if (!this->trackingIsGood)
+    {
+      std::cout << "Tracking LOST!!" << std::endl;
+      return;
+    }
+
+    Utils::Time t2;
+    const float time = Utils::elapsedTime(t1, t2);
+    this->camTrackingTime.push_back(time);
+    
+    
+    if (settings.debugPrintLog && settings.debugLogTracking)
+    {
+      const float* pose = trackingNewFrame->thisToParentPose().data();
+      const AffineLight& light = trackingNewFrame->thisToParentLight();
+      const float energy = this->tracker->totalResidual();
+
+      std::string msg = "trackingPose: " + std::to_string(pose[0]) + "\t" + std::to_string(pose[1]) + "\t" + std::to_string(pose[2]) + "\t" + std::to_string(pose[3]) + "\t"
+        + std::to_string(pose[4]) + "\t" + std::to_string(pose[5]) + "\t" + std::to_string(pose[6]) + "\t";
+      msg += "affineLight: " + std::to_string(light.alpha()) + "\t" + std::to_string(light.beta()) + "\t";
+      msg += "cost: " + std::to_string(energy) + "\t";
+
+      auto& log = Log::getInstance();
+      log.addCurrentLog(trackingNewFrame->frameID(), msg);
+
+    }
+
+    
+
+    // Keyframe selection
+    // If we have already asked to create one, dont do it again
+    bool localCreateNewKeyframe = false;
+    if (!this->createNewKeyframe)
+    {
+      if(this->numTrackedFramesFromLastKF >= settings.minNumTrackedFramesToCreateKF)
+      {
+        localCreateNewKeyframe = this->isNewKeyframeRequired(trackingNewFrame);
+      }
+						
+      this->createNewKeyframe = localCreateNewKeyframe;
+    }
+
+    std::cout<<"Create new keyframe is "<<localCreateNewKeyframe<<std::endl;
+
+    // insert current frame to unmapped queue
+    Utils::Time t3;
+    if (!settings.singleThreaded)
+    {
+      {
+        std::lock_guard<std::mutex> unMappedLock(this->unmappedTrackedFramesMutex);
+        this->unmappedTrackedFrames.push_back(trackingNewFrame);
+
+        if (localCreateNewKeyframe)
+        {
+          this->createNewKeyframeID = trackingNewFrame->frameID();
+        }
+
+        // control flag for blocking
+        {
+          std::lock_guard<std::mutex> newFrameMappedLock(this->newFrameMappedMutex);
+          this->newFrameMappedDone = false;
+        }
+      }
+      this->unmappedTrackedFramesSignal.notify_one();
+
+      t3 = std::chrono::steady_clock::now();
+    }
+    else
+    {
+      if (localCreateNewKeyframe)
+      {
+        this->createNewKeyframeID = trackingNewFrame->frameID();
+      }
+
+      t2 = std::chrono::steady_clock::now();
+      
+      this->doMapping(trackingNewFrame);
+    }
+
+    //const float time = Utils::elapsedTime(t1, t2);
+    //this->camTrackingTime.push_back(time);
+
+    if (this->outputWrapper)
+    {
+      // current camera pose
+      const Eigen::Matrix4f camPose = (this->lastTrackedFrame->parent()->camToWorld() * 
+                                       this->lastTrackedFrame->thisToParentPose()).matrix();
+      this->outputWrapper->publishCurrentFrame(camPose);
+
+      //timings			
+      this->outputWrapper->publishCamTrackingTime(time);
+    }
+
+    // implement blocking
+    // required for debugging
+    if (!settings.singleThreaded && settings.blockUntilMapped && this->trackingIsGood)
+    {
+      this->waitUntilMappingFinished();
+    }
+  }
+  */  
   /*  
   void FullSystem::trackFrameToFrameCvo(const std::shared_ptr<Frame>& frame, const cvo::CvoPointCloud & new_frame_pcd ){
 
@@ -944,7 +1080,7 @@ namespace dsm
   }
   */
   
-  void FullSystem::trackModelToFrameCvo(const std::shared_ptr<Frame>& frame, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd ){
+  void FullSystem::trackModelToFrameCvo( std::shared_ptr<Frame>& frame){
 
     Utils::Time t1 = std::chrono::steady_clock::now();
 
@@ -952,18 +1088,21 @@ namespace dsm
     Sophus::SE3f lastToWorldPose = this->lastTrackedFrame->parent()->camToWorld() *
       this->lastTrackedFrame->thisToParentPose();
 
-    AffineLight lastToWorldLight = AffineLight::calcGlobal(this->lastTrackedFrame->parent()->affineLight(),
-                                                           this->lastTrackedFrame->thisToParentLight());
+    //AffineLight lastToWorldLight = AffineLight::calcGlobal(this->lastTrackedFrame->parent()->affineLight(),
+    //                                                      this->lastTrackedFrame->thisToParentLight());
 
+    // if a new kf (starting from the third one) is setup in CreateNewKFAndOptimize,
+    // update the tracking reference, the initial guess pose and light
     if (this->trackingReferenceUpdated)
     {
       std::lock_guard<std::mutex> lock(this->trackingReferenceMutex);
       std::swap(this->trackingReference, this->newTrackingReference);
+      std::cout<<"setting this->createNewKeyframe to false"<<std::endl;
       this->createNewKeyframe = false;
       this->trackingReferenceUpdated = false;
 
-      Frame* const newReference = this->trackingReference->reference();
-      Frame* const oldReference = this->newTrackingReference->reference();
+      Frame::Ptr newReference = this->trackingReference;
+      Frame::Ptr oldReference = this->newTrackingReference;
 
       if (newReference && oldReference)
       {
@@ -978,17 +1117,16 @@ namespace dsm
         lastToWorldPose *= poseCorrection.inverse();
 
         // light
-        const AffineLight newRefOldLight = AffineLight::calcGlobal(newReference->parent()->affineLight(),
-                                                                   newReference->thisToParentLight());
-        const AffineLight lightCorrection = AffineLight::calcRelative(newRefOldLight,
-                                                                      newReference->affineLight());
-        lastToWorldLight = AffineLight::calcGlobal(lastToWorldLight,
-                                                   lightCorrection);
+        //const AffineLight newRefOldLight = AffineLight::calcGlobal(newReference->parent()->affineLight(),
+        //                                                            newReference->thisToParentLight());
+      //const AffineLight lightCorrection = AffineLight::calcRelative(newRefOldLight,
+        //                                                              newReference->affineLight());
+      //  lastToWorldLight = AffineLight::calcGlobal(lastToWorldLight,
+                                                   //                                           lightCorrection);
       }
     }
 
-    Frame* const reference = this->trackingReference->reference();
-
+    Frame::Ptr reference = this->trackingReference;
     // pose prior -> constant velocity model
     std::cout<<"\nCvo tracking init values: reference id "<<reference->frameID()<<" camToWorld is \n"<<reference->camToWorld().matrix()<<"\n last frame id "<<lastTrackedFrame->frameID()<<"'s lastToWorldPose is "<<lastToWorldPose.matrix()<<std::endl;
     const Sophus::SE3f lastToRef = reference->camToWorld().inverse() * lastToWorldPose;
@@ -996,31 +1134,30 @@ namespace dsm
     Eigen::Matrix4f frameToRefPoseEigen = frameToRefPose.matrix().inverse();
 
     // affine light prior
-    AffineLight frameToRefLight = AffineLight::calcRelative(reference->affineLight(),
-                                                            lastToWorldLight);
+    //AffineLight frameToRefLight = AffineLight::calcRelative(reference->affineLight(),
+    //                                                        lastToWorldLight);
 
     // Error distribution
-    std::shared_ptr<IDistribution> errorDistribution;
+    //std::shared_ptr<IDistribution> errorDistribution;
 
     // Track
     // relative pose to reference keyframe
     std::cout<<"Cvo trying to align frame "<<reference->frameID()<<" and frame "<<frame->frameID()<<std::endl;
+    pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd = frame->getTrackingPoints();
     Eigen::Matrix4f trackingPoseResult;
     double trackingTime;
-
-    
-    
-    int cvoTrackingResult = cvo_align->align(*(reference->get_cvo_pcd()),
+    int cvoTrackingResult = cvo_align->align(*(reference->getTrackingPoints()),
                                              *(new_frame_pcd),
                                              frameToRefPoseEigen,
                                              // outputs
-                                             trackingPoseResult,&trackingTime);
+                                             trackingPoseResult,
+                                             nullptr,
+                                             &trackingTime);
     Sophus::SE3f resultSophus(trackingPoseResult.block<3,3>(0,0), trackingPoseResult.block<3,1>(0,3));
     frameToRefPose = resultSophus; // convert back to sophus
     
     // track relative affine light to reference keyframe
-    bool goodTrackedLight = this->tracker->trackFrame(this->trackingReference, frame, frameToRefPose, frameToRefLight,                                                                                                                 errorDistribution, this->outputWrapper, true);      
-    
+    //bool goodTrackedLight = this->tracker->trackFrame(this->trackingReference, frame, frameToRefPose, frameToRefLight,                                                                                                                 errorDistribution, this->outputWrapper, true);      
 
     //tracking lost? - reset tracking internal data
     bool goodTracked = (cvoTrackingResult == 0);
@@ -1032,8 +1169,8 @@ namespace dsm
       this->lastTrackedFrame = nullptr;
       this->lastTrackedMotion = Sophus::SE3f();
 
-      this->trackingReference->reset();
-      this->tracker->reset();
+      this->trackingReference = nullptr;
+      //this->tracker->reset();
 
       this->unmappedTrackedFramesSignal.notify_one();
 
@@ -1042,25 +1179,25 @@ namespace dsm
 
     // save result to the latest frame
     std::cout<<"Just aligned frame "<<reference->frameID()<<" and "<<frame->frameID()<<std::endl;
-    this->lastTrackingCos = cvo_align->function_angle(*(reference->get_cvo_pcd()),
+    this->lastTrackingCos = cvo_align->function_angle(*(reference->getTrackingPoints()),
                                                       *(new_frame_pcd),
                                                       trackingPoseResult.inverse(),
                                                       false);
     std::cout<<"Tracking cvo function_angle is "<<lastTrackingCos<<std::endl;
     //std::cout<<"CVO result frameToRefPose is "<<frameToRefPose.matrix()<<std::endl;
     
-    frame->setTrackingResult(reference, frameToRefPose, frameToRefLight);
+    frame->setTrackingResult(reference.get(), frameToRefPose);
 
     // error distribution
-    frame->setErrorDistribution(errorDistribution);
+    //frame->setErrorDistribution(errorDistribution);
 
     // residuals per level
-    this->lastTrackedResidual = this->tracker->totalResidual();
+    //this->lastTrackedResidual = this->tracker->totalResidual();
 
-    if (this->trackingReference->firstFrameResidual() < 0.f)
-     {
-      this->trackingReference->setFirstFrameResidual(this->lastTrackedResidual);
-     }
+    //if (this->trackingReference->firstFrameResidual() < 0.f)
+    // {
+    //  this->trackingReference->setFirstFrameResidual(this->lastTrackedResidual);
+    // }
 
     // save info for tracking priors
     this->lastTrackedMotion = lastToRef.inverse() * frameToRefPose;
@@ -1071,7 +1208,8 @@ namespace dsm
     
   
   }
-  
+
+  /*
   void FullSystem::trackNewFrame(const std::shared_ptr<Frame>& frame)
   {
     Utils::Time t1 = std::chrono::steady_clock::now();
@@ -1174,29 +1312,163 @@ namespace dsm
     Utils::Time t2 = std::chrono::steady_clock::now();
     //std::cout << "Tracking: " << Utils::elapsedTime(t1, t2) << "\n";
   }
+  */
 
+  void FullSystem::trackFrame(int id, double timestamp, Frame::Ptr trackingNewFrame) 
+  {
+    auto& settings = Settings::getInstance();
+
+    // track frame
+    Utils::Time t1 = std::chrono::steady_clock::now();
+
+    // Create new frame
+    //std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, image, left_img, new_frame_pcd, depth_img, depth_scale);
+
+    if (settings.debugPrintLog)
+    {
+      auto& log = Log::getInstance();
+      log.addNewLog(trackingNewFrame->frameID());
+    }
+
+    if (!this->trackingIsGood)
+    {
+      std::cout << "LOST..." << std::endl;
+      return;
+    }
+
+    // initialization: TODO
+    if (!this->initialized)
+    {
+      this->initialized = this->initialize_lmcw(trackingNewFrame);
+      return;
+    }
+
+    // track
+    //this->trackNewFrame(trackingNewFrame);
+    this->trackModelToFrameCvo(trackingNewFrame);
+
+    if (!this->trackingIsGood)
+    {
+      std::cout << "Tracking LOST!!" << std::endl;
+      return;
+    }
+
+    Utils::Time t2;
+    const float time = Utils::elapsedTime(t1, t2);
+    this->camTrackingTime.push_back(time);
+    
+    
+    if (settings.debugPrintLog && settings.debugLogTracking)
+    {
+      const float* pose = trackingNewFrame->thisToParentPose().data();
+      const AffineLight& light = trackingNewFrame->thisToParentLight();
+      const float energy = this->tracker->totalResidual();
+
+      std::string msg = "trackingPose: " + std::to_string(pose[0]) + "\t" + std::to_string(pose[1]) + "\t" + std::to_string(pose[2]) + "\t" + std::to_string(pose[3]) + "\t"
+        + std::to_string(pose[4]) + "\t" + std::to_string(pose[5]) + "\t" + std::to_string(pose[6]) + "\t";
+      msg += "affineLight: " + std::to_string(light.alpha()) + "\t" + std::to_string(light.beta()) + "\t";
+      msg += "cost: " + std::to_string(energy) + "\t";
+
+      auto& log = Log::getInstance();
+      log.addCurrentLog(trackingNewFrame->frameID(), msg);
+
+    }
+
+    
+
+    // Keyframe selection
+    // If we have already asked to create one, dont do it again
+    bool localCreateNewKeyframe = false;
+    // TODO: update for multi thread case
+    //if (!this->createNewKeyframe) {
+    //  if(this->numTrackedFramesFromLastKF >= settings.minNumTrackedFramesToCreateKF) {
+        localCreateNewKeyframe = this->isNewKeyframeRequired(trackingNewFrame);
+        //  }
+      this->createNewKeyframe = localCreateNewKeyframe;
+      //}
+    std::cout<<"Create new keyframe is "<<this->createNewKeyframe<<std::endl;
+
+    // insert current frame to unmapped queue
+    Utils::Time t3;
+    if (!settings.singleThreaded)
+    {
+      {
+        std::lock_guard<std::mutex> unMappedLock(this->unmappedTrackedFramesMutex);
+        this->unmappedTrackedFrames.push_back(trackingNewFrame);
+
+        if (localCreateNewKeyframe)
+        {
+          this->createNewKeyframeID = trackingNewFrame->frameID();
+        }
+
+        // control flag for blocking
+        {
+          std::lock_guard<std::mutex> newFrameMappedLock(this->newFrameMappedMutex);
+          this->newFrameMappedDone = false;
+        }
+      }
+      this->unmappedTrackedFramesSignal.notify_one();
+
+      t3 = std::chrono::steady_clock::now();
+    }
+    else
+    {
+      if (localCreateNewKeyframe)
+      {
+        this->createNewKeyframeID = trackingNewFrame->frameID();
+      }
+      
+      t2 = std::chrono::steady_clock::now();
+      
+      this->doMapping(trackingNewFrame);
+    }
+
+    //const float time = Utils::elapsedTime(t1, t2);
+    //this->camTrackingTime.push_back(time);
+
+    if (this->outputWrapper)
+    {
+      // current camera pose
+      const Eigen::Matrix4f camPose = (this->lastTrackedFrame->parent()->camToWorld() * 
+                                       this->lastTrackedFrame->thisToParentPose()).matrix();
+      this->outputWrapper->publishCurrentFrame(camPose);
+
+      //timings			
+      this->outputWrapper->publishCamTrackingTime(time);
+    }
+
+    // implement blocking
+    // required for debugging
+    if (!settings.singleThreaded && settings.blockUntilMapped && this->trackingIsGood)
+    {
+      this->waitUntilMappingFinished();
+    }
+  }
+
+  
   bool FullSystem::isNewKeyframeRequired(const std::shared_ptr<Frame>& frame) const
   {
     const auto& settings = Settings::getInstance();
 
-    Frame* const reference = this->trackingReference->reference();
+    auto reference = this->trackingReference;
 
     // check camera translation relative to mean inverse depth
-    const Eigen::Vector3f dist = frame->thisToParentPose().translation() * 
-      this->trackingReference->meanIDepth();
+    //const Eigen::Vector3f dist = frame->thisToParentPose().translation() * 
+    //  this->trackingReference->meanIDepth();
 
     // check point usage by tracker 
-    const float pointUsage = this->tracker->pointUsage();
+    //const float pointUsage = this->tracker->pointUsage();
 
     // check illumination change
-    const AffineLight& relativeLight = frame->thisToParentLight();
+    //const AffineLight& relativeLight = frame->thisToParentLight();
 
     // new keyframe required?
+    std::cout<<"isNewKeyframeRequired: lastTrackingCos is "<<this->lastTrackingCos<<", coslimit is "<<settings.trackingCosLimit<<std::endl;
     if (//(dist.norm()*settings.newKFDistWeight +
         // (1.f - pointUsage) * settings.newKFUsageWeight +
         // fabs(relativeLight.alpha()) * settings.newKFAffineWeight) > 1.f ||
         //settings.newKFResidualWeight*this->trackingReference->firstFrameResidual() < this->lastTrackedResidual ||
-        lastTrackingCos < settings.trackingCosLimit)
+        this->lastTrackingCos < settings.trackingCosLimit)
     {
       return true;
     }
@@ -1294,7 +1566,7 @@ namespace dsm
     {
       // create new keyframe and optimize
       this->createKeyframeAndOptimize(frame);
-      this->numMappedFramesFromLastKF = 0;
+      this->numTrackedFramesFromLastKF = 0;
 
       Utils::Time t2 = std::chrono::steady_clock::now();
       const float time = Utils::elapsedTime(t1, t2);
@@ -1309,8 +1581,8 @@ namespace dsm
     {
       // track previous keyframes's candidates with the tracked frame.
       // The newly tracked frame is not a keyframe
-      this->trackCandidates(frame);
-      this->numMappedFramesFromLastKF++;
+      this->trackCandidatesCvo(frame);
+      this->numTrackedFramesFromLastKF++;
 
       Utils::Time t2 = std::chrono::steady_clock::now();
       const float time = Utils::elapsedTime(t1, t2);
@@ -1379,6 +1651,7 @@ namespace dsm
     }
 
     candidates.shrink_to_fit();
+    frame->initCandidateQualityFlag();
 
     Utils::Time t2 = std::chrono::steady_clock::now();
 		
@@ -1394,11 +1667,110 @@ namespace dsm
     auto& activePoints = frame->activePoints();
     activePoints.reserve(candidates.size());
 
-    std::string fname("candidates_after_creation.pcd");
-    frame->dump_candidates_to_pcd(fname);
+    //std::string fname("candidates_after_creation.pcd");
+    //frame->dump_candidates_to_pcd(fname);
     //std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }
 
+  void FullSystem::trackCandidatesCvo(const Frame::Ptr frame, bool include_curr) {
+
+    const auto& settings = Settings::getInstance();
+
+    const auto& activeKeyframes = this->lmcw->activeWindow();
+    cvo::CvoPointCloud candidates_curr(*frame->getTrackingPoints());
+    //frame->candidatesToCvoPointCloud(candidates_curr);
+    
+
+    Sophus::SE3f camToRef = frame->thisToParentPose();
+    Frame * const parent = frame->parent();
+    
+    
+    //if (settings.debugCandidates || (settings.debugPrintLog && settings.debugLogCandidatesTracking))
+    //{
+    int numGood = 0;
+    int numNegativeIDepth = 0;
+
+    for (const auto& kf : activeKeyframes) {
+      // clean candidate vector
+      // remove outliers
+      const auto& candidates = kf->candidates();
+      cvo::CvoPointCloud candidates_cvo;
+      kf->candidatesToCvoPointCloud(candidates_cvo);
+
+      Sophus::SE3f parentToCurrKF = kf->camToWorld().inverse() *  parent->camToWorld();
+      Eigen::Matrix4f kfToFrame = (parentToCurrKF * camToRef).inverse().matrix();
+        
+      cvo::Association association_mat;
+      cvo_align->compute_association_gpu(candidates_cvo,
+                                         candidates_curr,
+                                         kfToFrame,
+                                         association_mat);
+      int counter = 0;
+      for (int j = 0; j < association_mat.source_inliers.size(); j++) {
+        if (association_mat.source_inliers[j] ) {
+          kf->candidatesHighQuaity()[j] = CandidatePoint::PointStatus::OPTIMIZED;
+          kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
+        }
+        if (kf->candidatesHighQuaity()[j] == CandidatePoint::PointStatus::OPTIMIZED)
+          counter++;
+      }
+      
+      if (include_curr) {
+        for (int j = 0; j < association_mat.target_inliers.size(); j++) {
+          if (association_mat.target_inliers[j] ) {
+            frame->candidatesHighQuaity()[j] = CandidatePoint::PointStatus::OPTIMIZED;
+            frame->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);            
+          }
+        }
+      }
+      std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n";
+      if (settings.debugCandidates) {
+        // std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n";
+      }
+      /*
+        for (const auto& cand : candidates)
+        {
+        // skip if the point is an outlier or is not visible
+        if (cand->status() == CandidatePoint::OUTLIER ||
+        cand->lastObservation() == CandidatePoint::OOB)
+        {
+        continue;
+        }
+        else
+        {
+        CandidatePoint::ObserveStatus status =  cand->observe(frame);
+
+        if (status == CandidatePoint::GOOD) numGood++;
+        else {
+            
+        }
+        } */
+    }
+      
+      //}
+    /*
+      // try to initialize candidates
+      // do it in parallel
+      int itemsCount = (int)toObserve.size();
+
+      int start = 0;
+      int end = 0;
+      int step = (itemsCount + settings.mappingThreads - 1) / settings.mappingThreads;
+
+      for (int i = 0; i < settings.mappingThreads; ++i)
+      {
+        start = end;
+        end = std::min(end + step, itemsCount);
+
+        this->threadPool->addJob(PointObserver(toObserve, frame, start, end));
+      }
+
+      // wait until finish
+      this->threadPool->wait();
+      }*/
+    
+  }
+  
 
   // depth filtering by tracing the active KF's candidate points on the new non-keyframe
   void FullSystem::trackCandidates(const std::shared_ptr<Frame>& frame)
@@ -1665,9 +2037,10 @@ namespace dsm
     std::vector<cvo::CvoPointCloud> cvo_pcs;
     std::vector<cvo::CvoFrame::Ptr> cvo_frames;      
     cvo_pcs.resize(activeKeyframes.size());
+    std::cout<<"CvoMultiAlign: Frames are ";    
     for (int i = 0; i < activeKeyframes.size(); i++) {
       auto kf = activeKeyframes[i];
-      
+      std::cout<<kf->frameID()<<", ";
       kf->activePointsToCvoPointCloud(cvo_pcs[i]);
 
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
@@ -1676,6 +2049,7 @@ namespace dsm
     }
 
     // read edges to construct graph
+    // TODO: edges will be constructed from the covisibility graph later
     std::list<std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr>> edges;
     for (int i = 0; i < cvo_frames.size(); i++) {
       for (int j = i+1; j < cvo_frames.size(); j++) {
@@ -1685,6 +2059,9 @@ namespace dsm
     }
 
     double time = 0;
+
+
+    std::cout<<" and among them are "<<edges.size()<<" edges\n";
     cvo_align->align(cvo_frames, edges, &time);
     std::cout<<"cvo BA time is "<<time<<", for "<<cvo_frames.size()<<" frames\n";
 
@@ -1701,15 +2078,14 @@ namespace dsm
 
   void FullSystem::createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame)
   {
-    this->lastWasKF = true;
 
     const auto& settings = Settings::getInstance();
 
     Utils::Time t1 = std::chrono::steady_clock::now();
 
     // initialize candidates
-    //this->createCandidates(frame);    
-    this->trackCandidates(frame);
+    this->createCandidates(frame);    
+    this->trackCandidatesCvo(frame);
 
     // insert new keyframe
     this->lmcw->insertNewKeyframe(frame);
@@ -1730,13 +2106,13 @@ namespace dsm
     windowConstructionTime.push_back(Utils::elapsedTime(t_window_init, t_window_end));
 
     // refine candidates from the temporal window
-    Utils::Time t_refine_init = std::chrono::steady_clock::now();
-    this->refineCandidates();
-    Utils::Time t_refine_end = std::chrono::steady_clock::now();
+    //Utils::Time t_refine_init = std::chrono::steady_clock::now();
+    //this->refineCandidates();
+    //Utils::Time t_refine_end = std::chrono::steady_clock::now();
     //std::cout << "Refine Candidates: " << Utils::elapsedTime(t_refine_init, t_refine_end) << std::endl;
 
     // select new active points from the temporal window
-    this->lmcw->activatePoints(this->ceresOptimizer);
+    this->lmcw->activatePointsCvo();
 
     // optimize
     const auto& activeKeyframes = this->lmcw->activeWindow();
@@ -1750,22 +2126,28 @@ namespace dsm
       cvoBATime.push_back(Utils::elapsedTime(t_cvoba_init, t_cvoba_end));    
     }
 
-    Utils::Time t_ba_init =  std::chrono::steady_clock::now();
-    //this->ceresOptimizer->solve(activeKeyframes);
-    Utils::Time t_ba_end =  std::chrono::steady_clock::now();
-    localBATime.push_back(Utils::elapsedTime(t_ba_init, t_ba_end));    
     
     // remove outliers
-    this->lmcw->removeOutliers();
+    // TODO: only keep the active points that have neighbors
+    //this->lmcw->removeOutliers();
 
+    // TODO: mapping for all keyframes' active points' positions/color/semantics
+    //Utils::Time t_ba_init =  std::chrono::steady_clock::now();
+    //this->ceresOptimizer->solve(activeKeyframes);
+    //Utils::Time t_ba_end =  std::chrono::steady_clock::now();
+    //localBATime.push_back(Utils::elapsedTime(t_ba_init, t_ba_end));    
+
+    
     // set new tracking reference
     // use covisibility keyframes here too
     Utils::Time t13 = std::chrono::steady_clock::now();
     {
       std::lock_guard<std::mutex> lock(this->trackingReferenceMutex);
-      this->newTrackingReference->setNewReference(activeKeyframes);
+      //this->newTrackingReference->setNewReference(activeKeyframes);
+      this->newTrackingReference = frame;
       this->trackingReferenceUpdated = true;
 
+      /*
       if ((this->outputWrapper && settings.showDepthMap) ||
           settings.saveDepthMaps)
       {
@@ -1787,6 +2169,7 @@ namespace dsm
       {
         this->outputWrapper->publishProcessFrame(this->depthMapImage);
       }
+      */
     }
     Utils::Time t14 = std::chrono::steady_clock::now();
     //std::cout << "Tracking ref time: " << Utils::elapsedTime(t13, t14) << std::endl;
@@ -1795,17 +2178,17 @@ namespace dsm
     if (settings.debugShowOptKeyframes && this->outputWrapper)
       this->drawActiveKeyframes();
 
-    if (settings.debugShowOptError && this->outputWrapper)
-      this->drawOptErrorMap();
+    //if (settings.debugShowOptError && this->outputWrapper)
+    //  this->drawOptErrorMap();
 
-    if (settings.debugShowOptWeight && this->outputWrapper)
-      this->drawOptWeight();
+    //if (settings.debugShowOptWeight && this->outputWrapper)
+    //  this->drawOptWeight();
 
-    if (settings.debugShowOptLight && this->outputWrapper)
-      this->drawOptLight();
+    //if (settings.debugShowOptLight && this->outputWrapper)
+    //  this->drawOptLight();
 
-    if (settings.debugShowOptErrorDist && this->outputWrapper)
-      this->drawOptErrorDist();
+    //if (settings.debugShowOptErrorDist && this->outputWrapper)
+    //  this->drawOptErrorDist();
 
     // Publish to output wrapper
     Utils::Time t15 = std::chrono::steady_clock::now();
@@ -1843,9 +2226,9 @@ namespace dsm
     //std::cout << "Visualization time: " << Utils::elapsedTime(t15, t16) << std::endl;
 
     // update covisibility graph
-    Utils::Time t17 = std::chrono::steady_clock::now();
-    this->lmcw->updateConnectivity();
-    Utils::Time t18 = std::chrono::steady_clock::now();
+    //tils::Time t17 = std::chrono::steady_clock::now();
+    //this->lmcw->updateConnectivity();
+    //Utils::Time t18 = std::chrono::steady_clock::now();
     //std::cout << "Update connectivity time: " << Utils::elapsedTime(t9, t10) << std::endl;
 
     // drop keyframes and remove covisible keyframes
@@ -1853,9 +2236,9 @@ namespace dsm
     this->lmcw->dropKeyframes();
 
     // create new candidates for last keyframe
-    Utils::Time t19 = std::chrono::steady_clock::now();
-    this->createCandidates(frame);
-    Utils::Time t20 = std::chrono::steady_clock::now();
+    //Utils::Time t19 = std::chrono::steady_clock::now();
+    //this->createCandidates(frame);
+    //Utils::Time t20 = std::chrono::steady_clock::now();
     //std::cout << "Create candidates time: " << Utils::elapsedTime(t19, t20) << std::endl;
 
     Utils::Time t2 = std::chrono::steady_clock::now();
@@ -1951,7 +2334,10 @@ namespace dsm
     }
     std::sort(allIDepths.begin(), allIDepths.end());
 
-    if (allIDepths.empty()) return;
+    if (allIDepths.empty()) {
+      std::cout<<"Drawactivekeyframes: Idepth emtpy\n";
+      return; 
+    }
 
     this->minIDepthOpt = std::max(allIDepths[(int)(allIDepths.size()*0.1f)], 0.f);
     this->maxIDepthOpt = std::max(allIDepths[(int)(allIDepths.size()*0.9f)], 0.f);

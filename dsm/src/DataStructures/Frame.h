@@ -35,6 +35,7 @@
 #include "ImagePyramid.h"
 #include "GradientPyramid.h"
 #include "AffineLight.h"
+#include "CandidatePoint.h"
 #include "Statistics/IDistribution.h"
 #include "FullSystem/DSMLib.h"
 #include "utils/CvoPoint.hpp"
@@ -45,6 +46,7 @@
 namespace dsm
 {
 	class CandidatePoint;
+
 	class ActivePoint;
 
 	template<typename T>
@@ -68,10 +70,18 @@ namespace dsm
 		enum Type { FRAME = 0, KEYFRAME = 1};
 		enum Status { ACTIVE = 0, INACTIVE = 1 };
 
+                //using Ptr = std::shared_ptr<Frame>;
+                typedef std::shared_ptr<Frame> Ptr;
+
+                // Mono
 		Frame(int id, double timestamp, unsigned char* image);
+
+                // stereo
                 Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, std::vector<float> & disparity);
+
+                // rgb-d
                 Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale);
-                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
+
 		~Frame();
 
 		// activation or desactivation
@@ -123,7 +133,8 @@ namespace dsm
 		const Sophus::SE3f& thisToParentPose() const;
 		const AffineLight& thisToParentLight() const;
 		void setTrackingResult(Frame* const parent, const Sophus::SE3f& thisToParentPose, 
-							   const AffineLight& thisToParentAffineLight);		
+							   const AffineLight& thisToParentAffineLight);
+                void setTrackingResult(Frame* const parent, const Sophus::SE3f& thisToParentPose);
 
 		// camera world position
 		// used by KEYFRAMES
@@ -149,6 +160,8 @@ namespace dsm
 		// access points candidates
 		const std::vector<std::unique_ptr<CandidatePoint>>& candidates() const;
 		std::vector<std::unique_ptr<CandidatePoint>>& candidates();
+                std::vector<CandidatePoint::PointStatus> & candidatesHighQuaity() {return candidatesHighQuaity_;}
+                void initCandidateQualityFlag();
                 void dump_candidates_to_pcd(const std::string & fname);
 
 		// access active points
@@ -160,7 +173,7 @@ namespace dsm
 		const std::unique_ptr<FrameParameterBlock>& frameBlock() const;
 
                 // access cvo points
-                pcl::PointCloud<cvo::CvoPoint>::Ptr get_cvo_pcd() {return cvo_pcd;}
+                pcl::PointCloud<cvo::CvoPoint>::Ptr getTrackingPoints() {return trackingPoints_;}
                 void activePointsToCvoPointCloud(cvo::CvoPointCloud & output);
                 void candidatesToCvoPointCloud(cvo::CvoPointCloud & output);
                 
@@ -207,7 +220,7 @@ namespace dsm
 		Sophus::SE3f thisToParentPose_;				// coarse tracking result
 		AffineLight thisToParentLight_;			// from coarse tracking
                 
-                pcl::PointCloud<cvo::CvoPoint>::Ptr cvo_pcd; // for CVO coarse tracking
+                pcl::PointCloud<cvo::CvoPoint>::Ptr trackingPoints_; // for CVO coarse tracking
                 std::shared_ptr<cvo::RawImage> rawImg;
                 std::vector<float> stereoDisparity;
                 std::vector<uint16_t> rgbdDepth;
@@ -231,7 +244,10 @@ namespace dsm
 		float energyThreshold_;
 
 		// candidate points
-		std::vector<std::unique_ptr<CandidatePoint>> candidates_;					// candidates to become active points
+		std::vector<std::unique_ptr<CandidatePoint>> candidates_;
+                std::vector<CandidatePoint::PointStatus> candidatesHighQuaity_;
+                // candidates to become active points
+                
 
 		// active points
 		std::vector<std::unique_ptr<ActivePoint>> activePoints_;					// active points in current window

@@ -191,7 +191,7 @@ namespace dsm
 		float newKFUsageWeight;						// weight of point usage by the frame tracker
 		float newKFAffineWeight;					// weight of light change in the scene
 		float newKFResidualWeight;					// weight of the frame tracker residual
-		int minNumMappedFramesToCreateKF;			// minimum number of tracked frames to create a new one		
+		int minNumTrackedFramesToCreateKF;			// minimum number of tracked frames to create a new one		
 
 		// Number of pyramids
 		int pyramidLevels;

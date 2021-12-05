@@ -88,6 +88,7 @@ namespace dsm
     this->activeKeyframes_.push_back(newKeyframe);
 
     // insert into covisibility graph
+    // TODO: search through all the voxels that this new frame has observed, then create the covisibitiliy edges as well
     this->covisibilityGraph_->addNode(newKeyframe);
   }
 
@@ -101,6 +102,7 @@ namespace dsm
     // covisibility window
     if (!settings.doOnlyTemporalOpt)
     {
+      // TODO: choose a subset of covisible frames with the maximum overlap
       this->selectCovisibleWindow(photometricBA);
     }
   }
@@ -123,7 +125,7 @@ namespace dsm
     // drop from temporal keyframes
     for (auto it = this->activeKeyframes_.begin(); it != this->activeKeyframes_.end(); )
     {
-      if ((*it)->flaggedToDrop())
+      if ((*it)->flaggedToDrop()) // TODO: if exceeds the max temporal kf number
       {
         (*it)->deactivate();
         (*it)->setFlaggedToDrop(false);
@@ -365,8 +367,8 @@ namespace dsm
         numTotalVisiblePoints.push_back(numTotalVisible);
 
         if (cvo_align != nullptr ) {
-          float ip = cvo_align->function_angle(*(kf->get_cvo_pcd()),
-                                               *(lastActKeyframe->get_cvo_pcd()),
+          float ip = cvo_align->function_angle(*(kf->getTrackingPoints()),
+                                               *(lastActKeyframe->getTrackingPoints()),
                                                kfToLastEigen,
                                                false);
         std::cout<<"Covisible projection ratio "<<ratio <<", with inner product between "<<kf->frameID()<<" and "<<lastActKeyframe->frameID()<<" being "<<ip<<", Add frame "<<kf->frameID()<<" to covisible window\n";
@@ -608,6 +610,118 @@ namespace dsm
       this->outputWrapper_->publishDistanceTransformAfter(distTransform);
     }
   }
+  void LMCW::activatePointsCvo()
+  {
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+
+    const Eigen::Matrix3f& K = calib.matrix3f(0);
+    const Eigen::Matrix3f& Kinv = calib.invMatrix3f(0);
+    const int width = (int)calib.width(0);
+    const int height = (int)calib.height(0);
+
+    Utils::Time t1 = std::chrono::steady_clock::now();
+    int numActiveKeyframes = (int)this->activeKeyframes_.size();
+
+    // activate the old keyframes' (excluding the lastest one) candidates
+    // whose status is 'OPTIMIZED'
+    int numPointsCreated = 0;
+    auto lastKeyframe = this->activeKeyframes_[this->activeKeyframes_.size()-1];
+    for (int i = this->temporalWindowIndex; i < numActiveKeyframes - 1; ++i)
+    {
+      std::cout<<"activePoint: new iteration "<<i<<std::endl<<std::flush;
+      const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
+      //std::shared_ptr<Frame> owner = this->activeKeyframes_[i];
+
+      // relative pose
+      //const Sophus::SE3f ownerToLast = worldToLast * owner->camToWorld();	
+      //const Eigen::Matrix3f KRKinv = K * ownerToLast.rotationMatrix() * Kinv;
+      //const Eigen::Vector3f Kt = K * ownerToLast.translation();
+
+      auto& candidates = owner->candidates();
+      auto& activePoints = owner->activePoints();
+
+      int counter = 0;
+      for (auto& cand : candidates)
+      {
+        CandidatePoint::PointStatus status = cand->status();
+
+        // check status
+        if (status == CandidatePoint::OPTIMIZED )
+        {
+          // project into new keyframe
+          std::unique_ptr<ActivePoint> point = std::make_unique<ActivePoint>(lastKeyframe->keyframeID(), cand);
+          counter++;
+
+          // observations & visibility
+          /*
+          for (const std::shared_ptr<Frame>& frame : this->activeKeyframes_)
+          {
+            if (frame == owner) continue;
+
+            Visibility vis = cand->visibility(frame->activeID());
+
+            // set visibility
+            point->setVisibility(frame->keyframeID(), vis);
+
+            if (vis == Visibility::VISIBLE)
+            {
+              // create new observation
+              std::unique_ptr<PhotometricResidual> obs =
+                std::make_unique<PhotometricResidual>(point, frame, photometricBA);
+
+              point->addObservation(frame.get(), obs);
+            }
+          }*/
+          cand = nullptr;						// delete candidate after activation
+
+          //point->setCenterProjection(pointInFrame);
+
+          numPointsCreated++;
+          this->numActivePoints++;
+
+          // update distance map
+          //this->distanceMap_->add(point, lastKeyframe);
+
+          // insert into list
+          activePoints.push_back(std::move(point));
+        }
+        //else if (status == CandidatePoint::OUTLIER)
+        // {
+        //  cand = nullptr;
+        // continue;
+        //}
+      }
+
+      // reorder candidates filling the gaps
+      for (int j = 0; j < candidates.size(); ++j)
+      {
+        if (candidates[j] == nullptr)
+        {
+          candidates[j] = std::move(candidates.back());
+          candidates.pop_back();
+          j--;						// go back again to check if last one was nullptr too
+        }
+        //std::cout<<j<<std::endl<<std::flush;
+      }
+      std::cout<<"Frame "<<owner->frameID()<<" just activated "<<counter<<" points.\n";
+    }
+    Utils::Time t2 = std::chrono::steady_clock::now();
+
+    if (settings.debugPrintLog && settings.debugLogActivePoints)
+    {
+      const std::string msg = "Act. New: " + std::to_string(numPointsCreated) + "\t";
+
+      auto& log = Log::getInstance();
+      log.addCurrentLog(lastKeyframe->frameID(), msg);
+    }
+
+    //if (settings.debugShowDistanceTransformAfter && this->outputWrapper_)
+    // {
+    //  cv::Mat distTransform = this->distanceMap_->drawDistanceTransform(true);
+    //  this->outputWrapper_->publishDistanceTransformAfter(distTransform);
+    //}
+  }
 
   void LMCW::removeOutliers() const
   {
@@ -664,6 +778,7 @@ namespace dsm
     adj.setZero();
 
     // update connectivity of active keyframes
+    // TODO: use inner product to check
     for (int i = 0; i < this->activeKeyframes_.size(); ++i)
     {
       const std::shared_ptr<Frame>& keyframe = this->activeKeyframes_[i];

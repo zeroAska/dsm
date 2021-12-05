@@ -172,7 +172,7 @@ namespace dsm
 		this->newKFUsageWeight = 3.f;									// 3 
 		this->newKFAffineWeight = 4.f;									// 4
 		this->newKFResidualWeight = 2.f;								// 2
-		this->minNumMappedFramesToCreateKF = 1;							// 1
+		this->minNumTrackedFramesToCreateKF = 1;							// 1
 
 		this->showDepthMap = true;										// true
 		this->showDepthMapLvl = 0;										// 0
@@ -326,7 +326,7 @@ namespace dsm
 		if (this->checkParameter("newkfusageweight", name, value, this->newKFUsageWeight)) return;
 		if (this->checkParameter("newkfaffineweight", name, value, this->newKFAffineWeight)) return;
 		if (this->checkParameter("newkfresidualweight", name, value, this->newKFResidualWeight)) return;
-		if (this->checkParameter("minnummappedframestocreatekf", name, value, this->minNumMappedFramesToCreateKF)) return;
+		if (this->checkParameter("minnumtrackedframestocreatekf", name, value, this->minNumTrackedFramesToCreateKF)) return;
 		if (this->checkParameter("showdepthmap", name, value, this->showDepthMap)) return;
 		if (this->checkParameter("showdepthmaplvl", name, value, this->showDepthMapLvl)) return;
                 if (this->checkParameter("fixFramePoses", name, value, this->fixFramePoses)) return;
@@ -334,7 +334,7 @@ namespace dsm
                   std::cout<<"iDepthUncertainty is "<<this->iDepthUncertainty<<std::endl;
                   return; 
                 }
-                if (this->checkParameter("trackingCosLimit", name, value, this->trackingCosLimit)) {
+                if (this->checkParameter("trackingcoslimit", name, value, this->trackingCosLimit)) {
                   std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
                   return; 
                 }

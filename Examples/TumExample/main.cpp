@@ -154,7 +154,9 @@ namespace dsm
 
           // process
           //DSM->trackFrame(id, timestamp, gray_img.data);
-          DSM->trackFrame(id, timestamp, gray_img.data, source_raw, source_dep_data, cvo_calib.scaling_factor(), source_pcd);
+          std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, gray_img.data, source_raw, source_pcd, source_dep_data, cvo_calib.scaling_factor());
+    
+          DSM->trackFrame(id, timestamp, trackingNewFrame);
           
           //cv::imwrite("new_tracked_gray.png", gray_img);
           // visualize image

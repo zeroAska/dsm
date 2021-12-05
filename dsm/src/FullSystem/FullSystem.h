@@ -30,6 +30,7 @@
 #include "sophus/se3.hpp"
 
 #include "opencv2/core.hpp"
+#include "DataStructures/Frame.h"
 
 #include <deque>
 #include <vector>
@@ -86,10 +87,11 @@ namespace dsm
 
 
     // Tracks the stereo frame. It calculates the system pose and the 3D scene*/
-    void trackFrame(int id, double timestamp, unsigned char* image);
-    void trackFrame(int id, double timestamp, unsigned char* gray_img, std::shared_ptr<cvo::RawImage> left_img, const cv::Mat & right_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
-    void trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const std::vector<uint16_t> & depth_img, float depth_scale,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);    
-    void trackModelToFrameCvo(const std::shared_ptr<Frame>& frame, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd );
+    //void trackFrame(int id, double timestamp, unsigned char* image);
+    //void trackFrame(int id, double timestamp, unsigned char* gray_img, std::shared_ptr<cvo::RawImage> left_img, const cv::Mat & right_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
+    //void trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const std::vector<uint16_t> & depth_img, float depth_scale,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
+    void trackFrame(int id, double timestamp, Frame::Ptr frame);
+    void trackModelToFrameCvo(std::shared_ptr<Frame>& frame );
 
     ////////////////////////////////////////
     //		       ACCESORS	 	          //
@@ -121,7 +123,7 @@ namespace dsm
     private:
 
     // initialize from video sequence
-    bool initialize(const std::shared_ptr<Frame>& frame, bool isUsingCvo);
+    bool initialize_lmcw(const std::shared_ptr<Frame>& frame);
 
     // track new frame using image alignment
     void trackNewFrame(const std::shared_ptr<Frame>& frame);
@@ -137,6 +139,7 @@ namespace dsm
     // candidates management
     void createCandidates(const std::shared_ptr<Frame>& frame);
     void trackCandidates(const std::shared_ptr<Frame>& frame);
+    void trackCandidatesCvo(const std::shared_ptr<Frame> frame, bool include_curr=false);
     void refineCandidates();
 
     // Optimization
@@ -156,9 +159,9 @@ namespace dsm
 
     private:
 
-    // control variables
-    std::atomic_bool initialized; // check first frame to intialize
-    std::atomic_bool trackingIsGood;
+    // control states
+    std::atomic_bool initialized; // check first frame to intialize 
+
 
     // threads
     std::unique_ptr<std::thread> mappingThread;
@@ -177,6 +180,7 @@ namespace dsm
     int32_t* pixelMask;
 
     // tracker, only in tracking thread
+    std::atomic_bool trackingIsGood;    
     std::unique_ptr<FrameTracker> tracker; // normal tracker
     std::unique_ptr<cvo::CvoGPU> cvo_align; // cvo tracker
     float lastTrackingCos;
@@ -184,22 +188,28 @@ namespace dsm
     // parallelization
     std::shared_ptr<WorkerThreadPool> threadPool;
 
+
+    
+    /********** tracking states ***************/
     // only in tracking thread
     // last tracked frame information for priors
     std::shared_ptr<Frame> lastTrackedFrame;		// last tracked frame
     Sophus::SE3f lastTrackedMotion;					// last tracked frame motion based on constant velocity model
-    float lastTrackedResidual;
-
+    //float lastTrackedResidual;
     // tracking reference
     std::mutex trackingReferenceMutex;
-    std::shared_ptr<FrameTrackerReference> trackingReference;			// tracking reference
-    std::shared_ptr<FrameTrackerReference> newTrackingReference;		// updated tracking reference
+    //std::shared_ptr<FrameTrackerReference> trackingReference;			// tracking reference
+    //std::shared_ptr<FrameTrackerReference> newTrackingReference;		// updated tracking reference
+    int numTrackedFramesFromLastKF;
+    std::shared_ptr<Frame> trackingReference;
+    std::shared_ptr<Frame> newTrackingReference;
     bool trackingReferenceUpdated;
-
     // write in tracking, read in mapping
     std::mutex unmappedTrackedFramesMutex;
     std::condition_variable  unmappedTrackedFramesSignal;
-    std::deque<std::shared_ptr<Frame>> unmappedTrackedFrames;	
+    std::deque<std::shared_ptr<Frame>> unmappedTrackedFrames;
+    /*******************************************/
+    
 
     // flag to set if new keyframe is required
     bool createNewKeyframe;							// only in tracking thread

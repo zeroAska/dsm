@@ -84,7 +84,7 @@ minDistToActivate = 5
 maxCandidateUncertainty = 2
 minCandidateQuality = 2
 
-doOnlyTemporalOpt = false
+doOnlyTemporalOpt = true
 printSummary = true
 showFullReport = false
 minOptimizationGrad = 2
@@ -108,10 +108,10 @@ newKFDistWeight = 4
 newKFUsageWeight = 3
 newKFAffineWeight = 4
 newKFResidualWeight = 2
-minNumMappedFramesToCreateKF = 1
+minNumTrackedFramesToCreateKF = 1
 
 showDepthMap = true
 showDepthMapLvl = 0
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.8
+trackingCosLimit = 0.85

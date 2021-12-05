@@ -83,6 +83,7 @@ namespace dsm
 
     // point status flag
     PointStatus status() const;
+    void setStatus(PointStatus status) {status_=status;}
 		
     // observation status flag
     ObserveStatus lastObservation() const;
