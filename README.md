@@ -1,165 +1,22 @@
-# DSM: Direct Sparse Mapping
+# CVO-DSM
+ 
+This repo uses code from DSM as the starting point and integrates CVO. Apart from [unified_cvo](https://github.com/UMich-CURLY/unified_cvo), all the dependencies are already in the [Dockerfile](https://github.com/UMich-CURLY/docker_images/tree/master/cvo_gpu).
 
-**Authors:** Jon Zubizarreta, Iker Aguinaga, Juan D. Tardós and J. M. M. Montiel.
-
-**Contact:** dsm (at) unizar (dot) es
-
-DSM is a novel approach to monocular SLAM. It is a fully direct system that estimates the camera trajectory and a consistent global map. Is is able to detect and handle map point reobservations when revisiting already mapped areas using the same photometric model and map points. We provide examples to run the SLAM system in the [EuRoC dataset](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) and with custom videos. We also provide an optional GUI for 3D visualization of the system results.
-
-<a href="https://youtu.be/sj1GIF-7BYo" target="_blank"><img src="http://img.youtube.com/vi/sj1GIF-7BYo/0.jpg" 
-alt="DSM" width="240" height="180" border="10" /></a>
-
-## 1. Related Publications
-
-* Jon Zubizarreta, Iker Aguinaga and J. M. M. Montiel. **Direct Sparse Mapping**. In *IEEE Transactions on Robotics* [[pdf](https://arxiv.org/abs/1904.06577)]
-
-## 2. Installation
-We tested DSM int two different system configurations: **Ubuntu 18.04** and **Windows 10** (VS15 and VS17). It should be easy to compile in other platforms. The library requires at least C++11.
-
-Clone the repository:
-
-```sh
-git clone https://github.com/jzubizarreta/dsm.git
+## Compile with CVO
+Assuming your UnifiedCvo repository path is `/home/user/unified_cvo/`. Then to compile DSM, you need:
 ```
-
-### 2.1 Required Dependencies
-
-#### Eigen3
-
-We use [Eigen3](http://eigen.tuxfamily.org) for almost any mathematical operation. 
-	
-Install with
-	
-```sh
-sudo apt-get install libeigen3-dev
-```
-
-#### OpenCV
-
-We use [OpenCV](https://opencv.org/) to manipulate images (read/write/display) and to bootstrap the monocular system. Feel free to implement those functionalities with your prefered library, if you want to get rid off Opencv. 
-	
-Install with
-	
-```sh
-sudo apt-get install libopencv-dev
-```
-
-#### Ceres Solver
-
-We use [Ceres Solver](http://ceres-solver.org) to perform the photometric bundle adjustment. In addition to the standard installation process, we generate a custom template specialization corresponding to our Schur structure, which speeds up the Schur elimination step. This is an optional step that can be skipped.
-	
-```sh
-git clone https://ceres-solver.googlesource.com/ceres-solver
-```
-	
-Ceres dependencies:
-	
-```sh
-# glog & gflags
-sudo apt-get install libgoogle-glog-dev
-
-# BLAS & LAPACK
-sudo apt-get install libatlas-base-dev
-
-# SuiteSparse
-sudo apt-get install libsuitesparse-dev
-```
-		
-Generate the custom template specialization (optional):
-
-```sh
-cp ./dsm/thirdparty/Ceres/generate_template_specializations.py ./ceres-solver/internal/ceres/
-python2 ceres-solver/internal/ceres/generate_template_specializations.py
-```
-
-Install with
-	
-```sh
-cd ceres-solver
 mkdir build
 cd build
-cmake ..
-make -j4
-sudo make install	
+cmake .. -DUnifiedCvo_DIR=/home/user/unified_cvo/build/ -DCMAKE_BUILD_TYPE=Release 
+make -j
 ```
+It will compile two libraries `libdsm.so` and `libQtVisualizer.so` at **lib** folder, which can be linked from external projects. It will also create two executables `TumExample` at **bin** folder to run DSM in the Tum dataset and with custom videos respectively.
 
-### 2.2 Optional Dependencies
+## Demo
+To run Tum RGB-D demo: `bash scripts/tum.bash`. Please change the path of the dataset folder to your own.
 
-#### Qt
 
-We use [Qt](https://www.qt.io/) for GUI and visualization. Although Qt is required to compile the whole project in the current version, it is easy to remove it. DSM does not depend on Qt. All the code related with Qt is in the `QtVisualizer` folder. Feel free to implement your own version of `IVisualizer` and replace the current visualizer `QtVisualizer`.
-
-Install with
-
-```sh
-sudo apt-get install qt5-default
-```
-
-### 2.3 DSM build
-
-Now we are ready to build DSM. Execute:
-
-```sh
-cd ../../dsm
-mkdir build
-cd build
-cmake ..
-make -j4
-```
-
-This will compile two libraries `libdsm.so` and `libQtVisualizer.so` at **lib** folder, which can be linked from external projects. It will also create two executables `EurocExample` and `VideoExample` at **bin** folder to run DSM in the EuRoC dataset and with custom videos respectively.
-
-## 3. Usage
-
-### 3.1 Calibration format
-DSM requires the geometric calibration of the camera as an input. Currently it uses the radial-tangential model of OpenCV. However, it should be easy to add new camera models. Take a look at `Unidistorter.h`.
-
-The calibration file has the format
-
-```
-fx fy cx cy k1 k2 p1 p2
-in_width in_height
-out_width out_height 
-```
-
-It is also possible to use higher order distortion models. You have to add the additional distortion coefficients using the OpenCV order. If no distortion coefficients are provided, they are assumed to be zero.
-
-### 3.2 EuRoC Example
-
-1. Download a sequence (ASL format) from [https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets).
-
-2. Extract the sequence in a folder `<SEQ_FOLDER>`.
-
-3. Run the executable with the following arguments
-
-```sh
-./EurocExample <IMAGE_FOLDER> <TIMESTAMPS_FILE> <CALIB_FILE> <SETTINGS_FILE>
-```
-
-where 
-
-   * `<IMAGE_FOLDER>` Folder containing the images of the sequence.
-
-   * `<TIMESTAMPS_FILE>` File containing the image timestamps for that specific sequence.
-
-   * `<CALIB_FILE>` File with the geometric calibration of the camera.
-
-   * (Optional) `<SETTINGS_FILE>` File with the system settings. If it is not provided, internal default values are used.
-
-The `<IMAGE_FOLDER>` can be usually found in `<SEQ_FOLDER>/mav0/camX/data`, where the X indicates if the left (0) or right (1) camera is used. The specific `<TIMESTAMPS_FILE>`, `<CALIB_FILE>` and `<SETTINGS_FILE>` for the EuRoC dataset are provided in `Examples/EurocData`.
-
-### 3.3 Video Example
-It is also possible to run your own custom videos with known camera calibration. Run the executable as
-
-```sh
-./VideoExample <VIDEO_FILE> <CALIB_FILE> <SETTINGS_FILE>
-```
-
-where
-
-   * `<VIDEO_FILE>` Custom video file with a supported format by OpenCV.
-
-## 4. Parameter options
+## DSM Parameter options
 The system parameter options can be found in `settings.h`. Those can also be loaded using an external `.txt` file, such as the one in `Examples/EurocData/settings.txt`. The most relevant parameters are:
 
 * `blockUntilMapped`: blocks the tracking thread until the mapping thread finishes.
@@ -222,7 +79,9 @@ The system parameter options can be found in `settings.h`. Those can also be loa
 * `newKFUsageWeight`: weight of the point usage by the frame tracker during new keyframe selection.
 * `newKFAffineWeight`: weight of the light change in the scene during new keyframe selection.
 * `newKFResidualWeight`: weight of the frame tracker residual during new keyframe selection.
-* `minNumMappedFramesToCreateKF`: minimum number of tracked frames to create a new keyframe.	
+* `minNumMappedFramesToCreateKF`: minimum number of tracked frames to create a new keyframe.
+* `iDepthUncertainty`: Initial uncertainty given to the depth and stereo points
+* `trackingCosLimit`: If cvo's `function_angle` returns a smaller value than this, the frame would be considered as a new keyframe.	
 
 ## 5. License
 
