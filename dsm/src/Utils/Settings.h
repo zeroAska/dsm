@@ -204,6 +204,8 @@ namespace dsm
 
           float trackingCosLimit;
 
+          bool enableDepthRegression;
+
 		// Secure Division
 		static const float DIVISION_EPS;
 

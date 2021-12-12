@@ -92,7 +92,7 @@ namespace dsm
     //void trackFrame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, const std::vector<uint16_t> & depth_img, float depth_scale,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd);
     void trackFrame(int id, double timestamp, Frame::Ptr frame);
     void trackModelToFrameCvo(std::shared_ptr<Frame>& frame );
-
+    void trackFrameToFrameCvo( std::shared_ptr<Frame>& frame);
     ////////////////////////////////////////
     //		       ACCESORS	 	          //
     ////////////////////////////////////////

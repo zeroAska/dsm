@@ -107,7 +107,7 @@ namespace dsm
     }
   }
 
-  void LMCW::dropKeyframes()
+  void LMCW::dropFlaggedKeyframes()
   {
     const auto& settings = Settings::getInstance();
 
@@ -222,15 +222,19 @@ namespace dsm
     }
 
     // if still a lot of keyframes, drop one based on distance
-    if ((this->activeKeyframes_.size() - numFlaggedToDrop) >= settings.maxTemporalKeyframes)
+    if ((this->activeKeyframes_.size() - numFlaggedToDrop) > settings.maxTemporalKeyframes)
     {
       float maxScore = -std::numeric_limits<float>::max();
       int idx = -1;
 
       // keep the last N keyframes
-      const int maxKeyframeID = (int)this->activeKeyframes_.size() - settings.numAlwaysKeepKeyframes;
+      //const int maxKeyframeID = (int)this->activeKeyframes_.size() - settings.numAlwaysKeepKeyframes;
+      const int maxKeyframeID = (int)this->activeKeyframes_.size() - settings.maxTemporalKeyframes;
       for (int i = 0; i < maxKeyframeID; ++i)
       {
+        this->activeKeyframes_[i]->setFlaggedToDrop(true);
+        numFlaggedToDrop++;
+        /*
         const Sophus::SE3f pose_i = this->activeKeyframes_[i]->camToWorld().inverse();
 
         // distance to other keyframes
@@ -253,13 +257,14 @@ namespace dsm
           maxScore = score;
           idx = i;
         }
+        */
       }
 
-      if (idx >= 0)
-      {
-        this->activeKeyframes_[idx]->setFlaggedToDrop(true);
-        numFlaggedToDrop++;
-      }
+      //if (idx >= 0)
+      // {
+      //  this->activeKeyframes_[idx]->setFlaggedToDrop(true);
+      //  numFlaggedToDrop++;
+      //}
     }
 
     if (settings.debugPrintLog && settings.debugLogActivePoints)
@@ -627,7 +632,7 @@ namespace dsm
     // whose status is 'OPTIMIZED'
     int numPointsCreated = 0;
     auto lastKeyframe = this->activeKeyframes_[this->activeKeyframes_.size()-1];
-    for (int i = this->temporalWindowIndex; i < numActiveKeyframes - 1; ++i)
+    for (int i = this->temporalWindowIndex; i < numActiveKeyframes-1; ++i)
     {
       std::cout<<"activePoint: new iteration "<<i<<std::endl<<std::flush;
       const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
@@ -650,7 +655,14 @@ namespace dsm
         if (status == CandidatePoint::OPTIMIZED )
         {
           // project into new keyframe
-          std::unique_ptr<ActivePoint> point = std::make_unique<ActivePoint>(lastKeyframe->keyframeID(), cand);
+          float filteredIdepth = cand->regressIdepth();
+          std::cout<<"regressIdepth: before: "<<cand->iDepth()<<", after: "<<filteredIdepth<<std::endl;
+          std::unique_ptr<ActivePoint> point;
+
+          if (settings.enableDepthRegression)
+            point.reset(new ActivePoint (lastKeyframe->keyframeID(), cand, filteredIdepth));
+          else
+            point.reset(new ActivePoint (lastKeyframe->keyframeID(), cand));          
           counter++;
 
           // observations & visibility
