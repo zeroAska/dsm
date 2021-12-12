@@ -179,6 +179,7 @@ namespace dsm
 
                 this->iDepthUncertainty = 0.025f;
                 this->trackingCosLimit = 0.75f;
+                this->enableDepthRegression = true;
 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -336,6 +337,10 @@ namespace dsm
                 }
                 if (this->checkParameter("trackingcoslimit", name, value, this->trackingCosLimit)) {
                   std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
+                  return; 
+                }
+                if (this->checkParameter("enabledepthregression", name, value, this->enableDepthRegression)) {
+                  // std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
                   return; 
                 }
                 

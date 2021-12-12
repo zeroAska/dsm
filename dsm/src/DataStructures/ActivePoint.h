@@ -56,6 +56,7 @@ namespace dsm
 		// The constructor will move all the required information
 		// The candidate point must be deleted after ActivePoint constructor
 		ActivePoint(int32_t creationID, const std::unique_ptr<CandidatePoint>& candidate);
+                ActivePoint(int32_t creationID, const std::unique_ptr<CandidatePoint>& candidate, float filteredIdepth);
 
 		// Destructor
 		~ActivePoint();

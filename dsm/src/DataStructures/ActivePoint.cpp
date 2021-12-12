@@ -32,6 +32,12 @@
 
 namespace dsm
 {
+  ActivePoint::ActivePoint(int32_t creationID, const std::unique_ptr<CandidatePoint>& candidate, float filteredIdepth) :
+    ActivePoint(creationID, candidate) {
+    iDepth_ = filteredIdepth;
+  }
+  
+  
   ActivePoint::ActivePoint(int32_t creationID, const std::unique_ptr<CandidatePoint>& candidate) :
     currentID_(creationID)
   {

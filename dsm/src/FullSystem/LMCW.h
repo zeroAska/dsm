@@ -61,7 +61,7 @@ namespace dsm
     void selectWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
     // removes keyframes from active window
-    void dropKeyframes();
+    void dropFlaggedKeyframes();
 
     // activates new points from the window
     void activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA);

@@ -50,6 +50,7 @@
 #include "pcl/io/pcd_io.h"
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <Eigen/Sparse>
 #include <fstream>
 #include <time.h>
 
@@ -62,6 +63,7 @@ namespace dsm
     trackingIsGood(true),
     createNewKeyframe(false),
     createNewKeyframeID(-1),
+
     numTrackedFramesFromLastKF(0),
     shouldStop(false),
     newFrameMappedDone(true),
@@ -105,7 +107,7 @@ namespace dsm
                                                           (int)settings.numBlocksPerDimension, settings.minGradAdd,
                                                           this->threadPool);
 
-    this->pixelMask = (int32_t*)Eigen::internal::aligned_malloc(width * height * sizeof(int32_t));
+    this->pixelMask = (int32_t*) new int32_t [width * height];  //Eigen::internal::aligned_malloc(width * height * sizeof(int32_t));
 
     // Fourth: initialize member variables
     this->tracker = std::make_unique<FrameTracker>(width, height);
@@ -187,7 +189,8 @@ namespace dsm
     this->unmappedTrackedFrames.clear();
 
     // delete mask for pixel detector
-    Eigen::internal::aligned_free(this->pixelMask);
+    //Eigen::internal::aligned_free(this->pixelMask);
+    delete this->pixelMask;
 
     // delete buffers
     // guarantee that all buffers have been returned to the pool
@@ -1183,6 +1186,7 @@ namespace dsm
     this->lastTrackingCos = cvo_align->function_angle(*(reference->getTrackingPoints()),
                                                       *(new_frame_pcd),
                                                       trackingPoseResult.inverse(),
+                                                      cvo_align->get_params().ell_init,
                                                       false);
     std::cout<<"Tracking cvo function_angle is "<<lastTrackingCos<<std::endl;
     //std::cout<<"CVO result frameToRefPose is "<<frameToRefPose.matrix()<<std::endl;
@@ -1210,6 +1214,143 @@ namespace dsm
   
   }
 
+  void FullSystem::trackFrameToFrameCvo( std::shared_ptr<Frame>& frame){
+
+    Utils::Time t1 = std::chrono::steady_clock::now();
+
+    // select tracking reference keyframe
+    Sophus::SE3f lastToWorldPose = this->lastTrackedFrame->parent()->camToWorld() *
+      this->lastTrackedFrame->thisToParentPose();
+
+    //AffineLight lastToWorldLight = AffineLight::calcGlobal(this->lastTrackedFrame->parent()->affineLight(),
+    //                                                      this->lastTrackedFrame->thisToParentLight());
+
+    // if a new kf (starting from the third one) is setup in CreateNewKFAndOptimize,
+    // update the tracking reference, the initial guess pose and light
+    if (this->trackingReferenceUpdated)
+    {
+      std::lock_guard<std::mutex> lock(this->trackingReferenceMutex);
+      std::swap(this->trackingReference, this->newTrackingReference);
+      std::cout<<"setting this->createNewKeyframe to false"<<std::endl;
+      this->createNewKeyframe = false;
+      this->trackingReferenceUpdated = false;
+
+      Frame::Ptr newReference = this->trackingReference;
+      Frame::Ptr oldReference = this->newTrackingReference;
+
+      if (newReference && oldReference)
+      {
+        // correct last frame pose with PBA result
+        // oldReference = parent of newReference
+
+        // pose
+        //const Sophus::SE3f poseCorrection = newReference->camToWorld().inverse() * 
+        //  oldReference->camToWorld() * 
+        //  newReference->thisToParentPose();
+
+        //lastToWorldPose *= poseCorrection.inverse();
+
+        // light
+        //const AffineLight newRefOldLight = AffineLight::calcGlobal(newReference->parent()->affineLight(),
+        //                                                            newReference->thisToParentLight());
+      //const AffineLight lightCorrection = AffineLight::calcRelative(newRefOldLight,
+        //                                                              newReference->affineLight());
+      //  lastToWorldLight = AffineLight::calcGlobal(lastToWorldLight,
+                                                   //                                           lightCorrection);
+      }
+    }
+    Frame::Ptr lastTrackedFrame = this->lastTrackedFrame;
+    Frame::Ptr reference = this->trackingReference;
+    Eigen::Matrix4f lastTrackedMotionEigen = this->lastTrackedMotion.matrix();
+    // pose prior -> constant velocity model
+    std::cout<<"\nCvo last frame id "<<lastTrackedFrame->frameID()<<"'s lastToWorldPose is "<<lastToWorldPose.matrix()<<std::endl;
+    Sophus::SE3f lastToRef = reference->camToWorld().inverse() * lastToWorldPose;
+    //Sophus::SE3f frameToRefPose = lastToRef * this->lastTrackedMotion;
+    //Eigen::Matrix4f frameToRefPoseEigen = frameToRefPose.matrix().inverse();
+    Eigen::Matrix4f initialGuess = lastTrackedMotionEigen.inverse();
+
+    // affine light prior
+    //AffineLight frameToRefLight = AffineLight::calcRelative(reference->affineLight(),
+    //                                                        lastToWorldLight);
+
+    // Error distribution
+    //std::shared_ptr<IDistribution> errorDistribution;
+
+    // Track
+    // relative pose to reference keyframe
+    std::cout<<"Cvo trying to align frame "<<lastTrackedFrame->frameID()<<" and frame "<<frame->frameID()<<std::endl;
+    pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd = frame->getTrackingPoints();
+    Eigen::Matrix4f trackingPoseResult;
+    double trackingTime;
+    int cvoTrackingResult = cvo_align->align(*(this->lastTrackedFrame->getTrackingPoints()),
+                                             *(new_frame_pcd),
+                                             initialGuess,
+                                             // outputs
+                                             trackingPoseResult,
+                                             nullptr,
+                                             &trackingTime);
+    Sophus::SE3f resultSophus(trackingPoseResult.block<3,3>(0,0), trackingPoseResult.block<3,1>(0,3));
+    
+    // frameToRefPose = resultSophus; // convert back to sophus
+    
+    // track relative affine light to reference keyframe
+    //bool goodTrackedLight = this->tracker->trackFrame(this->trackingReference, frame, frameToRefPose, frameToRefLight,                                                                                                                 errorDistribution, this->outputWrapper, true);      
+
+    //tracking lost? - reset tracking internal data
+    bool goodTracked = (cvoTrackingResult == 0);
+    //bool goodTracked = (cvoTrackingResult == 0 && goodTrackedLight);
+    if (!goodTracked)
+    {
+      this->trackingIsGood = false;
+
+      this->lastTrackedFrame = nullptr;
+      this->lastTrackedMotion = Sophus::SE3f();
+
+      this->trackingReference = nullptr;
+      //this->tracker->reset();
+
+      this->unmappedTrackedFramesSignal.notify_one();
+
+      return;
+    }
+
+    // save result to the latest frame
+    Sophus::SE3f frameToRefPose = lastToRef * resultSophus;
+    Eigen::Matrix4f frameToRefPoseEigen = frameToRefPose.matrix();
+    std::cout<<"Just aligned frame "<<reference->frameID()<<" and "<<frame->frameID()<<", ";
+    std::cout<<"reference frame to lastest frame pose is "<<frameToRefPoseEigen<<std::endl;    
+    this->lastTrackingCos = cvo_align->function_angle(*(reference->getTrackingPoints()),
+                                                      *(new_frame_pcd),
+                                                      frameToRefPoseEigen.inverse(),
+                                                      cvo_align->get_params().ell_init,
+                                                      false);
+    std::cout<<"Tracking cvo function_angle is "<<this->lastTrackingCos<<std::endl;
+
+    // convert to frame-to-ref
+    frame->setTrackingResult(reference.get(), frameToRefPose);
+
+    // error distribution
+    //frame->setErrorDistribution(errorDistribution);
+
+    // residuals per level
+    //this->lastTrackedResidual = this->tracker->totalResidual();
+
+    //if (this->trackingReference->firstFrameResidual() < 0.f)
+    // {
+    //  this->trackingReference->setFirstFrameResidual(this->lastTrackedResidual);
+    // }
+
+    // save info for tracking priors
+    this->lastTrackedMotion = resultSophus;
+    this->lastTrackedFrame = frame;
+
+    Utils::Time t2 = std::chrono::steady_clock::now();
+    //std::cout << "Tracking: " << Utils::elapsedTime(t1, t2) << "\n";
+    
+  
+  }
+
+  
   /*
   void FullSystem::trackNewFrame(const std::shared_ptr<Frame>& frame)
   {
@@ -1345,8 +1486,8 @@ namespace dsm
     }
 
     // track
-    //this->trackNewFrame(trackingNewFrame);
-    this->trackModelToFrameCvo(trackingNewFrame);
+    this->trackFrameToFrameCvo(trackingNewFrame);
+    //this->trackModelToFrameCvo(trackingNewFrame);
 
     if (!this->trackingIsGood)
     {
@@ -1583,6 +1724,7 @@ namespace dsm
       // track previous keyframes's candidates with the tracked frame.
       // The newly tracked frame is not a keyframe
       this->trackCandidatesCvo(frame);
+      this->lmcw->allKeyframes()[lmcw->allKeyframes().size()-1]->dump_candidates_to_pcd(std::to_string(numTrackedFramesFromLastKF)+".pcd");
       this->numTrackedFramesFromLastKF++;
 
       Utils::Time t2 = std::chrono::steady_clock::now();
@@ -1603,6 +1745,88 @@ namespace dsm
     this->newFrameMappedSignal.wait(newFrameMappedLock, [&]() {return this->newFrameMappedDone; });
   }
 
+
+
+  static int stereo_surface_sampling(const cv::Mat & left_gray,
+                                     bool is_using_canny,
+                                     bool is_using_uniform_rand,
+                                     int expected_points,
+                                     // output
+                                     std::vector<int32_t> & selected_inds_map
+                                     //std::vector<Vec2i, Eigen::aligned_allocator<Vec2i>> & final_selected_uv                   
+                                     ) {
+    //selected_inds_map.resize(left_gray.total(), false);
+    
+    // canny
+    cv::Mat detected_edges;
+    if (is_using_canny)
+      cv::Canny( left_gray, detected_edges, 50, 50*3, 3 );
+    int counter = 0;
+    
+    std::vector<Eigen::Vector2i, Eigen::aligned_allocator<Eigen::Vector2i>> tmp_uvs_canny, tmp_uvs_surface;
+    for (int r = 0 ; r < left_gray.rows; r++) {
+      for (int c = 0; c < left_gray.cols; c++) {
+        // using Canny
+        if (is_using_canny &&  detected_edges.at<uint8_t>(r, c) > 0)  {
+          //selected_inds_map[r * left_gray.cols + c] = true;
+          tmp_uvs_canny.push_back(Eigen::Vector2i(c, r));
+        }
+        selected_inds_map[r * left_gray.cols + c] = -1;
+      }
+      
+    }
+    for (int r = 0 ; r < left_gray.rows; r++) {
+      for (int c = 0; c < left_gray.cols; c++) {
+        
+        // using uniform sampling
+        if ( (!is_using_canny || detected_edges.at<uint8_t>(r, c) == 0 ) &&
+            is_using_uniform_rand &&
+            //r > left_gray.rows   &&
+            rand() % 50 == 0)  {
+          //selected_inds_map[r * left_gray.cols + c] = true;
+
+          tmp_uvs_surface.push_back(Eigen::Vector2i(c, r));
+        }
+
+      }
+      
+    }
+    std::cout<<"Canny size "<<tmp_uvs_canny.size()<<", surface size "<<tmp_uvs_surface.size()<<"\n";
+    int total_selected_canny = tmp_uvs_canny.size();
+    int total_selected_surface = tmp_uvs_surface.size();
+    int total = 0;
+    int found = 0;
+    for (int i = 0; i < tmp_uvs_canny.size(); i++) {
+      if (rand() % total_selected_canny < expected_points / 2 ) {
+        //final_selected_uv.push_back(tmp_uvs_canny[i]);
+        auto c = tmp_uvs_canny[i](0);        
+        auto r = tmp_uvs_canny[i](1);
+        selected_inds_map[r * left_gray.cols + c] = 0;
+        total++;
+      }
+      
+    }
+    for (int i = 0; i < tmp_uvs_surface.size(); i++) {
+      if (rand() % total_selected_surface < expected_points / 2 ) {
+        //final_selected_uv.push_back(tmp_uvs_surface[i]);
+        auto c = tmp_uvs_surface[i](0);        
+        auto r = tmp_uvs_surface[i](1);
+        selected_inds_map[r * left_gray.cols + c] = 0;
+        total++;
+      }
+      
+    }
+    
+    return total;
+    //std::cout<<" final selected uv size is "<<final_selected_uv.size()<<std::endl;
+    //cv::imwrite("canny.png", detected_edges);    
+    
+  }
+
+  
+
+  
+
   void FullSystem::createCandidates(const std::shared_ptr<Frame>& frame)
   {
     const auto& calib = GlobalCalibration::getInstance();
@@ -1614,14 +1838,33 @@ namespace dsm
     const int32_t height = calib.height(0);
     const int32_t distToBorder = Pattern::padding() + 1;
 
+    auto & rawImg = * (frame->getRawImage());
+
     // Create new candidates in the frame
     // They have to be homogeneously distributed in the image	
-    int num = this->pointDetector->detect(frame, (int)settings.numCandidates, this->pixelMask,
-                                          this->outputWrapper);
+    // int num = this->pointDetector->detect(frame, (int)settings.numCandidates, this->pixelMask,
+    //                                     this->outputWrapper);
+
+    cv::Mat left_gray;
+    cv::cvtColor(rawImg.image(), left_gray, cv::COLOR_BGR2GRAY);
+    //std::vector<int32_t> selected_inds_map(this->pixelMask, this->pixelMask + sizeof(int32_t) * left_gray.total());
+    std::vector<int32_t> selected_inds_map(left_gray.rows * left_gray.cols);
+    std::fill(selected_inds_map.begin(), selected_inds_map.end(), -1);
+    int num = stereo_surface_sampling(left_gray,
+                                      true,
+                                      true,
+                                      1000,
+                                      // output
+                                      selected_inds_map
+                                      //std::vector<Vec2i, Eigen::aligned_allocator<Vec2i>> & final_selected_uv                   
+                                      );
+    
 
     // create candidates
     auto& candidates = frame->candidates();
     candidates.reserve(num);
+
+    int cc = 0;
 
     Utils::Time t1 = std::chrono::steady_clock::now();
 
@@ -1631,8 +1874,9 @@ namespace dsm
       {
         int32_t idx = col + row * width;
 
-        if (this->pixelMask[idx] < 0) continue;
-
+        //if (this->pixelMask[idx] < 0) continue;
+        if (selected_inds_map[idx] != 0) continue;
+        cc++;
         // create a point
         if (cvo_align!=nullptr) {
           float idepth = 0;
@@ -1641,18 +1885,18 @@ namespace dsm
           else if (frame->depthType == Frame::DepthType::RGBD)
             idepth =  frame->depthScale / (frame->getRgbdDepth()[width * row + col]); 
           if ( ! std::isfinite(idepth) || idepth < 0.01f ) continue;
-          //candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, this->pixelMask[idx], frame, idepth));
-          std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, this->pixelMask[idx], frame, idepth));
-          //      if (new_candidate->status() != CandidatePoint::PointStatus::OUTLIER) {
+          std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth));
+
           candidates.emplace_back(std::move(new_candidate));
             //D}
         } else
-          candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, this->pixelMask[idx], frame));
+          candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, selected_inds_map[idx] , frame));
       }
     }
-
+    
     candidates.shrink_to_fit();
     frame->initCandidateQualityFlag();
+    std::cout<<"Create "<<candidates.size()<<" new candidates for frame "<<frame->frameID()<<std::endl;
 
     Utils::Time t2 = std::chrono::steady_clock::now();
 		
@@ -1668,19 +1912,26 @@ namespace dsm
     auto& activePoints = frame->activePoints();
     activePoints.reserve(candidates.size());
 
-    //std::string fname("candidates_after_creation.pcd");
-    //frame->dump_candidates_to_pcd(fname);
-    //std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
+    std::string fname("candidates_after_creation.pcd");
+    frame->dump_candidates_to_pcd(fname);
+    std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }
 
   void FullSystem::trackCandidatesCvo(const Frame::Ptr frame, bool include_curr) {
 
     const auto& settings = Settings::getInstance();
-
-    const auto& activeKeyframes = this->lmcw->activeWindow();
-    cvo::CvoPointCloud candidates_curr(*frame->getTrackingPoints());
-    //frame->candidatesToCvoPointCloud(candidates_curr);
+    const auto& calib = GlobalCalibration::getInstance();
+    const auto& K = calib.matrix3f(0);
+    const auto& Kinv = calib.invMatrix3f(0);
     
+    const auto& activeKeyframes = this->lmcw->activeWindow();
+    std::unique_ptr<cvo::CvoPointCloud> candidates_curr;
+    if (frame->candidates().size() == 0)
+      candidates_curr.reset(new cvo::CvoPointCloud(*frame->getTrackingPoints()));
+    else {
+      candidates_curr.reset(new cvo::CvoPointCloud);
+      frame->candidatesToCvoPointCloud(*candidates_curr);
+    }
 
     Sophus::SE3f camToRef = frame->thisToParentPose();
     Frame * const parent = frame->parent();
@@ -1699,32 +1950,52 @@ namespace dsm
       kf->candidatesToCvoPointCloud(candidates_cvo);
 
       Sophus::SE3f parentToCurrKF = kf->camToWorld().inverse() *  parent->camToWorld();
-      Eigen::Matrix4f kfToFrame = (parentToCurrKF * camToRef).inverse().matrix();
+      Sophus::SE3f kfToFrame = (parentToCurrKF * camToRef).inverse();
+      Eigen::Matrix4f kfToFrameEigen = kfToFrame.matrix();
         
       cvo::Association association_mat;
       cvo_align->compute_association_gpu(candidates_cvo,
-                                         candidates_curr,
-                                         kfToFrame,
+                                         *candidates_curr,
+                                         kfToFrameEigen,
+                                         0.1,
                                          association_mat);
       int counter = 0;
+      //for (int j=0; j < association_mat.outerSize(); ++j) {
       for (int j = 0; j < association_mat.source_inliers.size(); j++) {
-        if (association_mat.source_inliers[j] ) {
-          kf->candidatesHighQuaity()[j] = CandidatePoint::PointStatus::OPTIMIZED;
-          kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
+        //if (association_mat.source_inliers[j] ) {
+        int kfPtIdx = association_mat.source_inliers[j];
+        kf->candidatesHighQuaity()[kfPtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
+        kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
+        for (Eigen::SparseMatrix<float, Eigen::RowMajor>::InnerIterator it(association_mat.pairs,kfPtIdx); it; ++it) {
+          float weight = it.value();
+          //int idx1 = it.row();   // row index
+          int idx_target = it.col();   // col index (here it is equal to k)
+          Eigen::Vector3f XYZ = candidates_curr->positions()[idx_target]; //frame->candidates()[idx_target]->xyz();
+          float obsIdepth = 1/((K * (kfToFrame * XYZ))(2));
+          kf->candidates()[kfPtIdx]->addIdepthObservation(obsIdepth,weight);
         }
+        //}
         if (kf->candidatesHighQuaity()[j] == CandidatePoint::PointStatus::OPTIMIZED)
           counter++;
       }
-      
+      std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n"<<std::flush;
+
       if (include_curr) {
+        counter = 0;
         for (int j = 0; j < association_mat.target_inliers.size(); j++) {
-          if (association_mat.target_inliers[j] ) {
-            frame->candidatesHighQuaity()[j] = CandidatePoint::PointStatus::OPTIMIZED;
-            frame->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);            
-          }
+          //if (association_mat.target_inliers[j] ) {
+          int framePtIdx = association_mat.target_inliers[j];
+          frame->candidatesHighQuaity()[framePtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
+          frame->candidates()[framePtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);            
+            //}
+          if (frame->candidatesHighQuaity()[framePtIdx] == CandidatePoint::PointStatus::OPTIMIZED)
+            counter++;
         }
+        std::cout<<"Frame "<<frame->frameID()<<" has "<<counter<<" traced points\n";
+      } else {
+        
       }
-      std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n";
+
       if (settings.debugCandidates) {
         // std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n";
       }
@@ -2034,16 +2305,16 @@ namespace dsm
   }
 
   void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes) {
-    if (activeKeyframes.size() < 3) return;
+    if (activeKeyframes.size() < 4) return;
     std::vector<cvo::CvoPointCloud> cvo_pcs;
     std::vector<cvo::CvoFrame::Ptr> cvo_frames;      
-    cvo_pcs.resize(activeKeyframes.size());
+    cvo_pcs.resize(activeKeyframes.size()-1);
     std::cout<<"CvoMultiAlign: Frames are ";    
-    for (int i = 0; i < activeKeyframes.size(); i++) {
+    for (int i = 0; i < activeKeyframes.size()-1; i++) {
       auto kf = activeKeyframes[i];
       std::cout<<kf->frameID()<<", ";
       kf->activePointsToCvoPointCloud(cvo_pcs[i]);
-
+      assert(kf->activePoints().size() != 0);
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
       cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data()));
       cvo_frames.push_back(cvo_ptr);
@@ -2052,8 +2323,8 @@ namespace dsm
     // read edges to construct graph
     // TODO: edges will be constructed from the covisibility graph later
     std::list<std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr>> edges;
-    for (int i = 0; i < cvo_frames.size(); i++) {
-      for (int j = i+1; j < cvo_frames.size(); j++) {
+    for (int i = 0; i < cvo_frames.size()-1; i++) {
+      for (int j = i+1; j < std::min(i+4, (int)cvo_frames.size()-1); j++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[i], cvo_frames[j]);
         edges.push_back(p);
       }
@@ -2066,7 +2337,7 @@ namespace dsm
     cvo_align->align(cvo_frames, edges, &time);
     std::cout<<"cvo BA time is "<<time<<", for "<<cvo_frames.size()<<" frames\n";
 
-    for (int i = 0; i < activeKeyframes.size(); i++) {
+    for (int i = 0; i < activeKeyframes.size()-1; i++) {
       auto kf = activeKeyframes[i];
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = Eigen::Matrix<double, 4,4, Eigen::RowMajor>::Identity();
       kf_to_world.block<3,4>(0,0) = Eigen::Map<Eigen::Matrix<double, 3,4, Eigen::RowMajor>>(cvo_frames[i]->pose_vec);
@@ -2086,7 +2357,7 @@ namespace dsm
 
     // initialize candidates
     this->createCandidates(frame);    
-    this->trackCandidatesCvo(frame);
+    this->trackCandidatesCvo(frame, true);
 
     // insert new keyframe
     this->lmcw->insertNewKeyframe(frame);
@@ -2114,6 +2385,8 @@ namespace dsm
 
     // select new active points from the temporal window
     this->lmcw->activatePointsCvo();
+    if (lmcw->allKeyframes().size() > 1 && lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->activePoints().size())
+      this->lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->dump_active_points_to_pcd("active_points.pcd");    
 
     // optimize
     const auto& activeKeyframes = this->lmcw->activeWindow();
@@ -2236,7 +2509,7 @@ namespace dsm
 
     // drop keyframes and remove covisible keyframes
     // we will only estimate new candidates from the temporal window
-    this->lmcw->dropKeyframes();
+    this->lmcw->dropFlaggedKeyframes();
 
     // create new candidates for last keyframe
     //Utils::Time t19 = std::chrono::steady_clock::now();
@@ -2671,7 +2944,7 @@ namespace dsm
       int pt2x = (int)((254.f - light_b) / light_a + 0.5f);
       if (pt2x <= 254)
       {
-        // cross with y = 254
+        // cross with y = 254r
         pt2x = std::max(0, pt2x);
         p2 = cv::Point(pt2x, 254);
       }

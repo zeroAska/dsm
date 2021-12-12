@@ -107,6 +107,9 @@ namespace dsm
     Eigen::VectorXf features() {return features_;}
     Eigen::VectorXf semantics() {return semantics_;}
     Eigen::Vector3f xyz();
+    void addIdepthObservation(float newObsIdepth, float newWeight);
+    float regressIdepth();
+    
     
   private:
 
@@ -121,6 +124,7 @@ namespace dsm
     Visibility computeJacobianAndResidual(const std::shared_ptr<Frame>& frame, const Eigen::Matrix3f& K, 
                                           int width, int height, float inverseDepth, float outlierIncFactor, 
                                           float &H, float &b, float &energy) const;
+
 
   private:
 
@@ -168,6 +172,8 @@ namespace dsm
     //Eigen::Vector3f xyz_;
     Eigen::VectorXf features_;
     Eigen::VectorXf semantics_;
+    std::vector<float> observedIdepths_;
+    std::vector<float> cvoObservationWeights_;
 
   };
 }

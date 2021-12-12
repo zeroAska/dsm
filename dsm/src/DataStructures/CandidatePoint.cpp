@@ -285,6 +285,31 @@ namespace dsm
     return this->visibility_[activeID] == Visibility::VISIBLE;
   }
 
+  void CandidatePoint::addIdepthObservation(float newObsIdepth, float newWeight) {
+    observedIdepths_.push_back(newObsIdepth);
+    cvoObservationWeights_.push_back(newWeight);
+  }
+
+  float CandidatePoint::regressIdepth() {
+    float weightSquaredNorm = 0;
+    float weightDotIdepth = 0;
+    //weightSquaredNorm += 1;
+    if (observedIdepths_.size() == 0)
+      return iDepth_;
+    
+    for (int i = 0; i < observedIdepths_.size(); i++) {
+      float weight_i = cvoObservationWeights_[i];
+      float idepth_i = observedIdepths_[i];
+      weightSquaredNorm += weight_i;
+      weightDotIdepth += weight_i * idepth_i;
+    }
+    float meanWeight = weightSquaredNorm / observedIdepths_.size();
+    weightSquaredNorm += meanWeight;
+    weightDotIdepth += iDepth_ * meanWeight;    
+    float regressed =  weightDotIdepth / weightSquaredNorm;
+    return regressed;
+  }
+
   CandidatePoint::ObserveStatus CandidatePoint::observe(const std::shared_ptr<Frame>& other)
   {
     if (this->status_ == PointStatus::OUTLIER)
