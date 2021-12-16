@@ -73,6 +73,7 @@ set(HEADER_FILES
 	${root}/DataStructures/Pattern.h
 	${root}/DataStructures/CovisibilityGraph.h
 	${root}/DataStructures/Visibility.h
+	${root}/DataStructures/VoxelMap.h
 	${root}/Statistics/NelderMead.h
 	${root}/Statistics/Statistics.h
 	${root}/Statistics/Tail.h
@@ -145,6 +146,7 @@ set(SOURCE_FILES
 	${root}/Initializer/MonoInitializer.cpp
 	${root}/Initializer/ModelSelector.cpp
 	${root}/Visualizer/IVisualizer.cpp	
+	${root}/DataStructures/VoxelMap.cpp
 	)
 		
 # Organize the source and header files into groups

@@ -37,6 +37,7 @@ namespace dsm
   class CeresPhotometricBA;
   class CovisibilityGraph;
   class IVisualizer;
+  class VoxelMap;
   
 
   // optimization window
@@ -46,7 +47,8 @@ namespace dsm
   public:
 
     LMCW(int width, int height, IVisualizer *visualizer = nullptr);
-    LMCW(int width, int height, const cvo::CvoGPU * align, IVisualizer *visualizer);          
+    LMCW(int width, int height, const cvo::CvoGPU * align, IVisualizer *visualizer); 
+    LMCW(int width, int height, const cvo::CvoGPU * align, IVisualizer *visualizer, float voxelSize);         
     ~LMCW();
 
     // reset all keyframes
@@ -64,6 +66,9 @@ namespace dsm
     // activates new points from the window
     void activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
     void activatePointsCvo();
+
+    // add active points to voxel map
+    void addActPointsToVMap();
 
     // remove outlier points after PBA
     void removeOutliers() const;
@@ -126,6 +131,9 @@ namespace dsm
 
     // covisibility graph
     std::unique_ptr<CovisibilityGraph> covisibilityGraph_;
+
+    // voxel map
+    std::unique_ptr<VoxelMap> voxelMap_;
 
     // visualizer
     IVisualizer* const outputWrapper_;

@@ -210,7 +210,7 @@ namespace dsm
     globalCalib.setDepthScale(calib.scaling_factor());
     lastTrackingCos = 1;
 
-    this->lmcw.reset(new LMCW(w, h, cvo_align.get(), outputWrapper) );    
+    this->lmcw = std::make_unique<LMCW>(w, h, cvo_align.get(), outputWrapper, 0.05);
   }
   
 
@@ -1146,6 +1146,7 @@ namespace dsm
     pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd = frame->getTrackingPoints();
     Eigen::Matrix4f trackingPoseResult;
     double trackingTime;
+    // std::cout<<"Each has "<<reference->getTrackingPoints()->size()<<" and "<<new_frame_pcd->size()<<"\n";
     int cvoTrackingResult = cvo_align->align(*(reference->getTrackingPoints()),
                                              *(new_frame_pcd),
                                              frameToRefPoseEigen,

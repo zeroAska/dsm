@@ -26,6 +26,7 @@
 #include "DataStructures/Frame.h"
 #include "DataStructures/CandidatePoint.h"
 #include "DataStructures/ActivePoint.h"
+#include "DataStructures/VoxelMap.h"
 #include "DataStructures/Pattern.h"
 #include "DataStructures/CovisibilityGraph.h"
 #include "Optimization/PhotometricResidual.h"
@@ -35,6 +36,8 @@
 #include "Utils/Settings.h"
 #include "Utils/UtilFunctions.h"
 #include "cvo/CvoGPU.hpp"
+
+#include <fstream>
 
 namespace dsm
 {
@@ -57,6 +60,23 @@ namespace dsm
 
     
   }
+
+  LMCW::LMCW(int width, int height,  const cvo::CvoGPU * align, IVisualizer *visualizer, float voxelSize)
+    : cvo_align(align) ,     temporalWindowIndex(0), numActivePoints(0), outputWrapper_(visualizer), 
+    voxelMap_(new VoxelMap(voxelSize)) {
+    std::cout << "Correct LMCW constructor\n";
+    const auto& settings = Settings::getInstance();
+    const int levels = settings.pyramidLevels;
+
+    // distance transformation
+    this->distanceMap_ = std::make_unique<DistanceTransform>(width, height);
+    this->minDistToActivate = settings.minDistToActivate;
+
+    // covisibility graph
+    this->covisibilityGraph_ = std::make_unique<CovisibilityGraph>();
+
+    //this->voxelMap_ = std::make_unique<VoxelMap>(voxelSize);
+    }
 
   LMCW::~LMCW()
   {}
@@ -683,8 +703,20 @@ namespace dsm
           // update distance map
           //this->distanceMap_->add(point, lastKeyframe);
 
+          // insert to voxel map
+          Eigen::Vector3f pointCoord = point->xyz();
+          Point pt(pointCoord(0), pointCoord[1], pointCoord[2], point->currentID());
+          // std::cout << pt << std::endl;
+          // voxelMap_->insert_point(pt);
+          // std::cout << "Voxel Map size: " << voxelMap_->size() << std::endl;
+          std::ofstream file;
+          file.open("/home/tannerliu/dsm/points.txt", std::ios_base::app);
+          file << pt.x << ", " << pt.y << ", " << pt.z << ", " << pt.frameID << "\n";
+
+
           // insert into list
           activePoints.push_back(std::move(point));
+
         }
         //else if (status == CandidatePoint::OUTLIER)
         // {
@@ -722,6 +754,30 @@ namespace dsm
     //  this->outputWrapper_->publishDistanceTransformAfter(distTransform);
     //}
   }
+
+  // void LMCW::addActPointsToVMap() 
+  // {
+  //   int numActiveKeyframes = (int)this->activeKeyframes_.size();
+  //   int numPointsCreated = 0;
+  //   auto lastKeyframe = this->activeKeyframes_[this->activeKeyframes_.size()-1];
+
+  //   for (int i = this->temporalWindowIndex; i < numActiveKeyframes; ++i)
+  //   {
+  //     std::cout<<"addActPointsToVMap: new iteration "<<i<<std::endl<<std::flush;
+  //     const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
+
+  //     auto& activePoints = owner->activePoints();
+
+  //     int counter = 0;
+  //     for (auto& actPt : activePoints)
+  //     {
+  //       Eigen::Vector3f ptCoord = actPt->xyz();
+  //       Point pt(ptCoord(0), ptCoord(1), ptCoord(2), actPt->currentID());
+  //       voxelMap_->insert_point(pt);
+  //       std::cout << "Inserted an active point\n";
+  //     }
+  //   }
+  // }
 
   void LMCW::removeOutliers() const
   {
