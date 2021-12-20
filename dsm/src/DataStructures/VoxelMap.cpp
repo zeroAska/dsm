@@ -1,26 +1,23 @@
-#include "DataStructures/VoxelMap.h"
+#include "VoxelMap.h"
+#include "Frame.h"
 
 namespace dsm {
 
     VoxelMap::VoxelMap(float voxelSize) : voxelSize_(voxelSize) {
-        std::cout << "Assigned voxelSize_" << voxelSize << std::endl;
+        // std::cout << "Assigned voxelSize_" << voxelSize << std::endl;
     }
 
-    bool VoxelMap::insert_point(Point pt) {
-        // std::cout << "integer point coord: " << pt.x << ", " << pt.y << ", " << pt.z << std:: endl;
-        // 1. convert to integer coordinates
+    bool VoxelMap::insert_point(ActivePoint* pt) {
+        // 1. find coresponding voxel coordinates
         VoxelCoord intCoord = point_to_voxel_center(pt);
-        // std::cout << "=============================================\n";
-        // std::cout << "integer point coord: " << intCoord.xc << ", " << intCoord.yc << ", " << intCoord.zc << std:: endl;
-        // Debug: print its hash key
-        // std::cout << "Hashed: " << std::hash<VoxelCoord>{}(intCoord) << std::endl;
         // 2. insert point to map
         if (vmap_.count(intCoord)) {
             // voxel already exists
             // std::cout << "Existing voxel" << std::endl;
-            std::vector<Point>& voxPts = vmap_[intCoord].voxPoints;
+            std::vector<ActivePoint*>& voxPts = vmap_[intCoord].voxPoints;
             // Check if the point already exists
             for (auto it = voxPts.begin(); it != voxPts.end(); it++) {
+                // TODO: make sure this equal is correct
                 if (*it == pt)
                     return false;
             }
@@ -35,13 +32,13 @@ namespace dsm {
         return true;
     }
 
-    bool VoxelMap::delete_point(Point pt) {
+    bool VoxelMap::delete_point(ActivePoint* pt) {
         // 1. convert to integer coord to look up its voxel
         VoxelCoord intCoord = point_to_voxel_center(pt);
         if (!vmap_.count(intCoord))
             return false;
         // 2. remove this point from the voxel
-        std::vector<Point>& curVoxPts = vmap_[intCoord].voxPoints;
+        std::vector<ActivePoint*>& curVoxPts = vmap_[intCoord].voxPoints;
         // iterate through to find the point to remove
         for (auto it = curVoxPts.begin(); it != curVoxPts.end(); it++) {
             if (*it == pt) {
@@ -60,21 +57,21 @@ namespace dsm {
         std::cout<<"Voxel map destructed\n";
     }
 
-    bool VoxelMap::query_point(Point pt, Voxel*& contained_voxel) {
+    bool VoxelMap::query_point(ActivePoint* pt, Voxel& contained_voxel) {
         // 1. convert to integer coord to look up its voxel
         VoxelCoord intCoord = point_to_voxel_center(pt);
         if (!vmap_.count(intCoord))
             return false;
         // std::cout << vmap_[intCoord].xc << ", " << vmap_[intCoord].yc << ", " << vmap_[intCoord].zc << std::endl;
-        contained_voxel = &vmap_[intCoord];
+        contained_voxel = vmap_[intCoord];
         return true;
     }
 
     std::vector<int> VoxelMap::voxel_seen_frames(VoxelCoord q_vox) {
         std::unordered_set<int> resSet;
-        const std::vector<Point>& vxPts = vmap_[q_vox].voxPoints;
-        for (const Point& p : vxPts) {
-            resSet.insert(p.frameID);
+        const std::vector<ActivePoint*>& vxPts = vmap_[q_vox].voxPoints;
+        for (const ActivePoint* p : vxPts) {
+            resSet.insert(p->currentID());
         }
         return std::vector<int>(resSet.begin(), resSet.end());
     }
@@ -83,9 +80,16 @@ namespace dsm {
         return vmap_.size();
     }
 
-    VoxelCoord VoxelMap::point_to_voxel_center(Point pt) {
+    VoxelCoord VoxelMap::point_to_voxel_center(ActivePoint* pt) {
+        // 1. get pt coord in world frame
+        Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
+        Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
+        Eigen::Vector4f p_cam_4;
+        p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+        Eigen::Vector4f p_wld = Tcw * p_cam_4;
+        // 2. find its corresponding voxel
         std::vector<float> res(3);
-        std::vector<float> orig = {pt.x, pt.y, pt.z};
+        std::vector<float> orig = {p_wld(0), p_wld(1), p_wld(2)};
         for (int i = 0; i < 3; i++) {
             // find remainder
             float rem = fmod(orig[i], voxelSize_);

@@ -64,7 +64,6 @@ namespace dsm
   LMCW::LMCW(int width, int height,  const cvo::CvoGPU * align, IVisualizer *visualizer, float voxelSize)
     : cvo_align(align) ,     temporalWindowIndex(0), numActivePoints(0), outputWrapper_(visualizer), 
     voxelMap_(new VoxelMap(voxelSize)) {
-    std::cout << "Correct LMCW constructor\n";
     const auto& settings = Settings::getInstance();
     const int levels = settings.pyramidLevels;
 
@@ -632,6 +631,10 @@ namespace dsm
   }
   void LMCW::activatePointsCvo()
   {
+    // TL: log points
+    // std::ofstream file;
+    // file.open("/home/tannerliu/dsm/points.txt", std::ios_base::app);
+    
     const auto& settings = Settings::getInstance();
     const auto& calib = GlobalCalibration::getInstance();
 
@@ -704,15 +707,27 @@ namespace dsm
           //this->distanceMap_->add(point, lastKeyframe);
 
           // insert to voxel map
-          Eigen::Vector3f pointCoord = point->xyz();
-          Point pt(pointCoord(0), pointCoord[1], pointCoord[2], point->currentID());
-          // std::cout << pt << std::endl;
-          // voxelMap_->insert_point(pt);
+          voxelMap_->insert_point(point.get());
+          // TL: testing
+          // std::cout <<"Writing point to file: " << pt << std::endl;
+          // Eigen::Matrix4f Tcw = point->reference()->camToWorld().matrix(); //camToWorld
+          // Eigen::Vector3f p_cam = point->xyz(); // pt in cam frame
+          // Eigen::Vector4f p_cam_4;
+          // p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+          // Eigen::Vector4f p_wld = Tcw * p_cam_4;
+          // if (point->currentID() == 1) {
+          //   voxelMap_->insert_point(point.get());
+          // }
+          // else if (point->currentID() == 2 || point->currentID() == 3) {
+          //   Voxel qVox;
+          //   if (voxelMap_->query_point(point.get(), qVox)) {
+          //     // TL: log points
+          //     file << p_wld(0) << ", " << p_wld(1) << ", " << p_wld(2) << ", " << point->currentID() << "\n";
+          //   }
+          // }
           // std::cout << "Voxel Map size: " << voxelMap_->size() << std::endl;
-          std::ofstream file;
-          file.open("/home/tannerliu/dsm/points.txt", std::ios_base::app);
-          file << pt.x << ", " << pt.y << ", " << pt.z << ", " << pt.frameID << "\n";
 
+          // file << pt.x << ", " << pt.y << ", " << pt.z << ", " << pt.frameID << "\n";
 
           // insert into list
           activePoints.push_back(std::move(point));
@@ -753,31 +768,12 @@ namespace dsm
     //  cv::Mat distTransform = this->distanceMap_->drawDistanceTransform(true);
     //  this->outputWrapper_->publishDistanceTransformAfter(distTransform);
     //}
+
+    // TL: log points
+    // file << "======================================\n";
+    // file.close();
   }
 
-  // void LMCW::addActPointsToVMap() 
-  // {
-  //   int numActiveKeyframes = (int)this->activeKeyframes_.size();
-  //   int numPointsCreated = 0;
-  //   auto lastKeyframe = this->activeKeyframes_[this->activeKeyframes_.size()-1];
-
-  //   for (int i = this->temporalWindowIndex; i < numActiveKeyframes; ++i)
-  //   {
-  //     std::cout<<"addActPointsToVMap: new iteration "<<i<<std::endl<<std::flush;
-  //     const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
-
-  //     auto& activePoints = owner->activePoints();
-
-  //     int counter = 0;
-  //     for (auto& actPt : activePoints)
-  //     {
-  //       Eigen::Vector3f ptCoord = actPt->xyz();
-  //       Point pt(ptCoord(0), ptCoord(1), ptCoord(2), actPt->currentID());
-  //       voxelMap_->insert_point(pt);
-  //       std::cout << "Inserted an active point\n";
-  //     }
-  //   }
-  // }
 
   void LMCW::removeOutliers() const
   {
