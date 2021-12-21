@@ -114,5 +114,5 @@ showDepthMap = true
 showDepthMapLvl = 0
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.65
+trackingCosLimit = 0.8
 enableDepthRegression = false

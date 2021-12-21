@@ -294,7 +294,7 @@ namespace dsm
     float weightSquaredNorm = 0;
     float weightDotIdepth = 0;
     //weightSquaredNorm += 1;
-    if (observedIdepths_.size() == 0)
+    if (observedIdepths_.size() < 2)
       return iDepth_;
     
     for (int i = 0; i < observedIdepths_.size(); i++) {

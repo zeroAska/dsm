@@ -145,6 +145,11 @@ namespace dsm
     // Optimization
     void createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame);
     void cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes);
+    void dumpFramesToPcd (const std::string & graphDefFileName,
+                          const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
+                          const std::vector<cvo::CvoFrame::Ptr> & cvo_frames,
+                          const std::list<std::pair<int, int>> & edges) const;
+    
 
     // visualization
     void drawTrackDepthMap(const std::shared_ptr<FrameTrackerReference>& trackRef, cv::Mat& depthMapBGR, int lvl);

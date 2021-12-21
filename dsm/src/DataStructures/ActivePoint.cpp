@@ -114,7 +114,7 @@ namespace dsm
     const Eigen::Matrix3f& invK = calib.invMatrix3f(0);
 
     Eigen::Vector3f xyz;
-    xyz << u_[0], u_[1], 1;
+    xyz << u_[0], v_[1], 1;
     xyz = (xyz / iDepth_).eval();
     xyz = (invK * xyz).eval();
 

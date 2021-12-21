@@ -97,7 +97,8 @@ namespace dsm
     const auto& settings = Settings::getInstance();
 
     // temporal window
-    this->selectTemporalWindow(photometricBA);
+    //this->selectTemporalWindowC(photometricBA);
+    this->selectTemporalWindowCvo();
 
     // covisibility window
     if (!settings.doOnlyTemporalOpt)
@@ -149,8 +150,8 @@ namespace dsm
 
   void LMCW::selectTemporalWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
   {
+    // const configs
     const auto& settings = Settings::getInstance();
-
     const auto& calib = GlobalCalibration::getInstance();
     const Eigen::Matrix3f& K = calib.matrix3f(0);
     const Eigen::Matrix3f& Kinv = calib.invMatrix3f(0);
@@ -160,6 +161,7 @@ namespace dsm
     const std::shared_ptr<Frame>& lastKeyframe = this->activeKeyframes_.back();
     const int lastKeyframeID = lastKeyframe->keyframeID();
     const Sophus::SE3f worldToLast = lastKeyframe->camToWorld().inverse();
+    std::cout<<"selectTemporalWindow: lastKeyframe;s worldToLast is "<<worldToLast.matrix()<<std::endl;
 
     this->numActivePoints = 0;
 
@@ -168,7 +170,7 @@ namespace dsm
     // prepare points for new active keyframes
     for (const std::shared_ptr<Frame>& kf : this->activeKeyframes_)
     {
-      if (kf == lastKeyframe) continue;
+      //if (kf == lastKeyframe) continue;
 
       // relative pose
       const Sophus::SE3f relPose = worldToLast * kf->camToWorld();
@@ -295,6 +297,156 @@ namespace dsm
     }
   }
 
+  void LMCW::selectTemporalWindowCvo()
+  {
+    // const configs
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+    const Eigen::Matrix3f& K = calib.matrix3f(0);
+    const Eigen::Matrix3f& Kinv = calib.invMatrix3f(0);
+    const int w = calib.width(0);
+    const int h = calib.height(0);
+
+    const std::shared_ptr<Frame>& lastKeyframe = this->activeKeyframes_.back();
+    const int lastKeyframeID = lastKeyframe->keyframeID();
+    const Sophus::SE3f worldToLast = lastKeyframe->camToWorld().inverse();
+    std::cout<<"selectTemporalWindow: lastKeyframe;s worldToLast is "<<worldToLast.matrix()<<std::endl;
+
+    this->numActivePoints = 0;
+
+    int numFlaggedToDrop = 0;
+
+    // prepare points for new active keyframes
+    for (const std::shared_ptr<Frame>& kf : this->activeKeyframes_)
+    {
+      if (kf == lastKeyframe) continue;
+
+      // relative pose
+      const Sophus::SE3f relPose = worldToLast * kf->camToWorld();
+      const Eigen::Matrix3f KRKinv = K * relPose.rotationMatrix() * Kinv;
+      const Eigen::Vector3f Kt = K * relPose.translation();
+
+      const AffineLight light = AffineLight::calcRelative(kf->affineLight(), lastKeyframe->affineLight());
+
+      int numVisible = 0;
+
+      for (const auto& point : kf->activePoints())
+      {
+        // project point to new image
+        Eigen::Vector2f pt2d;
+        if (!Utils::project(point->u(0), point->v(0), point->iDepth(),
+                            w, h, KRKinv, Kt, pt2d))
+        {
+          point->setVisibility(lastKeyframeID, Visibility::OOB);
+          continue;
+        }
+
+        // it is visible!
+        point->setCenterProjection(pt2d);
+        point->setVisibility(lastKeyframeID, Visibility::VISIBLE);
+
+        // create new observation to the newest keyframe
+        //std::unique_ptr<PhotometricResidual> obs =
+        //  std::make_unique<PhotometricResidual>(point, lastKeyframe, photometricBA);
+
+        //point->addObservation(lastKeyframe.get(), obs);
+
+        // increase counters
+        this->numActivePoints++;
+        numVisible++;
+      }
+
+      // keep the last numAlwaysKeepKeyframes keyframes + the new one
+      if ((kf->keyframeID() <= lastKeyframeID - settings.numAlwaysKeepKeyframes) &&
+          (this->activeKeyframes_.size() - numFlaggedToDrop) >= settings.maxTemporalKeyframes)
+      {
+        const float numVisibleFloat = (float)numVisible;
+        const float ratio = numVisibleFloat / kf->activePoints().size();
+
+        // drop keyframes with low covisible points
+        if (ratio < settings.minPointCovisible || fabs(light.alpha()) > settings.maxLightCovisible)
+        {
+          kf->setFlaggedToDrop(true);
+          numFlaggedToDrop++;
+        }
+      }
+    }
+
+    // if still a lot of keyframes, drop one based on distance
+    if ((this->activeKeyframes_.size() - numFlaggedToDrop) > settings.maxTemporalKeyframes)
+    {
+      float maxScore = -std::numeric_limits<float>::max();
+      int idx = -1;
+
+      // keep the last N keyframes
+      //const int maxKeyframeID = (int)this->activeKeyframes_.size() - settings.numAlwaysKeepKeyframes;
+      const int maxKeyframeID = (int)this->activeKeyframes_.size() - settings.maxTemporalKeyframes;
+      for (int i = 0; i < maxKeyframeID; ++i)
+      {
+        this->activeKeyframes_[i]->setFlaggedToDrop(true);
+        numFlaggedToDrop++;
+        /*
+        const Sophus::SE3f pose_i = this->activeKeyframes_[i]->camToWorld().inverse();
+
+        // distance to other keyframes
+        float score = 0.f;
+        for (int j = 0; j < this->activeKeyframes_.size() - 1; ++j)
+        {
+          if (i == j) continue;
+
+          const Sophus::SE3f relPose = pose_i * this->activeKeyframes_[j]->camToWorld();
+          const float dist = relPose.translation().norm() + std::numeric_limits<float>::epsilon();
+          score += 1.f / dist;
+        }
+
+        // distance to the latest keyframe
+        const Sophus::SE3f relPose = pose_i * lastKeyframe->camToWorld();
+        score *= sqrtf(relPose.translation().norm());
+
+        if (score > maxScore)
+        {
+          maxScore = score;
+          idx = i;
+        }
+        */
+      }
+
+      //if (idx >= 0)
+      // {
+      //  this->activeKeyframes_[idx]->setFlaggedToDrop(true);
+      //  numFlaggedToDrop++;
+      //}
+    }
+
+    if (settings.debugPrintLog && settings.debugLogActivePoints)
+    {
+      const std::string msg = "Act. Temporal: " + std::to_string(this->numActivePoints) + "\t";
+
+      auto& log = Log::getInstance();
+      log.addCurrentLog(lastKeyframe->frameID(), msg);
+    }
+
+    // distance map
+    this->distanceMap_->compute(this->activeKeyframes_, lastKeyframe);
+
+    if (settings.debugPrintLog && settings.debugLogDistanceMap)
+    {
+      const std::string msg = "DT: " + std::to_string(this->distanceMap_->getNumObstacles()) + "\t";
+
+      auto& log = Log::getInstance();
+      log.addCurrentLog(lastKeyframe->frameID(), msg);
+    }
+
+    if (settings.debugShowDistanceTransformBefore &&
+        settings.doOnlyTemporalOpt &&
+        this->outputWrapper_)
+    {
+      cv::Mat distTransform = this->distanceMap_->drawDistanceTransform(true);
+      this->outputWrapper_->publishDistanceTransformBefore(distTransform);
+    }
+  }
+
+  
   void LMCW::selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
 
   {
@@ -631,10 +783,10 @@ namespace dsm
     // activate the old keyframes' (excluding the lastest one) candidates
     // whose status is 'OPTIMIZED'
     int numPointsCreated = 0;
-    auto lastKeyframe = this->activeKeyframes_[this->activeKeyframes_.size()-1];
+    auto lastKeyframe = this->activeKeyframes_.back();
     for (int i = this->temporalWindowIndex; i < numActiveKeyframes-1; ++i)
     {
-      std::cout<<"activePoint: new iteration "<<i<<std::endl<<std::flush;
+      std::cout<<"activePoint: frame ID "<<activeKeyframes_[i]->frameID()<<std::endl<<std::flush;
       const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
       //std::shared_ptr<Frame> owner = this->activeKeyframes_[i];
 
@@ -655,13 +807,14 @@ namespace dsm
         if (status == CandidatePoint::OPTIMIZED )
         {
           // project into new keyframe
-          float filteredIdepth = cand->regressIdepth();
-          std::cout<<"regressIdepth: before: "<<cand->iDepth()<<", after: "<<filteredIdepth<<std::endl;
           std::unique_ptr<ActivePoint> point;
 
-          if (settings.enableDepthRegression)
+          if (settings.enableDepthRegression) {
+            float filteredIdepth = cand->regressIdepth();
+            std::cout<<"regressIdepth: num observations is "<<cand->observedIdepths().size()<<", before: "<<cand->iDepth()<<", after: "<<filteredIdepth<<std::endl;
+            
             point.reset(new ActivePoint (lastKeyframe->keyframeID(), cand, filteredIdepth));
-          else
+          } else
             point.reset(new ActivePoint (lastKeyframe->keyframeID(), cand));          
           counter++;
 
@@ -717,6 +870,7 @@ namespace dsm
         //std::cout<<j<<std::endl<<std::flush;
       }
       std::cout<<"Frame "<<owner->frameID()<<" just activated "<<counter<<" points.\n";
+      owner->dump_active_points_to_pcd(std::to_string(owner->frameID())+".pcd");
     }
     Utils::Time t2 = std::chrono::steady_clock::now();
 

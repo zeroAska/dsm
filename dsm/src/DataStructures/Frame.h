@@ -80,7 +80,7 @@ namespace dsm
                 Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, std::vector<float> & disparity);
 
                 // rgb-d
-                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale);
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc);
 
 		~Frame();
 
@@ -181,6 +181,7 @@ namespace dsm
                 std::shared_ptr<cvo::RawImage> getRawImage() {return rawImg;}
                 const std::vector <float> & getStereoDisparity() {return stereoDisparity;}
                 const std::vector<uint16_t> & getRgbdDepth() {return rgbdDepth;}
+                const std::shared_ptr<cvo::CvoPointCloud> getFullPoints() {return fullPoints_;}
                 const float depthScale;
                 const DepthType depthType;
 
@@ -221,6 +222,7 @@ namespace dsm
 		AffineLight thisToParentLight_;			// from coarse tracking
                 
                 pcl::PointCloud<cvo::CvoPoint>::Ptr trackingPoints_; // for CVO coarse tracking
+                std::shared_ptr<cvo::CvoPointCloud> fullPoints_;
                 std::shared_ptr<cvo::RawImage> rawImg;
                 std::vector<float> stereoDisparity;
                 std::vector<uint16_t> rgbdDepth;
