@@ -2127,6 +2127,8 @@ namespace dsm
       cvoBATime.push_back(Utils::elapsedTime(t_cvoba_init, t_cvoba_end));    
     }
 
+    // update points in voxel map after BA
+    this->lmcw->updateVoxelPoints();
     
     // remove outliers
     // TODO: only keep the active points that have neighbors

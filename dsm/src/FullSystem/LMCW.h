@@ -67,14 +67,14 @@ namespace dsm
     void activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
     void activatePointsCvo();
 
-    // add active points to voxel map
-    void addActPointsToVMap();
-
     // remove outlier points after PBA
     void removeOutliers() const;
 
     // updates covisibilty connections
     void updateConnectivity() const;
+
+    // updates frame points in voxel map after PBA
+    void updateVoxelPoints();
 
     // all active keyframes
     inline const std::vector<std::shared_ptr<Frame>>& activeWindow() const { return this->activeKeyframes_; }

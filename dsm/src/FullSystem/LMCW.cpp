@@ -730,7 +730,7 @@ namespace dsm
           // file << pt.x << ", " << pt.y << ", " << pt.z << ", " << pt.frameID << "\n";
 
           // insert into list
-          activePoints.push_back(std::move(point));
+           activePoints.push_back(std::move(point));
 
         }
         //else if (status == CandidatePoint::OUTLIER)
@@ -869,6 +869,23 @@ namespace dsm
     if (this->outputWrapper_)
     {
       this->outputWrapper_->publishCovisibility(this->covisibilityGraph_->adjacencyMatrix());
+    }
+  }
+
+  void LMCW::updateVoxelPoints()
+  {
+    int numActiveKeyframes = (int)this->activeKeyframes_.size();
+    for (int i = 0; i < numActiveKeyframes; i++)
+    {
+      const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
+      std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
+      for (std::unique_ptr<ActivePoint>& actPt : activePoints)
+      {
+        // if (voxelMap_->delete_point(actPt.get()))
+          // std::cout << "Sucessfully deleted a point in voxel map\n";
+        voxelMap_->delete_point(actPt.get())
+        voxelMap_->insert_point(actPt.get());
+      }
     }
   }
 }

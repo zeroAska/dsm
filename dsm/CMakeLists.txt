@@ -121,6 +121,7 @@ set(SOURCE_FILES
 	${root}/DataStructures/ActivePoint.cpp
 	${root}/DataStructures/Pattern.cpp
 	${root}/DataStructures/CovisibilityGraph.cpp
+	${root}/DataStructures/VoxelMap.cpp
 	${root}/Statistics/NelderMead.cpp
 	${root}/Statistics/BetaFunction.cpp
 	${root}/Statistics/IDistribution.cpp
@@ -146,7 +147,6 @@ set(SOURCE_FILES
 	${root}/Initializer/MonoInitializer.cpp
 	${root}/Initializer/ModelSelector.cpp
 	${root}/Visualizer/IVisualizer.cpp	
-	${root}/DataStructures/VoxelMap.cpp
 	)
 		
 # Organize the source and header files into groups
