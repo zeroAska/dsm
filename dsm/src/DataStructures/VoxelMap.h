@@ -103,17 +103,16 @@ namespace dsm {
         /**
          * @brief query a 3D point to find the voxel containing it in the voxel map
          * @param pt: a 3D point
-         * @param contained_voxel: the query result
-         * @return true if query finds a valid voxel, false if such voxel doesn't exist in map
+         * @return nullptr if no voxel exists at the given pt, or the voxel
          */
-        bool query_point(ActivePoint* pt, Voxel& contained_voxel);
+        const Voxel* query_point(ActivePoint* pt) const;
 
         /**
          * @brief obtain the frameIds that have seen this voxel
-         * @param q_vox: queried voxel
-         * @return a vector of frameIds
+         * @param pt: a 3D point
+         * @return a set of frameIds, empty if point isn't inside a voxel
          */
-        std::vector<int> voxel_seen_frames(VoxelCoord q_vox);
+        std::unordered_set<int> voxel_seen_frames(ActivePoint* pt) const;
 
         /**
          * @brief returns the number of voxels
@@ -127,7 +126,7 @@ namespace dsm {
          * @param pt: a 3D point
          * @return the coordinate of the voxel center
          */
-        VoxelCoord point_to_voxel_center(ActivePoint* pt);
+        VoxelCoord point_to_voxel_center(ActivePoint* pt) const;
 
     private:
         float voxelSize_ = 0.05f;                               // Edge length of a single voxel cubic

@@ -122,7 +122,8 @@ namespace dsm
     if (!settings.doOnlyTemporalOpt)
     {
       // TODO: choose a subset of covisible frames with the maximum overlap
-      this->selectCovisibleWindow(photometricBA);
+      // this->selectCovisibleWindow(photometricBA);
+      this->selectCovisibleWindowCvo(photometricBA);
     }
   }
 
@@ -485,6 +486,50 @@ namespace dsm
     }
   }
 
+  void LMCW::selectCovisibleWindowCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
+  {
+    assert(this->temporalWindowIndex == 0);
+
+    const std::shared_ptr<Frame> lastActKeyframe = this->activeKeyframes_.back();
+    const int lastActID = lastActKeyframe->keyframeID();
+    const int firstActID = this->activeKeyframes_.front()->keyframeID();
+
+    std::vector<std::shared_ptr<Frame>> selectCovisibleKeyframes;
+
+    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
+    {
+      // find best covisible frame for each temporal frame
+      const CovisibilityNode* temporalNode = this->activeKeyframes_[i]->graphNode;
+      // get the node with highest weight among all edges
+      CovisibilityNode* highCovisNode = nullptr;
+      int maxWeight = 0;
+      for (auto& pair : temporalNode->edges) 
+      {
+        if (pair.second > maxWeight)
+        {
+          maxWeight = pair.second;
+          highCovisNode = pair.first;
+        }
+      }
+      if (highCovisNode == nullptr) continue;
+      std::shared_ptr<Frame> bestCovisFrame = this->allKeyframes_[highCovisNode->node->keyframeID()];
+      selectCovisibleKeyframes.push_back(std::move(bestCovisFrame));
+    }
+    // Q: not considering maxCovisibleKeyframes now
+    // Q: need to activate the selected frame?
+
+    this->activeKeyframes_.insert(this->activeKeyframes_.begin(), selectCovisibleKeyframes.begin(), selectCovisibleKeyframes.end());
+    this->temporalWindowIndex += selectCovisibleKeyframes.size();
+
+    if (this->temporalWindowIndex == 0) return;
+
+    for (int i = 0; i < this->activeKeyframes_.size(); i++)
+    {
+      this->activeKeyframes_[i]->setActiveID(i);
+    }
+    
+  }
+
   void LMCW::activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
   {
     const auto& settings = Settings::getInstance();
@@ -706,8 +751,40 @@ namespace dsm
           // update distance map
           //this->distanceMap_->add(point, lastKeyframe);
 
+
+
+          // update covisibilityGraph_
+          const Voxel* tracedVoxel = voxelMap_->query_point(point.get());
+          if (tracedVoxel)
+          {
+            // voxel exists, add edges in covisGraph
+            // add current frame as node to the covisGraph
+            if (owner->graphNode == nullptr) 
+            {
+              covisibilityGraph_->addNode(owner);
+            }
+            CovisibilityNode* curNode = owner->graphNode;
+            for (ActivePoint* prevFramePt : tracedVoxel->voxPoints) 
+            {
+              // if prevFrame is already a temporal frame, skip
+              if (prevFramePt->currentID() > this->activeKeyframes_.front()->keyframeID()) continue;
+              // trace refKF of an ActivePoint
+              const std::shared_ptr<Frame> covisFrame = allKeyframes_[prevFramePt->currentID()];  // Q: correct?
+              // refKF should already have a CovisibilityNode
+              CovisibilityNode* refNode = covisFrame->graphNode;
+              // intialize or update weight
+              int newWeight = curNode->edges[refNode] + 1; // unordered_map should return 0 if doesn't exist, the newWeight will be 1
+              covisibilityGraph_->connect(owner, covisFrame, newWeight);
+              
+            }
+          }
+
+
+
           // insert to voxel map
           voxelMap_->insert_point(point.get());
+          point->setVoxel(voxelMap_->query_point(point.get()));
+
           // TL: testing
           // std::cout <<"Writing point to file: " << pt << std::endl;
           // Eigen::Matrix4f Tcw = point->reference()->camToWorld().matrix(); //camToWorld
@@ -727,7 +804,6 @@ namespace dsm
           // }
           // std::cout << "Voxel Map size: " << voxelMap_->size() << std::endl;
 
-          // file << pt.x << ", " << pt.y << ", " << pt.z << ", " << pt.frameID << "\n";
 
           // insert into list
            activePoints.push_back(std::move(point));
@@ -872,20 +948,82 @@ namespace dsm
     }
   }
 
-  void LMCW::updateVoxelPoints()
+  void LMCW::deleteTemporalVoxelPoints()
   {
+    // We will not modify the voxel ptr in ActivePoint so that we can compare old and new voxel during covisibilityGraph update
     int numActiveKeyframes = (int)this->activeKeyframes_.size();
-    for (int i = 0; i < numActiveKeyframes; i++)
+    for (int i = this->temporalWindowIndex; i < numActiveKeyframes; i++)
     {
       const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
       std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
       for (std::unique_ptr<ActivePoint>& actPt : activePoints)
       {
-        // if (voxelMap_->delete_point(actPt.get()))
-          // std::cout << "Sucessfully deleted a point in voxel map\n";
-        voxelMap_->delete_point(actPt.get())
-        voxelMap_->insert_point(actPt.get());
+        this->voxelMap_->delete_point(actPt.get());
       }
     }
   }
+
+  void LMCW::insertTemporalVoxelPoints()
+  {
+    // We will not modify the voxel ptr in ActivePoint so that we can compare old and new voxel during covisibilityGraph update
+    int numActiveKeyframes = (int)this->activeKeyframes_.size();
+    for (int i = this->temporalWindowIndex; i < numActiveKeyframes; i++)
+    {
+      const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
+      std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
+      for (std::unique_ptr<ActivePoint>& actPt : activePoints)
+      {
+        this->voxelMap_->insert_point(actPt.get());
+      }
+    }
+  }
+
+  void LMCW::updateVoxelMapCovisGraph()
+  {
+    // int numActiveKeyframes = (int)this->activeKeyframes_.size();
+    // for (int i = this->temporalWindowIndex; i < numActiveKeyframes; i++)
+    // {
+    //   const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
+    //   std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
+    //   CovisibilityNode* curFrameNode = owner->graphNode;
+    //   for (std::unique_ptr<ActivePoint>& actPt : activePoints)
+    //   {
+    //     // if voxel didn't change, no action required
+    //     const Voxel* newVoxel = voxelMap_->query_point(actPt.get());
+    //     if (newVoxel == actPt->voxel()) continue;
+
+    //     // for each Active Point in the old voxel, decrease the edge weight
+    //     const int firstTemporalID = this->activeKeyframes_[this->temporalWindowIndex]->keyframeID();
+    //     std::vector<ActivePoint*> oldPoints = actPt->voxel()->voxPoints;
+    //     for (ActivePoint* oldPt : oldPoints)
+    //     {
+    //       if (oldPt->currentID() >= firstTemporalID) break; // stop if we've reached temporal frames
+    //       CovisibilityNode* covisFrameNode = oldPt->reference()->graphNode;
+    //       const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[oldPt->currentID()];
+    //       int newWeight = curFrameNode->edges[covisFrameNode] - 1;
+    //       if (newWeight == 0)
+    //         covisibilityGraph_->disconnect(covisFrame, owner);
+    //       else if (newWeight > 0)
+    //         covisibilityGraph_->connect(covisFrame, owner, newWeight);
+    //     }
+
+    //     // for each Active point in the new voxel, increase the edge weight
+    //     std::vector<ActivePoint*> newPoints = newVoxel->voxPoints;
+    //     for (ActivePoint* newPt : newPoints)
+    //     {
+    //       if (newPt->currentID() >= firstTemporalID) break; // stop if we've reached temporal frames
+    //       CovisibilityNode* covisFrameNode = newPt->reference()->graphNode;
+    //       const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[newPt->currentID()];
+    //       int newWeight = curFrameNode->edges[covisFrameNode] + 1;
+    //       covisibilityGraph_->connect(covisFrame, owner, newWeight);
+    //     }
+
+    //     // update the activepoint with its adjusted voxel
+    //     this->voxelMap_->delete_point
+    //     actPt->setVoxel(newVoxel);
+    //   }
+
+    // }
+  }
+
 }

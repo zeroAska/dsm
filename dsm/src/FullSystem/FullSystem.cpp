@@ -2102,7 +2102,7 @@ namespace dsm
 
     // select window
     Utils::Time t_window_init = std::chrono::steady_clock::now();    
-    this->lmcw->selectWindow(this->ceresOptimizer);
+    this->lmcw->selectWindow(this->ceresOptimizer);  //TL: need to split to two functions
     Utils::Time t_window_end = std::chrono::steady_clock::now();
     windowConstructionTime.push_back(Utils::elapsedTime(t_window_init, t_window_end));
 
@@ -2127,8 +2127,8 @@ namespace dsm
       cvoBATime.push_back(Utils::elapsedTime(t_cvoba_init, t_cvoba_end));    
     }
 
-    // update points in voxel map after BA
-    this->lmcw->updateVoxelPoints();
+    // Q: fixing issue here// update points in voxel map after BA
+    // this->lmcw->updateCovisibilityGraph();
     
     // remove outliers
     // TODO: only keep the active points that have neighbors

@@ -26,6 +26,7 @@
 #include "Visibility.h"
 #include "FullSystem/DSMLib.h"
 #include "Utils/EigenTypes.h"
+#include "VoxelMap.h"
 
 #include <vector>
 #include <array>
@@ -41,6 +42,8 @@ namespace dsm
 
 	class PointParameterBlock;
 	class PhotometricResidual;
+
+	class Voxel;
 
 	// Active point in the sliding window
 	// It can only be activated from a initialized candidate
@@ -117,6 +120,9 @@ namespace dsm
                 Eigen::VectorXf features() {return features_;}
                 Eigen::VectorXf semantics() {return semantics_;}
 
+				const Voxel* voxel() const;
+				void setVoxel(const Voxel* voxelIn);
+
 	private:
 
 		// keyframeID at the moment the point was created
@@ -155,6 +161,9 @@ namespace dsm
                 // cvo data
                 Eigen::VectorXf features_;
                 Eigen::VectorXf semantics_;
+
+				// voxel
+				const Voxel* voxel_;
                 
 
 		// optimization statistics

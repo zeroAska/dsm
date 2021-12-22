@@ -73,8 +73,14 @@ namespace dsm
     // updates covisibilty connections
     void updateConnectivity() const;
 
-    // updates frame points in voxel map after PBA
-    void updateVoxelPoints();
+    // delete temporal frame points from voxel map to prepare for BA
+    void deleteTemporalVoxelPoints();
+
+    // insert temporal frame points to voxel map after BA
+    void insertTemporalVoxelPoints();
+
+    // update the covisbility graph after BA
+    void updateVoxelMapCovisGraph();
 
     // all active keyframes
     inline const std::vector<std::shared_ptr<Frame>>& activeWindow() const { return this->activeKeyframes_; }
@@ -108,6 +114,9 @@ namespace dsm
 
     // selects the covisible window part
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
+
+    // voxelMap based covisbility selection
+    void selectCovisibleWindowCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
   private:
 		

@@ -99,6 +99,9 @@ namespace dsm
     // cvo data
     this->features_ = candidate->features();
     this->semantics_ = candidate->semantics();
+
+    // voxel set to nullptr
+    voxel_ = nullptr;
                   
   }
 
@@ -261,5 +264,15 @@ namespace dsm
   void ActivePoint::setParallax(float p)
   {
     this->parallax_ = p;
+  }
+
+  const Voxel* ActivePoint::voxel() const
+  {
+    return this->voxel_;
+  }
+
+  void ActivePoint::setVoxel(const Voxel* voxelIn)
+  {
+    this->voxel_ = voxelIn;
   }
 }

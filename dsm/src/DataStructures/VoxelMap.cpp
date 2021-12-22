@@ -57,30 +57,31 @@ namespace dsm {
         std::cout<<"Voxel map destructed\n";
     }
 
-    bool VoxelMap::query_point(ActivePoint* pt, Voxel& contained_voxel) {
+    const Voxel* VoxelMap::query_point(ActivePoint* pt) const {
         // 1. convert to integer coord to look up its voxel
         VoxelCoord intCoord = point_to_voxel_center(pt);
         if (!vmap_.count(intCoord))
-            return false;
+            return nullptr;
         // std::cout << vmap_[intCoord].xc << ", " << vmap_[intCoord].yc << ", " << vmap_[intCoord].zc << std::endl;
-        contained_voxel = vmap_[intCoord];
-        return true;
+        return &vmap_.at(intCoord);
     }
 
-    std::vector<int> VoxelMap::voxel_seen_frames(VoxelCoord q_vox) {
+    std::unordered_set<int> VoxelMap::voxel_seen_frames(ActivePoint* pt) const {
         std::unordered_set<int> resSet;
-        const std::vector<ActivePoint*>& vxPts = vmap_[q_vox].voxPoints;
-        for (const ActivePoint* p : vxPts) {
+        const Voxel* curVoxel = query_point(pt);
+        if (curVoxel == nullptr)
+            return resSet;
+        for (const ActivePoint* p : curVoxel->voxPoints) {
             resSet.insert(p->currentID());
         }
-        return std::vector<int>(resSet.begin(), resSet.end());
+        return resSet;
     }
 
     size_t VoxelMap::size() {
         return vmap_.size();
     }
 
-    VoxelCoord VoxelMap::point_to_voxel_center(ActivePoint* pt) {
+    VoxelCoord VoxelMap::point_to_voxel_center(ActivePoint* pt) const {
         // 1. get pt coord in world frame
         Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
         Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
