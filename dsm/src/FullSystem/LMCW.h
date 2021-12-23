@@ -111,6 +111,7 @@ namespace dsm
 
     // selects the temporal window part
     void selectTemporalWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
+    void selectTemporalWindowCvo();
 
     // selects the covisible window part
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);

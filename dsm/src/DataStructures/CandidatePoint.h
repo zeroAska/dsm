@@ -108,6 +108,7 @@ namespace dsm
     Eigen::VectorXf semantics() {return semantics_;}
     Eigen::Vector3f xyz();
     void addIdepthObservation(float newObsIdepth, float newWeight);
+    std::vector<float> & observedIdepths() {return observedIdepths_;}
     float regressIdepth();
     
     

@@ -118,6 +118,9 @@ namespace dsm
         //kitti.read_next_stereo(source_left, source_right);
         //std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left, NUM_CLASSES, semantics_source));
         //std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
+
+        //if (id == 5) break;
+        
         if (read_fails) this->shouldStop = true;
         //cvo::RawImage source_raw(source_left));
 
@@ -127,8 +130,11 @@ namespace dsm
           std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
           std::vector<uint16_t> source_dep_data(source_dep.begin<uint16_t>(), source_dep.end<uint16_t>());
           
-          pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>); 
+          pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
+          
           cvo::CvoPointCloud source_cvo(*source_raw, source_dep_data, cvo_calib);
+          //std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, source_dep_data, cvo_calib, cvo::CvoPointCloud::FULL));
+          std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, source_dep_data, cvo_calib));
 
           //if (id <= 2) source_cvo.write_to_color_pcd("color_"+std::to_string(id)+".pcd");
 
@@ -154,7 +160,8 @@ namespace dsm
 
           // process
           //DSM->trackFrame(id, timestamp, gray_img.data);
-          std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, gray_img.data, source_raw, source_pcd, source_dep_data, cvo_calib.scaling_factor());
+          std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, gray_img.data, source_raw, source_pcd, source_dep_data, cvo_calib.scaling_factor(),
+                                                                            source_full);
     
           DSM->trackFrame(id, timestamp, trackingNewFrame);
           

@@ -124,7 +124,7 @@ namespace dsm
     this->setErrorDistribution(errorDist);
   }
 
-  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale) :
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
 
     frameID_(id),
     timestamp_(timestamp),
@@ -137,7 +137,8 @@ namespace dsm
     rawImg(color_img),
     rgbdDepth(depth.begin(), depth.end()),
     depthType(DepthType::RGBD),
-    depthScale(depth_scale)
+    depthScale(depth_scale),
+    fullPoints_(full_pc)
   {
     const auto& settings = Settings::getInstance();
     const auto& calib = GlobalCalibration::getInstance();
