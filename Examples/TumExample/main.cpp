@@ -89,6 +89,7 @@ namespace dsm
       // create DSM
       std::unique_ptr<FullSystem> DSM;
       reader.set_start_index(id);
+      std::vector<std::string> all_timestamps = reader.get_rgb_name_list();
       
       while (!this->shouldStop)
       {
@@ -160,6 +161,7 @@ namespace dsm
 
           // process
           //DSM->trackFrame(id, timestamp, gray_img.data);
+          timestamp = std::stod(all_timestamps[id]);
           std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, gray_img.data, source_raw, source_pcd, source_dep_data, cvo_calib.scaling_factor(),
                                                                             source_full);
     
