@@ -2460,6 +2460,7 @@ namespace dsm
     // Q: fixing issue here// update points in voxel map after BA
     // this->lmcw->updateCovisibilityGraph();
 
+
     // remove outliers
     // TODO: only keep the active points that have neighbors
     //this->lmcw->removeOutliers();
