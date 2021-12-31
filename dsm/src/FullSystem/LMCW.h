@@ -107,7 +107,7 @@ namespace dsm
 
 
 
-  private:
+  // private:
 
     // selects the temporal window part
     void selectTemporalWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
@@ -117,7 +117,8 @@ namespace dsm
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
     // voxelMap based covisbility selection
-    void selectCovisibleWindowCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
+    void selectCovisibleWindowCvo();
+    void selectCovisibleWindowCvo2();
 
   private:
 		

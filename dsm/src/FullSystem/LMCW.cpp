@@ -124,7 +124,7 @@ namespace dsm
     {
       // TODO: choose a subset of covisible frames with the maximum overlap
       // this->selectCovisibleWindow(photometricBA);
-      this->selectCovisibleWindowCvo(photometricBA);
+      this->selectCovisibleWindowCvo2();
     }
   }
 
@@ -643,15 +643,23 @@ namespace dsm
     }
   }
 
-  void LMCW::selectCovisibleWindowCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
+  void LMCW::selectCovisibleWindowCvo()
   {
     assert(this->temporalWindowIndex == 0);
 
-    const std::shared_ptr<Frame> lastActKeyframe = this->activeKeyframes_.back();
-    const int lastActID = lastActKeyframe->keyframeID();
-    const int firstActID = this->activeKeyframes_.front()->keyframeID();
+    // const int firstActID = this->activeKeyframes_.front()->keyframeID();
+    // for (const auto& kf : this->allKeyframes_)
+    // {
+    //   if (kf->keyframeID() >= firstActID) break;
 
-    std::vector<std::shared_ptr<Frame>> selectCovisibleKeyframes;
+    //   for (const auto& point : kf->activePoints())
+    //   {
+
+    //   }
+    // }
+
+    const int firstTempID = this->activeKeyframes_[this->temporalWindowIndex]->keyframeID();
+    std::unordered_set<std::shared_ptr<Frame>> selectCovisibleKeyframes;
 
     for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
     {
@@ -662,6 +670,7 @@ namespace dsm
       int maxWeight = 0;
       for (auto& pair : temporalNode->edges) 
       {
+        if (pair.first->node->keyframeID() >= firstTempID) continue; // disregard temporal frames
         if (pair.second > maxWeight)
         {
           maxWeight = pair.second;
@@ -670,15 +679,20 @@ namespace dsm
       }
       if (highCovisNode == nullptr) continue;
       std::shared_ptr<Frame> bestCovisFrame = this->allKeyframes_[highCovisNode->node->keyframeID()];
-      selectCovisibleKeyframes.push_back(std::move(bestCovisFrame));
+
+      // ensure no duplicates
+      if (!selectCovisibleKeyframes.count(bestCovisFrame))
+      {
+        bestCovisFrame->activate();
+        // Q: need to update this->numActivePoints?
+        selectCovisibleKeyframes.insert(std::move(bestCovisFrame));
+      }
     }
-    // Q: not considering maxCovisibleKeyframes now
-    // Q: need to activate the selected frame?
+
+    if (selectCovisibleKeyframes.empty()) return;
 
     this->activeKeyframes_.insert(this->activeKeyframes_.begin(), selectCovisibleKeyframes.begin(), selectCovisibleKeyframes.end());
     this->temporalWindowIndex += selectCovisibleKeyframes.size();
-
-    if (this->temporalWindowIndex == 0) return;
 
     for (int i = 0; i < this->activeKeyframes_.size(); i++)
     {
@@ -686,6 +700,89 @@ namespace dsm
     }
     
   }
+
+
+  void LMCW::selectCovisibleWindowCvo2()
+  {
+    assert(this->temporalWindowIndex == 0);
+
+    const auto& settings = Settings::getInstance();
+
+    const int firstTempID = this->activeKeyframes_[this->temporalWindowIndex]->keyframeID();
+
+    const int ignoreRecent = 5;
+
+    std::unordered_map<std::shared_ptr<Frame>, int> selectCovisibleKeyframes;
+
+    Utils::Time t1 = std::chrono::steady_clock::now();
+
+    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
+    {
+      const CovisibilityNode* temporalNode = this->activeKeyframes_[i]->graphNode;
+      
+      for (auto& pair : temporalNode->edges) 
+      {
+        if (pair.first->node->keyframeID() >= firstTempID - ignoreRecent) continue; // disregard temporal frames
+        // accumulate weights to everyone covisible candidate frame
+        const std::shared_ptr<Frame> curCovisFrame = this->allKeyframes_[pair.first->node->keyframeID()];
+        selectCovisibleKeyframes[curCovisFrame] += pair.second;
+      }
+    }
+
+    if (selectCovisibleKeyframes.empty()) return;
+
+
+    // extract k out of the set.
+    std::vector<std::pair<std::shared_ptr<Frame>, int>> selectCovisVec(selectCovisibleKeyframes.begin(), selectCovisibleKeyframes.end());
+    std::sort(selectCovisVec.begin(), selectCovisVec.end(), [](const std::pair<std::shared_ptr<Frame>, int>& a, const std::pair<std::shared_ptr<Frame>, int>& b) {
+                                                              return a.second > b.second;
+                                                              });
+    
+    const int numCovisFrame = std::min(settings.maxCovisibleKeyframes, (int)selectCovisibleKeyframes.size());
+    std::vector<std::shared_ptr<Frame>> topCovis;
+    for (int i = 0; i < numCovisFrame; i++)
+    {
+      topCovis.push_back(selectCovisVec[i].first);
+    }
+    
+    this->activeKeyframes_.insert(this->activeKeyframes_.begin(), topCovis.begin(), topCovis.end());
+
+    this->temporalWindowIndex += numCovisFrame;
+
+    for (int i = 0; i < this->activeKeyframes_.size(); i++)
+    {
+      this->activeKeyframes_[i]->setActiveID(i);
+    }
+
+    Utils::Time t2 = std::chrono::steady_clock::now();
+
+    // TL: debug log
+    std::ofstream file;
+    file.open("covisResult.txt", std::ios_base::app);
+    file << "Time: " << Utils::elapsedTime(t1, t2) << "\n";
+    file << "Temporal frames: \n";
+    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
+    {
+      int frameID = this->activeKeyframes_[i]->frameID();
+      file << frameID << ", ";
+    }
+    file << "\nCovisible frames: \n";
+    for (int i = 0; i < this->temporalWindowIndex; i++)
+    {
+      int frameID = this->activeKeyframes_[i]->frameID();
+      file << frameID << ", ";
+    }
+    file << "\nAll candidates: \n";
+    for (auto it = selectCovisVec.begin(); it != selectCovisVec.end(); it++)
+    {
+      int frameID = it->first->frameID();
+      file << frameID << ": " << it->second << " < ";
+    }
+
+    file << "\n==============================================\n";
+    file.close();
+  }
+
 
   void LMCW::activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
   {
@@ -850,6 +947,7 @@ namespace dsm
 
     // activate the old keyframes' (excluding the lastest one) candidates
     // whose status is 'OPTIMIZED'
+    // Q: why excluding the latest?
     int numPointsCreated = 0;
     auto lastKeyframe = this->activeKeyframes_.back();
     for (int i = this->temporalWindowIndex; i < numActiveKeyframes-1; ++i)
@@ -931,10 +1029,12 @@ namespace dsm
             CovisibilityNode* curNode = owner->graphNode;
             for (ActivePoint* prevFramePt : tracedVoxel->voxPoints) 
             {
-              // if prevFrame is already a temporal frame, skip
-              if (prevFramePt->currentID() > this->activeKeyframes_.front()->keyframeID()) continue;
+              // if prevFrame is already a temporal frame, don't skip
+              // if (prevFramePt->currentID() > this->activeKeyframes_.front()->keyframeID()) continue;
               // trace refKF of an ActivePoint
               const std::shared_ptr<Frame> covisFrame = allKeyframes_[prevFramePt->currentID()];  // Q: correct?
+              // if prevFrame and owner are the same frame, skip
+              if (prevFramePt->currentID() == owner->keyframeID()) continue;
               // refKF should already have a CovisibilityNode
               CovisibilityNode* refNode = covisFrame->graphNode;
               // intialize or update weight
@@ -1146,50 +1246,53 @@ namespace dsm
 
   void LMCW::updateVoxelMapCovisGraph()
   {
-    // int numActiveKeyframes = (int)this->activeKeyframes_.size();
-    // for (int i = this->temporalWindowIndex; i < numActiveKeyframes; i++)
-    // {
-    //   const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
-    //   std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
-    //   CovisibilityNode* curFrameNode = owner->graphNode;
-    //   for (std::unique_ptr<ActivePoint>& actPt : activePoints)
-    //   {
-    //     // if voxel didn't change, no action required
-    //     const Voxel* newVoxel = voxelMap_->query_point(actPt.get());
-    //     if (newVoxel == actPt->voxel()) continue;
+    int numActiveKeyframes = (int)this->activeKeyframes_.size();
+    const int firstTemporalID = this->activeKeyframes_[this->temporalWindowIndex]->keyframeID();
+    for (int i = this->temporalWindowIndex; i < numActiveKeyframes; i++)
+    {
+      const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
+      std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
+      CovisibilityNode* curFrameNode = owner->graphNode;
+      for (std::unique_ptr<ActivePoint>& actPt : activePoints)
+      {
+        // if voxel didn't change, no action required
+        const Voxel* newVoxel = voxelMap_->query_point(actPt.get());
+        if (newVoxel == actPt->voxel()) continue;
 
-    //     // for each Active Point in the old voxel, decrease the edge weight
-    //     const int firstTemporalID = this->activeKeyframes_[this->temporalWindowIndex]->keyframeID();
-    //     std::vector<ActivePoint*> oldPoints = actPt->voxel()->voxPoints;
-    //     for (ActivePoint* oldPt : oldPoints)
-    //     {
-    //       if (oldPt->currentID() >= firstTemporalID) break; // stop if we've reached temporal frames
-    //       CovisibilityNode* covisFrameNode = oldPt->reference()->graphNode;
-    //       const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[oldPt->currentID()];
-    //       int newWeight = curFrameNode->edges[covisFrameNode] - 1;
-    //       if (newWeight == 0)
-    //         covisibilityGraph_->disconnect(covisFrame, owner);
-    //       else if (newWeight > 0)
-    //         covisibilityGraph_->connect(covisFrame, owner, newWeight);
-    //     }
+        // for each Active Point in the old voxel, decrease the edge weight
+        std::vector<ActivePoint*> oldPoints = actPt->voxel()->voxPoints;
+        for (ActivePoint* oldPt : oldPoints)
+        {
+          // if (oldPt->currentID() >= firstTemporalID) break; // stop if we've reached temporal frames
+          CovisibilityNode* covisFrameNode = oldPt->reference()->graphNode;
+          const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[oldPt->currentID()];
+          int newWeight = curFrameNode->edges[covisFrameNode] - 1;
+          if (newWeight == 0)
+            covisibilityGraph_->disconnect(covisFrame, owner);
+          else if (newWeight > 0)
+            covisibilityGraph_->connect(covisFrame, owner, newWeight);
+        }
 
-    //     // for each Active point in the new voxel, increase the edge weight
-    //     std::vector<ActivePoint*> newPoints = newVoxel->voxPoints;
-    //     for (ActivePoint* newPt : newPoints)
-    //     {
-    //       if (newPt->currentID() >= firstTemporalID) break; // stop if we've reached temporal frames
-    //       CovisibilityNode* covisFrameNode = newPt->reference()->graphNode;
-    //       const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[newPt->currentID()];
-    //       int newWeight = curFrameNode->edges[covisFrameNode] + 1;
-    //       covisibilityGraph_->connect(covisFrame, owner, newWeight);
-    //     }
+        // delete this point from old voxel
+        this->voxelMap_->delete_point_BA(actPt.get(), actPt->voxel());
+        // insert this point to new voxel
+        this->voxelMap_->insert_point(actPt.get());
 
-    //     // update the activepoint with its adjusted voxel
-    //     this->voxelMap_->delete_point
-    //     actPt->setVoxel(newVoxel);
-    //   }
+        // for each Active point in the new voxel, increase the edge weight
+        std::vector<ActivePoint*> newPoints = this->voxelMap_->query_point(actPt.get())->voxPoints;
+        for (ActivePoint* newPt : newPoints)
+        {
+          // if (newPt->currentID() >= firstTemporalID) break; // stop if we've reached temporal frames
+          CovisibilityNode* covisFrameNode = newPt->reference()->graphNode;
+          const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[newPt->currentID()];
+          int newWeight = curFrameNode->edges[covisFrameNode] + 1;
+          covisibilityGraph_->connect(covisFrame, owner, newWeight);
+        }
 
-    // }
+        // update the activepoint with its adjusted voxel
+        actPt->setVoxel(this->voxelMap_->query_point(actPt.get()));
+      }
+    }
   }
 
 }

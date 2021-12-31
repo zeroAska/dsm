@@ -53,6 +53,26 @@ namespace dsm {
         return true;
     }
 
+    bool VoxelMap::delete_point_BA(ActivePoint* pt, const Voxel* voxel) {
+        VoxelCoord intCoord{voxel->xc, voxel->yc, voxel->zc};
+        if (!vmap_.count(intCoord))
+            return false;
+        // 2. remove this point from the voxel
+        std::vector<ActivePoint*>& curVoxPts = vmap_[intCoord].voxPoints;
+        // iterate through to find the point to remove
+        for (auto it = curVoxPts.begin(); it != curVoxPts.end(); it++) {
+            if (*it == pt) {
+                curVoxPts.erase(it);
+                break;
+            }
+        }
+        // if the voxel contains no point after removal, erase the voxel too
+        if (curVoxPts.empty()) {
+            vmap_.erase(intCoord);
+        }
+        return true;
+    }
+
     VoxelMap::~VoxelMap() {
         std::cout<<"Voxel map destructed\n";
     }

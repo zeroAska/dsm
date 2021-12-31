@@ -2430,7 +2430,8 @@ namespace dsm
 
     // select window
     Utils::Time t_window_init = std::chrono::steady_clock::now();    
-    this->lmcw->selectWindow(this->ceresOptimizer);  //TL: need to split to two functions
+    // this->lmcw->selectWindow(this->ceresOptimizer);  //TL: need to split to two functions
+    this->lmcw->selectTemporalWindowCvo();
     Utils::Time t_window_end = std::chrono::steady_clock::now();
     windowConstructionTime.push_back(Utils::elapsedTime(t_window_init, t_window_end));
 
@@ -2442,6 +2443,9 @@ namespace dsm
 
     // select new active points from the temporal window
     this->lmcw->activatePointsCvo();
+
+    // this->lmcw->selectCovisibleWindowCvo();
+    this->lmcw->selectCovisibleWindowCvo2();
     //if (lmcw->allKeyframes().size() > 1 && lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->activePoints().size())
     //  this->lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->dump_active_points_to_pcd("active_points.pcd");    
 
@@ -2452,13 +2456,12 @@ namespace dsm
     // cvo BA
     if (cvo_align) {
       Utils::Time t_cvoba_init =  std::chrono::steady_clock::now();
-      this->cvoMultiAlign(activeKeyframes);
+      // this->cvoMultiAlign(activeKeyframes); // TL: commented out to speed up
       Utils::Time t_cvoba_end =  std::chrono::steady_clock::now();
       cvoBATime.push_back(Utils::elapsedTime(t_cvoba_init, t_cvoba_end));    
+      // this->lmcw->updateVoxelMapCovisGraph();
     }
 
-    // Q: fixing issue here// update points in voxel map after BA
-    // this->lmcw->updateCovisibilityGraph();
 
 
     // remove outliers

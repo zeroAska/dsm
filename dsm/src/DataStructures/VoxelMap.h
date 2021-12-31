@@ -101,6 +101,14 @@ namespace dsm {
         bool delete_point(ActivePoint* pt);
 
         /**
+         * @brief After BA, an ActivePoint's ref frame changes pose, need to provide its containing voxel for removal
+         * @param pt: a 3D point
+         * @param voxel: the voxel that stores the given pt
+         * @return true if deletion is successful; False if point doesn't exist in map
+         */
+        bool delete_point_BA(ActivePoint* pt, const Voxel* voxel);
+
+        /**
          * @brief query a 3D point to find the voxel containing it in the voxel map
          * @param pt: a 3D point
          * @return nullptr if no voxel exists at the given pt, or the voxel
