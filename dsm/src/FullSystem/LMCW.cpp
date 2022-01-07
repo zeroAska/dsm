@@ -643,7 +643,7 @@ namespace dsm
     }
   }
 
-  void LMCW::selectCovisibleWindowCvo()
+  std::unordered_map<int, int> LMCW::selectCovisibleWindowCvo()
   {
     assert(this->temporalWindowIndex == 0);
 
@@ -657,9 +657,19 @@ namespace dsm
 
     //   }
     // }
-
+    Utils::Time t1 = std::chrono::steady_clock::now();
+    
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+    const Eigen::Matrix3f& K = calib.matrix3f(0);
+    const int w = calib.width(0);
+    const int h = calib.height(0);
+    
+    const int firstActID = this->activeKeyframes_.front()->keyframeID();
     const int firstTempID = this->activeKeyframes_[this->temporalWindowIndex]->keyframeID();
+    const int maxCovisibleFrameID = this->activeKeyframes_.front()->frameID();
     std::unordered_set<std::shared_ptr<Frame>> selectCovisibleKeyframes;
+    std::unordered_map<int, int> edgesCovisibleToTemporal;
 
     for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
     {
@@ -670,7 +680,8 @@ namespace dsm
       int maxWeight = 0;
       for (auto& pair : temporalNode->edges) 
       {
-        if (pair.first->node->keyframeID() >= firstTempID) continue; // disregard temporal frames
+        if (//pair.first->node->keyframeID() >= firstTempID ||
+            (int)pair.first->node->keyframeID() >= (int)firstTempID - settings.gapCovisibleToTemporal ) continue; // disregard temporal frames
         if (pair.second > maxWeight)
         {
           maxWeight = pair.second;
@@ -683,13 +694,66 @@ namespace dsm
       // ensure no duplicates
       if (!selectCovisibleKeyframes.count(bestCovisFrame))
       {
+
         bestCovisFrame->activate();
+        //edgesCovisibleToTemporal[bestCovisFrame->frameID()] = this->activeKeyframes_[i]->frameID();
+        edgesCovisibleToTemporal.insert(std::make_pair<int, int>(bestCovisFrame->frameID(),
+                                                                 this->activeKeyframes_[i]->frameID()));
+
+
+        std::cout<<"select covisible frame: ("<<bestCovisFrame->frameID()<<", "<<this->activeKeyframes_[i]->frameID()<<")"<<std::endl;
         // Q: need to update this->numActivePoints?
         selectCovisibleKeyframes.insert(std::move(bestCovisFrame));
+
       }
     }
 
-    if (selectCovisibleKeyframes.empty()) return;
+    if (selectCovisibleKeyframes.empty()) return edgesCovisibleToTemporal;
+
+    // set visibility for visualization
+    const std::shared_ptr<Frame> lastActKeyframe = this->activeKeyframes_.back();		// make a copy, required!
+    const Sophus::SE3f worldToLast = lastActKeyframe->camToWorld().inverse();
+    const int lastActID = lastActKeyframe->keyframeID();
+    for (auto & covisFrame : selectCovisibleKeyframes) {
+      // relative pose
+      const Sophus::SE3f covisToLast = worldToLast * covisFrame->camToWorld();
+      const Eigen::Matrix3f R = covisToLast.rotationMatrix();
+      const Eigen::Vector3f t = covisToLast.translation();
+      Eigen::Matrix4f covisToLastEigen = Utils::SE3ToEigen(covisToLast);
+
+      for (const auto& point : covisFrame->activePoints())
+      {
+        // project point to new image
+        Eigen::Vector2f pt2d;
+        if (!Utils::projectAndCheck(point->u(0), point->v(0), point->iDepth(),
+                                    K, w, h, R, t, pt2d))
+        {
+          point->setVisibility(lastActID, Visibility::OOB);
+          continue;
+        }
+      
+        /*
+      std::shared_ptr<Frame> currTemporal = this->activeKeyframes_[i];        
+      const Sophus::SE3f covisToTemporal = currTemporal->camToWorld().inverse() * bestCovisFrame->camToWorld();
+      const Eigen::Matrix3f KRKinv = K * covisToTemporal.rotationMatrix() * Kinv;
+      const Eigen::Vector3f Kt = K * covisToTemporal.translation();
+
+      for (const auto& point : currTemporal->activePoints()) {
+        // project point to new image
+        Eigen::Vector2f pt2d;
+        if (!Utils::project(point->u(0), point->v(0), point->iDepth(),
+                            w, h, KRKinv, Kt, pt2d)) {
+          point->setVisibility(lastKeyframeID, Visibility::OOB);
+          continue;
+        }
+        */
+        // it is visible!
+        point->setCenterProjection(pt2d);
+        point->setVisibility(lastActID, Visibility::VISIBLE);
+      }
+
+      
+    }
 
     this->activeKeyframes_.insert(this->activeKeyframes_.begin(), selectCovisibleKeyframes.begin(), selectCovisibleKeyframes.end());
     this->temporalWindowIndex += selectCovisibleKeyframes.size();
@@ -698,7 +762,37 @@ namespace dsm
     {
       this->activeKeyframes_[i]->setActiveID(i);
     }
+
+    Utils::Time t2 = std::chrono::steady_clock::now();
+
+    std::ofstream file;
+    file.open("covisResult.txt", std::ios_base::app);
+    file << "Time: " << Utils::elapsedTime(t1, t2) << "\n";
+    file << "Temporal frames: \n";
+    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
+    {
+      int frameID = this->activeKeyframes_[i]->frameID();
+      file << frameID << ", ";
+    }
+    file << "\nCovisible frames: \n";
+    for (int i = 0; i < this->temporalWindowIndex; i++)
+    {
+      int frameID = this->activeKeyframes_[i]->frameID();
+      file << frameID << ", ";
+    }
+    //file << "\nAll candidates: \n";
+    //for (auto it = edgesCovisibleToTemporal.begin(); it != edgesCovisibleToTemporal.end(); it++)
+    //{
+    //  int frameID = it->first->frameID();
+    //  file << frameID << ": " << it->second << " < ";
+    // }
+
+    file << "\n==============================================\n";
+    file.close();
+
+
     
+    return edgesCovisibleToTemporal;
   }
 
 
@@ -985,8 +1079,7 @@ namespace dsm
           counter++;
 
           // observations & visibility
-          /*
-          for (const std::shared_ptr<Frame>& frame : this->activeKeyframes_)
+          /*for (const std::shared_ptr<Frame>& frame : this->activeKeyframes_)
           {
             if (frame == owner) continue;
 

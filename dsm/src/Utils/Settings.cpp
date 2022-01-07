@@ -180,6 +180,7 @@ namespace dsm
                 this->iDepthUncertainty = 0.025f;
                 this->trackingCosLimit = 0.75f;
                 this->enableDepthRegression = true;
+                this->gapCovisibleToTemporal = 20;
 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -342,6 +343,9 @@ namespace dsm
                 if (this->checkParameter("enabledepthregression", name, value, this->enableDepthRegression)) {
                   // std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
                   return; 
+                }
+                if (this->checkParameter("gapCovisibleToTemporal", name, value, this->gapCovisibleToTemporal)) {
+                  return;
                 }
                 
 

@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 namespace cvo {
   class CvoGPU;
@@ -117,7 +118,7 @@ namespace dsm
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
     // voxelMap based covisbility selection
-    void selectCovisibleWindowCvo();
+    std::unordered_map<int, int> selectCovisibleWindowCvo();
     void selectCovisibleWindowCvo2();
 
   private:

@@ -83,6 +83,7 @@ namespace dsm
       double timestamp;
 
       std::ofstream trajFile(trajFileName);
+      trajFile << std::setprecision(6) << std::endl;
 
       const double fps = 0.1;//reader.fps();
 

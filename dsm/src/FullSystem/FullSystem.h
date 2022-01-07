@@ -36,6 +36,7 @@
 #include <vector>
 #include <mutex>
 #include <shared_mutex>
+#include <unordered_map>
 #include <atomic>
 #include <map>
 #include <thread>
@@ -144,7 +145,8 @@ namespace dsm
 
     // Optimization
     void createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame);
-    void cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes);
+    void cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
+                       const std::unordered_map<int, int> & edgesCovisibleToTemporal);
     void dumpFramesToPcd (const std::string & graphDefFileName,
                           const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                           const std::vector<cvo::CvoFrame::Ptr> & cvo_frames,

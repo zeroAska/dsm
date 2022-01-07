@@ -41,6 +41,8 @@ namespace dsm
 		float iDepthHessian;					// opt hessian
 		float parallax;							// triangulation parallax
 		std::vector<unsigned char> color;		// pattern color
+          std::vector<unsigned char> featureColor;
+          std::vector<unsigned char> semanticColor;
 	};
 
 	// Keyframe visualizer class. It can render keyframe pose and its
@@ -76,8 +78,10 @@ namespace dsm
 		const Eigen::Matrix4f& getPose() const;
 		const std::vector<Eigen::Vector3f>& getPointCloud() const;
 		const std::vector<Eigen::Matrix<unsigned char, 3, 1>>& getColors() const;
+          const std::vector<Eigen::Matrix<unsigned char, 3, 1>> & getFeatureColors() const {return featureColors;};
 		KeyframeType getType() const;
 		int getNumPoints() const;
+          
 
 	private:
 		 
@@ -95,5 +99,7 @@ namespace dsm
 
 		// flag to control if requires to be updated
 		bool needUpdate;
+
+          std::vector<Eigen::Matrix<unsigned char, 3, 1>> featureColors;
 	};
 }
