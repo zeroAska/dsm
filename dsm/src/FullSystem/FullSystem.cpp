@@ -53,6 +53,14 @@
 #include <Eigen/Sparse>
 #include <fstream>
 #include <time.h>
+#include "cvo/CvoGPU.hpp"
+#include "utils/CvoPoint.hpp"
+#include "utils/CvoPointCloud.hpp"
+#include "utils/ImageStereo.hpp"
+#include "utils/ImageRGBD.hpp"
+#include "utils/RawImage.hpp"
+
+
 
 namespace dsm
 {
@@ -227,7 +235,8 @@ namespace dsm
     return !this->trackingIsGood;
   }
 
-  void FullSystem::getTrajectory(std::vector<Eigen::Matrix4f> &poses, std::vector<double> &timestamps) const
+  void FullSystem::getTrajectory(std::vector<Eigen::Matrix4f> &poses, std::vector<double> &timestamps,
+                                 std::vector<int> & ids) const
   {
     const auto& allKeyframes = this->lmcw->allKeyframes();
 
@@ -240,8 +249,10 @@ namespace dsm
     {
       poses.push_back(kf->camToWorld().matrix());
       timestamps.push_back(kf->timestamp());
+      ids.push_back(kf->frameID());
     }
   }
+  
 
   void FullSystem::getStructure(std::vector<Eigen::Vector3f>& structure) const
   {
@@ -1746,6 +1757,35 @@ namespace dsm
   }
 
 
+  static int FAST_corner_sampling(const cv::Mat & left_gray,
+                                  int expected_points,
+                                  // output
+                                  std::vector<int32_t> & selected_inds_map
+                                  ) {
+    
+    std::vector<cv::KeyPoint> keypoints;    
+
+
+
+    int maxKeypoints, minKeypoints;
+    
+    //cv::Ptr<cv::FastAdjuster::FastAdjuster> adjust = new cv::FastAdjuster::FastAdjuster();
+    //cv::Ptr<cv::FeatureDetector> detector = new cv::DynamicAdaptedFeatureDetector::DynamicAdaptedFeatureDetector(adjust,500,1000,5);
+    //vector<KeyPoint> keypoints;
+    //detector->detect(left_gray, keypoints);
+    //std::cout<<"Fast sampled "<<keypoints.size()<<" points \n";    
+    cv::FAST(left_gray, keypoints, 20,false);    
+    cv::KeyPointsFilter::retainBest(keypoints, 1000);
+    for (auto && kp: keypoints) {
+      int c = (int)kp.pt.x;
+      int r = (int)kp.pt.y;
+      selected_inds_map[r * left_gray.cols + c] = 0;
+    }
+    std::cout<<"after cv::retainBest, we obtain "<<keypoints.size()<<" points\n";
+    return keypoints.size();
+    
+  }
+  
 
   static int stereo_surface_sampling(const cv::Mat & left_gray,
                                      bool is_using_canny,
@@ -1850,14 +1890,20 @@ namespace dsm
     //std::vector<int32_t> selected_inds_map(this->pixelMask, this->pixelMask + sizeof(int32_t) * left_gray.total());
     std::vector<int32_t> selected_inds_map(left_gray.rows * left_gray.cols);
     std::fill(selected_inds_map.begin(), selected_inds_map.end(), -1);
-    int num = stereo_surface_sampling(left_gray,
-                                      true,
-                                      true,
-                                      2500,
-                                      // output
-                                      selected_inds_map
-                                      //std::vector<Vec2i, Eigen::aligned_allocator<Vec2i>> & final_selected_uv                   
-                                      );
+    
+    int num = 0;
+    if (settings.candidatePointsSampling == 0)
+      num = stereo_surface_sampling(left_gray,
+                                    true,
+                                    true,
+                                    3000,
+                                    // output
+                                    selected_inds_map
+                                    //std::vector<Vec2i, Eigen::aligned_allocator<Vec2i>> & final_selected_uv                   
+                                    );
+    else
+      num = FAST_corner_sampling(left_gray, settings.numPointsPerFrame,
+                                 selected_inds_map);
     
 
     // create candidates
@@ -1881,10 +1927,10 @@ namespace dsm
         if (cvo_align!=nullptr) {
           float idepth = 0;
           if (frame->depthType == Frame::DepthType::STEREO)
-            idepth = frame->getStereoDisparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
+            idepth = std::dynamic_pointer_cast<cvo::ImageStereo> (frame->getRawImage())->disparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
           else if (frame->depthType == Frame::DepthType::RGBD)
-            idepth =  frame->depthScale / (frame->getRgbdDepth()[width * row + col]); 
-          if ( ! std::isfinite(idepth) || idepth < 0.01f ) continue;
+            idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD>(frame->getRawImage())->depth_image()[width * row + col]); 
+          if ( ! std::isfinite(idepth) || idepth < 0.03f ) continue;
           std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth));
 
           candidates.emplace_back(std::move(new_candidate));
@@ -1912,8 +1958,8 @@ namespace dsm
     auto& activePoints = frame->activePoints();
     activePoints.reserve(candidates.size());
 
-    std::string fname("candidates_after_creation.pcd");
-    frame->dump_candidates_to_pcd(fname);
+    //std::string fname("candidates_after_creation.pcd");
+    //frame->dump_candidates_to_pcd(fname);
     std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }
 
@@ -1972,7 +2018,6 @@ namespace dsm
                                          association_mat);
       int counter = 0;
       for (int j = 0; j < candidates.size(); j++) {
-        //kf->candidatesHighQuaity()[j] = CandidatePoint::PointStatus::OPTIMIZED;
         kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
         counter++;
       }
@@ -2006,8 +2051,8 @@ namespace dsm
           //frame->candidatesHighQuaity()[framePtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
           frame->candidates()[framePtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);            
             //}
-          if (frame->candidatesHighQuaity()[framePtIdx] == CandidatePoint::PointStatus::OPTIMIZED)
-            counter++;
+          //if (frame->candidatesHighQuaity()[framePtIdx] == CandidatePoint::PointStatus::OPTIMIZED)
+          //  counter++;
         }
         std::cout<<"Frame "<<frame->frameID()<<" has "<<counter<<" traced points\n";
       } else {

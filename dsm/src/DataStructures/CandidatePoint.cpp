@@ -35,7 +35,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
-
+#include "utils/RawImage.hpp"
 namespace dsm
 {
   CandidatePoint::CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& frame) :
@@ -154,13 +154,13 @@ namespace dsm
     features_[2] = ((float)(avg_pixel[2]) )/255.0;
     features_[3] = gradient_0/ 511.0 + 0.5;
     features_[4] = gradient_1/ 511.0 + 0.5;
-    int num_classes = rawImage.num_class();
+    int num_classes = rawImage.num_classes();
     if (num_classes) {
       semantics_.resize(num_classes);
       //std::copy(rawImage.semantic_image().begin() + (v * w + u)*num_classes,
       //          rawImage.semantic_image().begin() + (v * w + u + 1)*num_classes,
       //          semantics_);
-      semantics_ = Eigen::Map<const Eigen::VectorXf>((rawImage.semantic_image().data()+ (v * w + u)*rawImage.num_class()), rawImage.num_class() );
+      semantics_ = Eigen::Map<const Eigen::VectorXf>((rawImage.semantic_image().data()+ (v * w + u)*rawImage.num_classes()), rawImage.num_classes() );
     }
     if (std::isnan(invDepth) == false) {
       status_ = PointStatus::TRACED;

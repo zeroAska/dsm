@@ -205,7 +205,10 @@ namespace dsm
           float trackingCosLimit;
 
           bool enableDepthRegression;
+          
           int gapCovisibleToTemporal;
+          int numPointsPerFrame;
+          int candidatePointsSampling;
 
 		// Secure Division
 		static const float DIVISION_EPS;

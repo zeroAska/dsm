@@ -2,10 +2,10 @@ debugPrintLog = true
 debugLogTracking = true
 debugLogKeyframes = true
 debugLogPixelDetection = false
-debugLogCandidatesTracking = false
+debugLogCandidatesTracking = true
 debugLogCandidatesOpt = true
 debugLogDistanceMap = false
-debugLogActivePoints = false
+debugLogActivePoints = true
 
 debugCandidates = true
 
@@ -108,7 +108,16 @@ newKFDistWeight = 4
 newKFUsageWeight = 3
 newKFAffineWeight = 4
 newKFResidualWeight = 2
-minNumMappedFramesToCreateKF = 1
+minNumTrackedFramesToCreateKF = 1
 
 showDepthMap = true
 showDepthMapLvl = 0
+
+iDepthUncertainty = 0.1
+trackingCosLimit = 0.2
+enableDepthRegression = false
+
+gapCovisibleToTemporal = 10
+
+numPointsPerFrame = 1000
+candidatePointsSampling = 1

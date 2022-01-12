@@ -33,6 +33,10 @@
 
 #include "dsm/BuildFlags.h"
 #include "utils/CvoPointCloud.hpp"
+#include "utils/ImageStereo.hpp"
+#include "utils/ImageRGBD.hpp"
+#include "utils/RawImage.hpp"
+#include "utils/CvoPoint.hpp"
 #include <iostream>
 
 namespace dsm
@@ -79,7 +83,7 @@ namespace dsm
     this->setErrorDistribution(errorDist);
   }
 
-  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,std::vector<float> & disparity) :
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageStereo> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
     frameID_(id),
     timestamp_(timestamp),
     trackingParent_(nullptr),
@@ -89,9 +93,10 @@ namespace dsm
     status_(Status::INACTIVE),
     trackingPoints_(new_frame_pcd),
     rawImg(color_img),
-    stereoDisparity(disparity.begin(), disparity.end()),
+    //stereoDisparity(color_img.disparity().begin(), disparity.end()),
     depthType(DepthType::STEREO),
-    depthScale(1.0)
+    depthScale(1.0),
+    fullPoints_(full_pc)
   {
     const auto& settings = Settings::getInstance();
     const auto& calib = GlobalCalibration::getInstance();
@@ -124,7 +129,7 @@ namespace dsm
     this->setErrorDistribution(errorDist);
   }
 
-  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,  float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
 
     frameID_(id),
     timestamp_(timestamp),
@@ -135,7 +140,7 @@ namespace dsm
     status_(Status::INACTIVE),
     trackingPoints_(new_frame_pcd),
     rawImg(color_img),
-    rgbdDepth(depth.begin(), depth.end()),
+    //rgbdDepth(color_img->depth_image().begin(), color_img->depth_image().end()),
     depthType(DepthType::RGBD),
     depthScale(depth_scale),
     fullPoints_(full_pc)
@@ -451,7 +456,7 @@ namespace dsm
 
   void Frame::initCandidateQualityFlag() {
     int num_candidates = this->candidates_.size();
-    this->candidatesHighQuaity_.resize(num_candidates, CandidatePoint::PointStatus::UNINITIALIZED);
+    //this->candidatesHighQuaity_.resize(num_candidates, CandidatePoint::PointStatus::UNINITIALIZED);
   }
   
   void Frame::activePointsToCvoPointCloud(cvo::CvoPointCloud & output

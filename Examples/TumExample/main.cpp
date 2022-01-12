@@ -13,6 +13,7 @@
 // used by cvo point cloud registration
 #include "dataset_handler/TumHandler.hpp"
 #include "utils/RawImage.hpp"
+#include "utils/ImageRGBD.hpp"
 #include "utils/Calibration.hpp"
 #include "utils/CvoPointCloud.hpp"
 #include "cvo/CvoGPU.hpp"
@@ -83,7 +84,7 @@ namespace dsm
       double timestamp;
 
       std::ofstream trajFile(trajFileName);
-      trajFile << std::setprecision(6) << std::endl;
+      //trajFile << std::setprecision(6) << std::endl;
 
       const double fps = 0.1;//reader.fps();
 
@@ -128,15 +129,14 @@ namespace dsm
 
         if ( !read_fails)
         {
-          
-          std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
-          std::vector<uint16_t> source_dep_data(source_dep.begin<uint16_t>(), source_dep.end<uint16_t>());
+          std::vector<uint16_t> source_dep_data(source_dep.begin<uint16_t>(), source_dep.end<uint16_t>());          
+          std::shared_ptr<cvo::ImageRGBD> source_raw(new cvo::ImageRGBD(source_left, source_dep_data));
           
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
           
-          cvo::CvoPointCloud source_cvo(*source_raw, source_dep_data, cvo_calib);
+          cvo::CvoPointCloud source_cvo(*source_raw,  cvo_calib);
           //std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, source_dep_data, cvo_calib, cvo::CvoPointCloud::FULL));
-          std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, source_dep_data, cvo_calib));
+          std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw,  cvo_calib));
 
           //if (id <= 2) source_cvo.write_to_color_pcd("color_"+std::to_string(id)+".pcd");
 
@@ -163,7 +163,7 @@ namespace dsm
           // process
           //DSM->trackFrame(id, timestamp, gray_img.data);
           timestamp = std::stod(all_timestamps[id]);
-          std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, gray_img.data, source_raw, source_pcd, source_dep_data, cvo_calib.scaling_factor(),
+          std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, gray_img.data, source_raw, source_pcd, cvo_calib.scaling_factor(),
                                                                             source_full);
     
           DSM->trackFrame(id, timestamp, trackingNewFrame);
@@ -211,13 +211,14 @@ namespace dsm
         //std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
         std::vector<Eigen::Matrix4f> poses;
         std::vector<double> timestamps;
-        DSM->getTrajectory(poses, timestamps);
+        std::vector<int> ids;
+        DSM->getTrajectory(poses, timestamps, ids);
 
         int l = 0;
         for (auto && accum_mat : poses) {
 
           Eigen::Quaternionf q(accum_mat.block<3,3>(0,0));
-          trajFile<<timestamps[l]<<" ";
+          trajFile<<std::fixed << std::setprecision(6) << timestamps[l]<<" ";
           trajFile<<accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 
           trajFile<<q.x()<<" "<<q.y()<<" "<<q.z()<<" "<<q.w()<<"\n";
           trajFile.flush();

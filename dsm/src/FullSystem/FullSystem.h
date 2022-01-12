@@ -40,13 +40,14 @@
 #include <atomic>
 #include <map>
 #include <thread>
-#include "cvo/CvoGPU.hpp"
-#include "utils/CvoPoint.hpp"
 #include <pcl/point_cloud.h>
+#include "utils/CvoPoint.hpp"
 
 namespace cvo {
   class CvoGPU;
   class Calibration;
+  class CvoFrame;
+
 }
 
 namespace dsm
@@ -98,7 +99,8 @@ namespace dsm
     //		       ACCESORS	 	          //
     ////////////////////////////////////////
 
-    void getTrajectory(std::vector<Eigen::Matrix4f> &poses, std::vector<double> &timestamps) const;
+    void getTrajectory(std::vector<Eigen::Matrix4f> &poses, std::vector<double> &timestamps,
+                       std::vector<int> & ids) const;
 
     void getStructure(std::vector<Eigen::Vector3f>& structure) const;
 
@@ -149,7 +151,7 @@ namespace dsm
                        const std::unordered_map<int, int> & edgesCovisibleToTemporal);
     void dumpFramesToPcd (const std::string & graphDefFileName,
                           const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
-                          const std::vector<cvo::CvoFrame::Ptr> & cvo_frames,
+                          const std::vector<std::shared_ptr<cvo::CvoFrame>> & cvo_frames,
                           const std::list<std::pair<int, int>> & edges) const;
     
 

@@ -163,8 +163,8 @@ namespace dsm
                 Eigen::VectorXf features_;
                 Eigen::VectorXf semantics_;
 
-				// voxel
-				const Voxel* voxel_;
+                // voxel
+                const Voxel* voxel_;
                 
 
 		// optimization statistics

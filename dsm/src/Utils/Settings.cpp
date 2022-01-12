@@ -180,7 +180,9 @@ namespace dsm
                 this->iDepthUncertainty = 0.025f;
                 this->trackingCosLimit = 0.75f;
                 this->enableDepthRegression = true;
-                this->gapCovisibleToTemporal = 20;
+                this->gapCovisibleToTemporal = 10;
+                this->numPointsPerFrame = 1000;
+                this->candidatePointsSampling = 1; // 0: canny   1: FAST
 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -340,11 +342,19 @@ namespace dsm
                   std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
                   return; 
                 }
+                if (this->checkParameter("gapCovisibleToTemporal", name, value, this->gapCovisibleToTemporal)) {
+                  return;
+                }
+                
                 if (this->checkParameter("enabledepthregression", name, value, this->enableDepthRegression)) {
                   // std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
                   return; 
                 }
-                if (this->checkParameter("gapCovisibleToTemporal", name, value, this->gapCovisibleToTemporal)) {
+                if (this->checkParameter("numPointsPerFrame", name, value, this->numPointsPerFrame)) {
+                  return;
+                }
+                if (this->checkParameter("candidatePointsSampling", name, value, this->candidatePointsSampling)) {
+                  std::cout<<"candidatePointsSampling is "<<this->candidatePointsSampling<<std::endl;
                   return;
                 }
                 

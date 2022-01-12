@@ -12,7 +12,7 @@
 
 // used by cvo point cloud registration
 #include "dataset_handler/KittiHandler.hpp"
-#include "utils/RawImage.hpp"
+#include "utils/ImageStereo.hpp"
 #include "utils/Calibration.hpp"
 #include "utils/CvoPointCloud.hpp"
 #include "cvo/CvoGPU.hpp"
@@ -83,6 +83,7 @@ namespace dsm
       double timestamp;
 
       std::ofstream trajFile(trajFileName);
+      std::ofstream trajIdFile("kitti_frame_id.txt");
 
       const double fps = 0.1;//reader.fps();
 
@@ -118,7 +119,10 @@ namespace dsm
         //kitti.read_next_stereo(source_left, source_right);
         //std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left, NUM_CLASSES, semantics_source));
         //std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
-        if (read_fails) this->shouldStop = true;
+        if (read_fails ) {
+          std::cout <<" Read fails\n";
+          this->shouldStop = true;
+        }
         //cvo::RawImage source_raw(source_left));
 
         
@@ -128,9 +132,10 @@ namespace dsm
 
         if ( !read_fails)
         {
-          std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));
+          std::shared_ptr<cvo::ImageStereo> source_raw(new cvo::ImageStereo(source_left, source_right));
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>); 
-          cvo::CvoPointCloud source_cvo(*source_raw, source_right, cvo_calib);
+          cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib);
+          std::shared_ptr<cvo::CvoPointCloud>  source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib));
           cvo::CvoPointCloud_to_pcl(source_cvo, *source_pcd);
           
           double time = (double)cv::getTickCount();
@@ -155,10 +160,15 @@ namespace dsm
                                                &visualizer);
           }
 
+
+          std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, gray_img.data, source_raw, source_pcd,
+                                                                            source_full);
+          
           // process
           //DSM->trackFrame(id, timestamp, gray_img.data);
-          DSM->trackFrame(id, timestamp, gray_img.data, source_raw, source_right, source_pcd);
-          
+          // DSM->trackFrame(id, timestamp, gray_img.data, source_raw, source_right, source_pcd);
+          DSM->trackFrame(id, timestamp, trackingNewFrame);
+              
           //cv::imwrite("new_tracked_gray.png", gray_img);
           // visualize image
           visualizer.publishLiveFrame(gray_img);
@@ -192,8 +202,9 @@ namespace dsm
         //std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
         std::vector<Eigen::Matrix4f> poses;
         std::vector<double> timestamps;
-        DSM->getTrajectory(poses, timestamps);
-
+        std::vector<int> frameIDs;
+        DSM->getTrajectory(poses, timestamps, frameIDs);
+        
         for (auto && accum_mat : poses) {
           trajFile << accum_mat(0,0)<<" "<<accum_mat(0,1)<<" "<<accum_mat(0,2)<<" "<<accum_mat(0,3)<<" "
                        <<accum_mat(1,0)<<" " <<accum_mat(1,1)<<" "<<accum_mat(1,2)<<" "<<accum_mat(1,3)<<" "
@@ -203,13 +214,17 @@ namespace dsm
           DSM->printLog();          
 
         }
+        for (auto id : frameIDs) {
+          trajIdFile << id<<"\n";
+        }
+        
         
         
       }
 
 
       
-      
+      trajIdFile.close();
       trajFile.close();
       
     }

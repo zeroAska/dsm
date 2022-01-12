@@ -39,9 +39,15 @@
 #include "Statistics/IDistribution.h"
 #include "FullSystem/DSMLib.h"
 #include "utils/CvoPoint.hpp"
-#include "utils/CvoPointCloud.hpp"
-#include "utils/RawImage.hpp"
+//#include "utils/CvoPointCloud.hpp"
 
+namespace cvo {
+  class ImageStereo;
+  class RawImage;
+  class ImageRGBD;
+  class CvoPointCloud;
+  //  class CvoPoint;
+}
 
 namespace dsm
 {
@@ -77,10 +83,10 @@ namespace dsm
 		Frame(int id, double timestamp, unsigned char* image);
 
                 // stereo
-                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, std::vector<float> & disparity);
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageStereo> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, std::shared_ptr<cvo::CvoPointCloud> full_pc);
 
                 // rgb-d
-                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::RawImage> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, const std::vector<uint16_t> & depth, float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc);
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc);
 
 		~Frame();
 
@@ -160,7 +166,6 @@ namespace dsm
 		// access points candidates
 		const std::vector<std::unique_ptr<CandidatePoint>>& candidates() const;
 		std::vector<std::unique_ptr<CandidatePoint>>& candidates();
-                std::vector<CandidatePoint::PointStatus> & candidatesHighQuaity() {return candidatesHighQuaity_;}
                 void initCandidateQualityFlag();
                 void dump_candidates_to_pcd(const std::string & fname);
 
@@ -179,8 +184,8 @@ namespace dsm
                 
                 
                 std::shared_ptr<cvo::RawImage> getRawImage() {return rawImg;}
-                const std::vector <float> & getStereoDisparity() {return stereoDisparity;}
-                const std::vector<uint16_t> & getRgbdDepth() {return rgbdDepth;}
+                const std::vector <float> & getStereoDisparity();
+                const std::vector<uint16_t> & getRgbdDepth();
                 const std::shared_ptr<cvo::CvoPointCloud> getFullPoints() {return fullPoints_;}
                 const float depthScale;
                 const DepthType depthType;
@@ -224,8 +229,8 @@ namespace dsm
                 pcl::PointCloud<cvo::CvoPoint>::Ptr trackingPoints_; // for CVO coarse tracking
                 std::shared_ptr<cvo::CvoPointCloud> fullPoints_;
                 std::shared_ptr<cvo::RawImage> rawImg;
-                std::vector<float> stereoDisparity;
-                std::vector<uint16_t> rgbdDepth;
+                //std::vector<float> stereoDisparity;
+                //std::vector<uint16_t> rgbdDepth;
 
                 
 
@@ -247,7 +252,6 @@ namespace dsm
 
 		// candidate points
 		std::vector<std::unique_ptr<CandidatePoint>> candidates_;
-                std::vector<CandidatePoint::PointStatus> candidatesHighQuaity_;
                 // candidates to become active points
                 
 
