@@ -822,7 +822,7 @@ namespace dsm
         selectCovisibleKeyframes[curCovisFrame] += pair.second;
       }
     }
-
+    Utils::Time t2 = std::chrono::steady_clock::now();
     if (selectCovisibleKeyframes.empty()) return;
 
 
@@ -848,33 +848,42 @@ namespace dsm
       this->activeKeyframes_[i]->setActiveID(i);
     }
 
-    Utils::Time t2 = std::chrono::steady_clock::now();
+    Utils::Time t3 = std::chrono::steady_clock::now();
 
     // TL: debug log
-    std::ofstream file;
-    file.open("covisResult.txt", std::ios_base::app);
-    file << "Time: " << Utils::elapsedTime(t1, t2) << "\n";
-    file << "Temporal frames: \n";
-    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
+    if (settings.debugPrintLog)
     {
-      int frameID = this->activeKeyframes_[i]->frameID();
-      file << frameID << ", ";
-    }
-    file << "\nCovisible frames: \n";
-    for (int i = 0; i < this->temporalWindowIndex; i++)
-    {
-      int frameID = this->activeKeyframes_[i]->frameID();
-      file << frameID << ", ";
-    }
-    file << "\nAll candidates: \n";
-    for (auto it = selectCovisVec.begin(); it != selectCovisVec.end(); it++)
-    {
-      int frameID = it->first->frameID();
-      file << frameID << ": " << it->second << " < ";
-    }
+      const std::string timeMsg = "Graph look up Time: " + std::to_string(Utils::elapsedTime(t1, t2)) + "\t";
+      const std::string sortMsg = "Sort Time: " + std::to_string(Utils::elapsedTime(t2, t3)) + "\t";
 
-    file << "\n==============================================\n";
-    file.close();
+      auto& log = Log::getInstance();
+      log.addCurrentLog(this->activeKeyframes_.back()->frameID(), timeMsg);
+      log.addCurrentLog(this->activeKeyframes_.back()->frameID(), sortMsg);
+    }
+    // std::ofstream file;
+    // file.open("covisResult.txt", std::ios_base::app);
+    // file << "Graph look up Time: " << Utils::elapsedTime(t1, t2) << ", Sort time: " << Utils::elapsedTime(t2, t3) << "\n";
+    // file << "Temporal frames: \n";
+    // for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
+    // {
+    //   int frameID = this->activeKeyframes_[i]->frameID();
+    //   file << frameID << ", ";
+    // }
+    // file << "\nCovisible frames: \n";
+    // for (int i = 0; i < this->temporalWindowIndex; i++)
+    // {
+    //   int frameID = this->activeKeyframes_[i]->frameID();
+    //   file << frameID << ", ";
+    // }
+    // file << "\nAll candidates: \n";
+    // for (auto it = selectCovisVec.begin(); it != selectCovisVec.end(); it++)
+    // {
+    //   int frameID = it->first->frameID();
+    //   file << frameID << ": " << it->second << " < ";
+    // }
+
+    // file << "\n==============================================\n";
+    // file.close();
   }
 
 
@@ -1044,6 +1053,7 @@ namespace dsm
     // Q: why excluding the latest?
     int numPointsCreated = 0;
     auto lastKeyframe = this->activeKeyframes_.back();
+
     for (int i = this->temporalWindowIndex; i < numActiveKeyframes-1; ++i)
     {
       std::cout<<"activePoint: frame ID "<<activeKeyframes_[i]->frameID()<<std::endl<<std::flush;
@@ -1138,7 +1148,6 @@ namespace dsm
           }
 
 
-
           // insert to voxel map
           voxelMap_->insert_point(point.get());
           point->setVoxel(voxelMap_->query_point(point.get()));
@@ -1193,9 +1202,11 @@ namespace dsm
     if (settings.debugPrintLog && settings.debugLogActivePoints)
     {
       const std::string msg = "Act. New: " + std::to_string(numPointsCreated) + "\t";
+      const std::string timeMsg = "covisib build time: " + std::to_string(Utils::elapsedTime(t1, t2)) + "\t";
 
       auto& log = Log::getInstance();
       log.addCurrentLog(lastKeyframe->frameID(), msg);
+      log.addCurrentLog(lastKeyframe->frameID(), timeMsg);
     }
 
     //if (settings.debugShowDistanceTransformAfter && this->outputWrapper_)

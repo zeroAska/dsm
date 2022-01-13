@@ -1,9 +1,9 @@
 debugPrintLog = true
-debugLogTracking = false
+debugLogTracking = true
 debugLogKeyframes = true
 debugLogPixelDetection = false
-debugLogCandidatesTracking = false
-debugLogCandidatesOpt = false
+debugLogCandidatesTracking = true
+debugLogCandidatesOpt = true
 debugLogDistanceMap = false
 debugLogActivePoints = true
 
