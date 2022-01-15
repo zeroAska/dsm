@@ -375,6 +375,7 @@ namespace dsm
         this->numActivePoints++;
         numVisible++;
       }
+      std::cout<<"Frame "<<kf->frameID()<<" has "<<numVisible<<" active points that are visible.\n";
 
       // keep the last numAlwaysKeepKeyframes keyframes + the new one
       if ((kf->keyframeID() <= lastKeyframeID - settings.numAlwaysKeepKeyframes) &&
@@ -665,9 +666,9 @@ namespace dsm
     const int w = calib.width(0);
     const int h = calib.height(0);
     
-    const int firstActID = this->activeKeyframes_.front()->keyframeID();
-    const int firstTempID = this->activeKeyframes_[this->temporalWindowIndex]->keyframeID();
-    const int maxCovisibleFrameID = this->activeKeyframes_.front()->frameID();
+    const int firstKeyframeID = this->activeKeyframes_.front()->keyframeID();
+    //const int firstFrameID = this->activeKeyframes_[this->temporalWindowIndex]->frameID();
+    //const int maxCovisibleFrameID = this->activeKeyframes_.front()->frameID();
     std::unordered_set<std::shared_ptr<Frame>> selectCovisibleKeyframes;
     std::unordered_map<int, int> edgesCovisibleToTemporal;
 
@@ -676,35 +677,57 @@ namespace dsm
       // find best covisible frame for each temporal frame
       const CovisibilityNode* temporalNode = this->activeKeyframes_[i]->graphNode;
       // get the node with highest weight among all edges
-      CovisibilityNode* highCovisNode = nullptr;
-      int maxWeight = 0;
-      for (auto& pair : temporalNode->edges) 
+      //CovisibilityNode* highCovisNode = nullptr;
+      //int maxWeight = 0;
+      std::cout<<"selectedCovis temp-window: frame "<<this->activeKeyframes_[i]->frameID()<<" has "<<temporalNode->edges.size()<<" neighbors in the covis-graph: ";
+      std::vector<CovisibilityNode *> sorted_nodes;
+      sorted_nodes.reserve(temporalNode->edges.size());
+      for (const auto &s : temporalNode->edges) {
+        std::cout<<s.first->node->frameID()<<", ";
+        sorted_nodes.emplace_back(s.first);
+      }
+      std::cout<<std::endl<<std::flush;
+      std::sort(sorted_nodes.begin(), sorted_nodes.end(),
+                [&](CovisibilityNode * a, CovisibilityNode *b) {
+                  return temporalNode->edges.at(a) > temporalNode->edges.at(b);
+                });
+      /*
+      for (auto& pair : sorted_nodes) 
       {
+        std::cout<<pair.first->node->frameID()<<", ";
+          
         if (//pair.first->node->keyframeID() >= firstTempID ||
-            (int)pair.first->node->keyframeID() >= (int)firstTempID - settings.gapCovisibleToTemporal ) continue; // disregard temporal frames
+            (int)pair.first->node->frameID() >= (int)firstFrameID - settings.gapCovisibleToTemporal ) continue; // disregard temporal frames
         if (pair.second > maxWeight)
         {
           maxWeight = pair.second;
           highCovisNode = pair.first;
         }
-      }
-      if (highCovisNode == nullptr) continue;
-      std::shared_ptr<Frame> bestCovisFrame = this->allKeyframes_[highCovisNode->node->keyframeID()];
-
+        }
+      std::cout<<"\n";
+      */
+      //if (highCovisNode == nullptr) continue;
+      //std::shared_ptr<Frame> bestCovisFrame = this->allKeyframes_[highCovisNode->node->keyframeID()];
+      
       // ensure no duplicates
-      if (!selectCovisibleKeyframes.count(bestCovisFrame))
-      {
-
-        bestCovisFrame->activate();
-        //edgesCovisibleToTemporal[bestCovisFrame->frameID()] = this->activeKeyframes_[i]->frameID();
-        edgesCovisibleToTemporal.insert(std::make_pair<int, int>(bestCovisFrame->frameID(),
-                                                                 this->activeKeyframes_[i]->frameID()));
-
-
-        std::cout<<"select covisible frame: ("<<bestCovisFrame->frameID()<<", "<<this->activeKeyframes_[i]->frameID()<<")"<<std::endl;
-        // Q: need to update this->numActivePoints?
-        selectCovisibleKeyframes.insert(std::move(bestCovisFrame));
-
+      for (auto & node : sorted_nodes) {
+        std::shared_ptr<Frame> bestCovisFrame = this->allKeyframes_[node->node->keyframeID()];
+        if (!selectCovisibleKeyframes.count(bestCovisFrame)
+            && bestCovisFrame->frameID() < activeKeyframes_.front()->frameID() - settings.gapCovisibleToTemporal
+            ) {
+          
+          bestCovisFrame->activate();
+          //edgesCovisibleToTemporal[bestCovisFrame->frameID()] = this->activeKeyframes_[i]->frameID();
+          edgesCovisibleToTemporal.insert(std::make_pair<int, int>(bestCovisFrame->frameID(),
+                                                                   this->activeKeyframes_[i]->frameID()));
+          
+          
+          std::cout<<"select covisible frame: ("<<bestCovisFrame->frameID()<<", "<<this->activeKeyframes_[i]->frameID()<<")"<<std::endl;
+          // Q: need to update this->numActivePoints?
+          selectCovisibleKeyframes.insert((bestCovisFrame));
+          break;
+          
+        }
       }
     }
 
@@ -1044,6 +1067,8 @@ namespace dsm
     // Q: why excluding the latest?
     int numPointsCreated = 0;
     auto lastKeyframe = this->activeKeyframes_.back();
+    const Sophus::SE3f worldToLast = lastKeyframe->camToWorld().inverse();
+    
     for (int i = this->temporalWindowIndex; i < numActiveKeyframes-1; ++i)
     {
       std::cout<<"activePoint: frame ID "<<activeKeyframes_[i]->frameID()<<std::endl<<std::flush;
@@ -1051,9 +1076,9 @@ namespace dsm
       //std::shared_ptr<Frame> owner = this->activeKeyframes_[i];
 
       // relative pose
-      //const Sophus::SE3f ownerToLast = worldToLast * owner->camToWorld();	
-      //const Eigen::Matrix3f KRKinv = K * ownerToLast.rotationMatrix() * Kinv;
-      //const Eigen::Vector3f Kt = K * ownerToLast.translation();
+      const Sophus::SE3f ownerToLast = worldToLast * owner->camToWorld();	
+      const Eigen::Matrix3f KRKinv = K * ownerToLast.rotationMatrix() * Kinv;
+      const Eigen::Vector3f Kt = K * ownerToLast.translation();
 
       auto& candidates = owner->candidates();
       auto& activePoints = owner->activePoints();
@@ -1079,24 +1104,34 @@ namespace dsm
           counter++;
 
           // observations & visibility
-          /*for (const std::shared_ptr<Frame>& frame : this->activeKeyframes_)
+          for (const std::shared_ptr<Frame>& frame : this->activeKeyframes_)
           {
             if (frame == owner) continue;
+            Eigen::Vector2f pt2d;
+            const Sophus::SE3f covisToLast = worldToLast * frame->camToWorld();
+            const Eigen::Matrix3f R = covisToLast.rotationMatrix();
+            const Eigen::Vector3f t = covisToLast.translation();
+            Eigen::Matrix4f covisToLastEigen = Utils::SE3ToEigen(covisToLast);
+            if (!Utils::projectAndCheck(point->u(0), point->v(0), point->iDepth(),
+                                        K, width, height, R, t, pt2d)) {
+              point->setVisibility(frame->keyframeID() , Visibility::OOB);
+              continue;
+            }
 
-            Visibility vis = cand->visibility(frame->activeID());
+            //Visibility vis = cand->visibility(frame->activeID());
 
             // set visibility
-            point->setVisibility(frame->keyframeID(), vis);
+            point->setVisibility(frame->keyframeID(), Visibility::VISIBLE);
 
-            if (vis == Visibility::VISIBLE)
+            //if (vis == Visibility::VISIBLE)
             {
               // create new observation
-              std::unique_ptr<PhotometricResidual> obs =
-                std::make_unique<PhotometricResidual>(point, frame, photometricBA);
+              //std::unique_ptr<PhotometricResidual> obs =
+              //  std::make_unique<PhotometricResidual>(point, frame, photometricBA);
 
-              point->addObservation(frame.get(), obs);
+              //point->addObservation(frame.get(), obs);
             }
-          }*/
+          }
           cand = nullptr;						// delete candidate after activation
 
           //point->setCenterProjection(pointInFrame);

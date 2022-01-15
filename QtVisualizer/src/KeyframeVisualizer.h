@@ -41,8 +41,9 @@ namespace dsm
 		float iDepthHessian;					// opt hessian
 		float parallax;							// triangulation parallax
 		std::vector<unsigned char> color;		// pattern color
-          std::vector<unsigned char> featureColor;
-          std::vector<unsigned char> semanticColor;
+          //std::vector<unsigned char> featureColor;
+          unsigned char featureColor[3];
+          unsigned char semanticColor[3];
 	};
 
 	// Keyframe visualizer class. It can render keyframe pose and its

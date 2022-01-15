@@ -59,6 +59,7 @@ namespace dsm
 		QtVisualizer(const QApplication& anApp);
 		~QtVisualizer();
 
+
 		//main function that runs the application UI
 		void run();
 
@@ -209,6 +210,8 @@ namespace dsm
 		std::mutex scaleMutex;
 		float camScale;
 		float pointScale;
+
+
 
 		// covisibility
 		std::mutex covisibilityMutex;

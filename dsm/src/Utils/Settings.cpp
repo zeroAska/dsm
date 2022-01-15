@@ -181,8 +181,8 @@ namespace dsm
                 this->trackingCosLimit = 0.75f;
                 this->enableDepthRegression = true;
                 this->gapCovisibleToTemporal = 10;
-                this->numPointsPerFrame = 1000;
-                this->candidatePointsSampling = 1; // 0: canny   1: FAST
+                this->numPointsPerFrame = 2000;
+                this->candidatePointsSampling = 0; // 0: canny   1: FAST
 
 		// update the rest
 		this->updateNonIndependentParameters();

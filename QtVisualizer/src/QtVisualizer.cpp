@@ -25,6 +25,10 @@
 #include "QtWindow.h"
 #include "GLDrawings.h"
 
+#include <QPixmap>
+#include <QWidget>
+#include <QString>
+
 #include "DataStructures/Frame.h"
 #include "DataStructures/ActivePoint.h"
 #include "Utils/UtilFunctions.h"
@@ -179,6 +183,9 @@ namespace dsm
 
 		//current camera pose
 		if (this->mainWindow->getShowCamera()) this->renderCamera();
+
+
+
 
 		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 

@@ -1896,7 +1896,7 @@ namespace dsm
       num = stereo_surface_sampling(left_gray,
                                     true,
                                     true,
-                                    3000,
+                                    1500,
                                     // output
                                     selected_inds_map
                                     //std::vector<Vec2i, Eigen::aligned_allocator<Vec2i>> & final_selected_uv                   
@@ -2434,7 +2434,7 @@ namespace dsm
           if (activeKeyframes[j]->frameID() == temporalID) {
             std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[i], cvo_frames[j]);
             edges.push_back(p);
-            edges_inds.push_back(std::make_pair(covisibleID, temporalID));            
+            edges_inds.push_back(std::make_pair(covisibleID, activeKeyframes[j]->frameID()));            
             break;
           }
         }
@@ -2486,7 +2486,7 @@ namespace dsm
     // initialize candidates
     this->createCandidates(frame);    
     // this->trackCandidatesCvo(frame, true);
-     this->trackCandidatesCvo(frame);
+    this->trackCandidatesCvo(frame);
     
     // insert new keyframe
     this->lmcw->insertNewKeyframe(frame);
@@ -2518,7 +2518,7 @@ namespace dsm
 
     std::unordered_map<int, int> edgesCovisibleToTemporal;
     if (!settings.doOnlyTemporalOpt)
-      this->lmcw->selectCovisibleWindowCvo();
+      edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
     //this->lmcw->selectCovisibleWindowCvo2();
     //if (lmcw->allKeyframes().size() > 1 && lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->activePoints().size())
     //  this->lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->dump_active_points_to_pcd("active_points.pcd");    

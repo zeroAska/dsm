@@ -94,25 +94,25 @@ namespace dsm
 		this->pointCloud.resize(numPoints);
 		for (int i = 0; i < numPoints; ++i)
 		{
-			this->pointCloud[i].u = (float)points[i]->u(0);
-			this->pointCloud[i].v = (float)points[i]->v(0);
-			this->pointCloud[i].iDepth = points[i]->iDepth();
-			this->pointCloud[i].iDepthHessian = points[i]->iDepthHessian();
-			this->pointCloud[i].parallax = points[i]->parallax();
+                  this->pointCloud[i].u = (float)points[i]->u(0);
+                  this->pointCloud[i].v = (float)points[i]->v(0);
+                  this->pointCloud[i].iDepth = points[i]->iDepth();
+                  this->pointCloud[i].iDepthHessian = points[i]->iDepthHessian();
+                  this->pointCloud[i].parallax = points[i]->parallax();
                         
-			this->pointCloud[i].color.resize(dsm::Pattern::size());
-                        this->pointCloud[i].featureColor.resize(3);
-                        this->pointCloud[i].semanticColor.resize(3);
-                        
-			const Eigen::VecXf& colors = points[i]->colors(0);
-			for (int32_t idx = 0; idx < dsm::Pattern::size(); ++idx)
-			{
-				this->pointCloud[i].color[idx] = (unsigned char)colors[idx];
-			}
-
-                        // for (int32_t idx = 0; idx < 3; i++) {
-                        //  this->pointCloud[i].featureColor[idx] = (unsigned char)(int) (points[i]->features()[idx] * 255.0);
-                        // }
+                  this->pointCloud[i].color.resize(dsm::Pattern::size());
+                  //this->pointCloud[i].featureColor.resize(3);
+                  //this->pointCloud[i].semanticColor.resize(3);
+                  
+                  const Eigen::VecXf& colors = points[i]->colors(0);
+                  for (int32_t idx = 0; idx < dsm::Pattern::size(); ++idx)
+                  {
+                    this->pointCloud[i].color[idx] = (unsigned char)colors[idx];
+                  }
+                  
+                  for (int32_t idx = 0; idx < 3; idx++) {
+                    if (i < numPoints)  this->pointCloud[i].featureColor[idx] = (unsigned char)(int) (points[i]->features()[idx] * 255.0);
+                  }
 		}
 
 		this->needUpdate = true;
@@ -177,11 +177,19 @@ namespace dsm
 																				  (vj - K(1, 2)) / K(1, 1), 
 																				   1.f);
 
-				this->colorBuffer[this->numBufferPoints][0] = this->pointCloud[i].color[idx];
+				/*
+                                  this->colorBuffer[this->numBufferPoints][0] = this->pointCloud[i].color[idx];
 				this->colorBuffer[this->numBufferPoints][1] = this->pointCloud[i].color[idx];
 				this->colorBuffer[this->numBufferPoints][2] = this->pointCloud[i].color[idx];
 
+                                */
+                                this->colorBuffer[this->numBufferPoints][0] = this->pointCloud[i].featureColor[2];
+				this->colorBuffer[this->numBufferPoints][1] = this->pointCloud[i].featureColor[1];
+				this->colorBuffer[this->numBufferPoints][2] = this->pointCloud[i].featureColor[0];
+
+                                
 				this->numBufferPoints++;
+
 				assert(this->numBufferPoints <= numPoints*numPixels);
 			}
 		}

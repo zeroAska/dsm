@@ -120,4 +120,4 @@ enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
 numPointsPerFrame = 1000
-candidatePointsSampling = 1
+candidatePointsSampling = 0

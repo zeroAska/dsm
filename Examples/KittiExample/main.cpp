@@ -6,7 +6,9 @@
 #include "glog/logging.h"
 
 #include "opencv2/imgproc.hpp"
-
+#include <QPixmap>
+#include <QWidget>
+#include <QString>
 #include "QtVisualizer.h"
 #include "FullSystem/FullSystem.h"
 
@@ -109,8 +111,11 @@ namespace dsm
 
           // reset dataset reader
           reader.set_start_index(id);
+
         }
 
+
+        // visualizer.saveImage = true;
         cv::Mat source_left, source_right;
         //std::vector<float> semantics_source;
         //reader.read_next_stereo(source_left, source_right, NUM_CLASSES, semantics_source);
@@ -218,11 +223,11 @@ namespace dsm
           trajIdFile << id<<"\n";
         }
         
-        
+
         
       }
 
-
+      visualizer.saveReconstruction("Result.ply");
       
       trajIdFile.close();
       trajFile.close();

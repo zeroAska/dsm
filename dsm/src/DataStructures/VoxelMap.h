@@ -137,7 +137,7 @@ namespace dsm {
         VoxelCoord point_to_voxel_center(ActivePoint* pt) const;
 
     private:
-        float voxelSize_ = 0.05f;                               // Edge length of a single voxel cubic
+        float voxelSize_ = 0.1f;                               // Edge length of a single voxel cubic
         std::unordered_map<VoxelCoord, Voxel> vmap_;    // Hash map that stores the full voxel map
 
     };

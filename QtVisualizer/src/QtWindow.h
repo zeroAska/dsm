@@ -121,5 +121,6 @@ namespace dsm
 		bool showActiveCovisibility;
 		bool showPointCloud;
 		bool showLocalPointCloud;
+
 	};
 }

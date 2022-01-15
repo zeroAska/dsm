@@ -30,7 +30,7 @@
 namespace dsm
 {
 	float MouseInterface::rotationSensibility = 4.5f;
-	float MouseInterface::zoomSensibility = 20.0f;
+	float MouseInterface::zoomSensibility = 2.0f;
 	float MouseInterface::translationSensibility = 20.0f;
 
 	MouseInterface::MouseInterface()
