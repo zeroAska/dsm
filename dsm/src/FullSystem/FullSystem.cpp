@@ -60,7 +60,7 @@
 #include "utils/ImageRGBD.hpp"
 #include "utils/RawImage.hpp"
 
-
+#include "DataStructures/CovisibilityGraph.h"
 
 namespace dsm
 {
@@ -2384,13 +2384,19 @@ namespace dsm
       outfile << edgePair.first<<" "<<edgePair.second<<std::endl;
     }
 
+    for (int i = 0; i < cvo_frames.size(); i++) {
+      outfile<<"\n";
+      for (int j = 0; j < 12; j++)
+        outfile<<cvo_frames[i]->pose_vec[j]<<" ";
+    }
+
     outfile.close();
     
    
   }
 
   void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
-                                 const std::unordered_map<int, int> & edgesCovisibleToTemporal) {
+                                 const std::list<std::pair<CovisibilityNode *, CovisibilityNode*>> & edgesCovisibleToTemporal) {
     if (activeKeyframes.size() < 4) return;
     std::vector<cvo::CvoPointCloud> cvo_pcs;
     std::vector<cvo::CvoFrame::Ptr> cvo_frames;
@@ -2426,25 +2432,30 @@ namespace dsm
                                             activeKeyframes[j]->frameID()));
       }
     }
-    for (int i = 0; i < temporalStartIndex; i++) {
-      int covisibleID = activeKeyframes[i]->frameID();
-      if (edgesCovisibleToTemporal.find(covisibleID) != edgesCovisibleToTemporal.end()) {
-        int temporalID = edgesCovisibleToTemporal.at(covisibleID);
-        for (int j = temporalStartIndex; j < cvo_frames.size();  j++) {
-          if (activeKeyframes[j]->frameID() == temporalID) {
-            std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[i], cvo_frames[j]);
-            edges.push_back(p);
-            edges_inds.push_back(std::make_pair(covisibleID, activeKeyframes[j]->frameID()));            
-            break;
-          }
-        }
-      }
+    //for (int i = 0; i < temporalStartIndex; i++) {
+    for (auto & edgePair : edgesCovisibleToTemporal) {
+      CovisibilityNode * covisNode = edgePair.first;
+      int covisibleID = covisNode->node->activeID();
+      CovisibilityNode * tempNode = edgePair.second;
+      int temporalID = tempNode->node->activeID();
+      std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[covisibleID], cvo_frames[temporalID]);
+      edges.push_back(p);
+      edges_inds.push_back(std::make_pair(covisNode->node->frameID(), tempNode->node->frameID()));            
     }
 
     std::cout<<" and among them are "<<edges.size()<<" edges, including\n";
     for (auto & p : edges_inds )
       std::cout<<"(" << p.first<<","<<p.second<<"), ";
     std::cout<<std::endl;
+
+    static int irls_counter = 0;
+    dumpFramesToPcd (std::to_string(irls_counter)+"_graph.txt",
+                     activeKeyframes,
+                     cvo_frames,
+                     edges_inds);
+    irls_counter++;
+
+    
     
     double time = 0;    
 
@@ -2462,12 +2473,6 @@ namespace dsm
     }
     std::cout<<"just written CVO BA results to all frames\n";
 
-    static int irls_counter = 0;
-    dumpFramesToPcd (std::to_string(irls_counter)+"_graph.txt",
-                     activeKeyframes,
-                     cvo_frames,
-                     edges_inds);
-    irls_counter++;
     
 
     Frame::Ptr lastKf = activeKeyframes.back();
@@ -2516,7 +2521,7 @@ namespace dsm
     // select new active points from the temporal window
     this->lmcw->activatePointsCvo();
 
-    std::unordered_map<int, int> edgesCovisibleToTemporal;
+    std::list<std::pair<CovisibilityNode*, CovisibilityNode*>> edgesCovisibleToTemporal;
     if (!settings.doOnlyTemporalOpt)
       edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
     //this->lmcw->selectCovisibleWindowCvo2();

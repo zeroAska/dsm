@@ -644,7 +644,8 @@ namespace dsm
     }
   }
 
-  std::unordered_map<int, int> LMCW::selectCovisibleWindowCvo()
+  std::list<std::pair<CovisibilityNode *, CovisibilityNode *>>  LMCW::selectCovisibleWindowCvo(
+                                      )
   {
     assert(this->temporalWindowIndex == 0);
 
@@ -670,7 +671,7 @@ namespace dsm
     //const int firstFrameID = this->activeKeyframes_[this->temporalWindowIndex]->frameID();
     //const int maxCovisibleFrameID = this->activeKeyframes_.front()->frameID();
     std::unordered_set<std::shared_ptr<Frame>> selectCovisibleKeyframes;
-    std::unordered_map<int, int> edgesCovisibleToTemporal;
+    std::list<std::pair<CovisibilityNode *, CovisibilityNode*>> edgesCovisibleToTemporal;
 
     for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
     {
@@ -710,7 +711,8 @@ namespace dsm
       //std::shared_ptr<Frame> bestCovisFrame = this->allKeyframes_[highCovisNode->node->keyframeID()];
       
       // ensure no duplicates
-      for (auto & node : sorted_nodes) {
+      for (int k = 0; k < sorted_nodes.size(); k++) {
+        CovisibilityNode * node = sorted_nodes[k];
         std::shared_ptr<Frame> bestCovisFrame = this->allKeyframes_[node->node->keyframeID()];
         if (!selectCovisibleKeyframes.count(bestCovisFrame)
             && bestCovisFrame->frameID() < activeKeyframes_.front()->frameID() - settings.gapCovisibleToTemporal
@@ -718,11 +720,24 @@ namespace dsm
           
           bestCovisFrame->activate();
           //edgesCovisibleToTemporal[bestCovisFrame->frameID()] = this->activeKeyframes_[i]->frameID();
-          edgesCovisibleToTemporal.insert(std::make_pair<int, int>(bestCovisFrame->frameID(),
-                                                                   this->activeKeyframes_[i]->frameID()));
+          std::pair<CovisibilityNode*, CovisibilityNode*> p(node,
+                                                            this->activeKeyframes_[i]->graphNode);
+          edgesCovisibleToTemporal.push_back(p);
+          std::cout<<"select covisible frame: ("<<bestCovisFrame->frameID()<<", "<<this->activeKeyframes_[i]->frameID()<<")"<<std::endl;          
+          for (int tmp_id = this->temporalWindowIndex; tmp_id < this->activeKeyframes_.size(); tmp_id++) {
+            if (tmp_id == i) continue;
+            CovisibilityNode * newTmpNode = this->activeKeyframes_[tmp_id]->graphNode;
+            if (newTmpNode->edges.find(node) != newTmpNode->edges.end()) {
+              p.first = node;
+              p.second = newTmpNode;
+              edgesCovisibleToTemporal.push_back(p);
+              std::cout<<"select covisible frame: ("<<bestCovisFrame->frameID()<<", "<<this->activeKeyframes_[tmp_id]->frameID()<<")"<<std::endl;              
+            }
+          }
           
           
-          std::cout<<"select covisible frame: ("<<bestCovisFrame->frameID()<<", "<<this->activeKeyframes_[i]->frameID()<<")"<<std::endl;
+          
+
           // Q: need to update this->numActivePoints?
           selectCovisibleKeyframes.insert((bestCovisFrame));
           break;
@@ -845,7 +860,7 @@ namespace dsm
         selectCovisibleKeyframes[curCovisFrame] += pair.second;
       }
     }
-
+    Utils::Time t2 = std::chrono::steady_clock::now();
     if (selectCovisibleKeyframes.empty()) return;
 
 
@@ -871,33 +886,42 @@ namespace dsm
       this->activeKeyframes_[i]->setActiveID(i);
     }
 
-    Utils::Time t2 = std::chrono::steady_clock::now();
+    Utils::Time t3 = std::chrono::steady_clock::now();
 
     // TL: debug log
-    std::ofstream file;
-    file.open("covisResult.txt", std::ios_base::app);
-    file << "Time: " << Utils::elapsedTime(t1, t2) << "\n";
-    file << "Temporal frames: \n";
-    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
+    if (settings.debugPrintLog)
     {
-      int frameID = this->activeKeyframes_[i]->frameID();
-      file << frameID << ", ";
-    }
-    file << "\nCovisible frames: \n";
-    for (int i = 0; i < this->temporalWindowIndex; i++)
-    {
-      int frameID = this->activeKeyframes_[i]->frameID();
-      file << frameID << ", ";
-    }
-    file << "\nAll candidates: \n";
-    for (auto it = selectCovisVec.begin(); it != selectCovisVec.end(); it++)
-    {
-      int frameID = it->first->frameID();
-      file << frameID << ": " << it->second << " < ";
-    }
+      const std::string timeMsg = "Graph look up Time: " + std::to_string(Utils::elapsedTime(t1, t2)) + "\t";
+      const std::string sortMsg = "Sort Time: " + std::to_string(Utils::elapsedTime(t2, t3)) + "\t";
 
-    file << "\n==============================================\n";
-    file.close();
+      auto& log = Log::getInstance();
+      log.addCurrentLog(this->activeKeyframes_.back()->frameID(), timeMsg);
+      log.addCurrentLog(this->activeKeyframes_.back()->frameID(), sortMsg);
+    }
+    // std::ofstream file;
+    // file.open("covisResult.txt", std::ios_base::app);
+    // file << "Graph look up Time: " << Utils::elapsedTime(t1, t2) << ", Sort time: " << Utils::elapsedTime(t2, t3) << "\n";
+    // file << "Temporal frames: \n";
+    // for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++)
+    // {
+    //   int frameID = this->activeKeyframes_[i]->frameID();
+    //   file << frameID << ", ";
+    // }
+    // file << "\nCovisible frames: \n";
+    // for (int i = 0; i < this->temporalWindowIndex; i++)
+    // {
+    //   int frameID = this->activeKeyframes_[i]->frameID();
+    //   file << frameID << ", ";
+    // }
+    // file << "\nAll candidates: \n";
+    // for (auto it = selectCovisVec.begin(); it != selectCovisVec.end(); it++)
+    // {
+    //   int frameID = it->first->frameID();
+    //   file << frameID << ": " << it->second << " < ";
+    // }
+
+    // file << "\n==============================================\n";
+    // file.close();
   }
 
 
@@ -1173,7 +1197,6 @@ namespace dsm
           }
 
 
-
           // insert to voxel map
           voxelMap_->insert_point(point.get());
           point->setVoxel(voxelMap_->query_point(point.get()));
@@ -1228,9 +1251,11 @@ namespace dsm
     if (settings.debugPrintLog && settings.debugLogActivePoints)
     {
       const std::string msg = "Act. New: " + std::to_string(numPointsCreated) + "\t";
+      const std::string timeMsg = "covisib build time: " + std::to_string(Utils::elapsedTime(t1, t2)) + "\t";
 
       auto& log = Log::getInstance();
       log.addCurrentLog(lastKeyframe->frameID(), msg);
+      log.addCurrentLog(lastKeyframe->frameID(), timeMsg);
     }
 
     //if (settings.debugShowDistanceTransformAfter && this->outputWrapper_)

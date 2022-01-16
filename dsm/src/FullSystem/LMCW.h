@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <memory>
+#include <list>
 #include <unordered_map>
 
 namespace cvo {
@@ -37,6 +38,7 @@ namespace dsm
   class DistanceTransform;
   class CeresPhotometricBA;
   class CovisibilityGraph;
+  class CovisibilityNode;
   class IVisualizer;
   class VoxelMap;
   
@@ -118,9 +120,9 @@ namespace dsm
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
     // voxelMap based covisbility selection
-    std::unordered_map<int, int> selectCovisibleWindowCvo();
+    std::list<std::pair<CovisibilityNode *, CovisibilityNode *>>  selectCovisibleWindowCvo();
     void selectCovisibleWindowCvo2();
-
+ 
   private:
 		
     // active window

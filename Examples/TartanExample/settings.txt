@@ -1,9 +1,9 @@
 debugPrintLog = true
-debugLogTracking = false
+debugLogTracking = true
 debugLogKeyframes = true
 debugLogPixelDetection = false
-debugLogCandidatesTracking = false
-debugLogCandidatesOpt = false
+debugLogCandidatesTracking = true
+debugLogCandidatesOpt = true
 debugLogDistanceMap = false
 debugLogActivePoints = true
 
@@ -114,6 +114,6 @@ showDepthMap = true
 showDepthMapLvl = 0
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.78
+trackingCosLimit = 0.65
 enableDepthRegression = false
-gapCovisibleToTemporal = 10
+gapCovisibleToTemporal = 20

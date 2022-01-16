@@ -148,7 +148,7 @@ namespace dsm
     // Optimization
     void createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame);
     void cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
-                       const std::unordered_map<int, int> & edgesCovisibleToTemporal);
+                       const std::list<std::pair<CovisibilityNode *, CovisibilityNode*>> & edgesCovisibleToTemporal);
     void dumpFramesToPcd (const std::string & graphDefFileName,
                           const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                           const std::vector<std::shared_ptr<cvo::CvoFrame>> & cvo_frames,
