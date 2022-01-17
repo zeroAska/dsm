@@ -252,6 +252,28 @@ namespace dsm
       ids.push_back(kf->frameID());
     }
   }
+
+    void FullSystem::getFullTrajectory(std::vector<Eigen::Matrix4f> &poses, std::vector<double> &timestamps,
+                           std::vector<int> &ids) const
+    {
+      poses.clear();
+      timestamps.clear();
+      poses.reserve(allFrames.size());
+      timestamps.reserve(allFrames.size());
+
+      for (const auto& frm : allFrames)
+      {
+        if (frm->type() == Frame::KEYFRAME)
+        {
+          poses.push_back(frm->camToWorld().matrix());
+        } else {
+          // non-KF, find parent KF
+          poses.push_back(frm->parent()->camToWorld().matrix() * frm->thisToParentPose().matrix());
+        }
+        timestamps.push_back(frm->timestamp());
+        ids.push_back(frm->frameID());
+      }
+    }
   
 
   void FullSystem::getStructure(std::vector<Eigen::Vector3f>& structure) const
@@ -1356,8 +1378,12 @@ namespace dsm
     this->lastTrackedFrame = frame;
 
     Utils::Time t2 = std::chrono::steady_clock::now();
-    //std::cout << "Tracking: " << Utils::elapsedTime(t1, t2) << "\n";
     
+    std::cout << "Tracking: " << Utils::elapsedTime(t1, t2) << "\n";
+    std::string msg = "Tracking: " + std::to_string(Utils::elapsedTime(t1, t2)) + "\t";
+    auto& log = Log::getInstance();
+    log.addNewLog(frame->frameID());
+    log.addCurrentLog(frame->frameID(), msg);
   
   }
 
@@ -1476,6 +1502,9 @@ namespace dsm
 
     // Create new frame
     //std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, image, left_img, new_frame_pcd, depth_img, depth_scale);
+
+    // store all frames
+    allFrames.push_back(trackingNewFrame);
 
     if (settings.debugPrintLog)
     {

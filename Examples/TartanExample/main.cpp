@@ -129,6 +129,9 @@ namespace dsm
           cv::Mat gray_img;
           cv::cvtColor(color_img, gray_img, cv::COLOR_BGR2GRAY);
 
+          // TL: terminate at 10th frame
+          // if (id == startFrameId + 10) this->shouldStop = true; 
+
           if (DSM == nullptr)
           {
             DSM = std::make_unique<FullSystem>(color_img.cols,
@@ -183,14 +186,13 @@ namespace dsm
         std::vector<Eigen::Matrix4f> poses;
         std::vector<double> timestamps;
         std::vector<int> ids;
-        DSM->getTrajectory(poses, timestamps, ids);
+        DSM->getFullTrajectory(poses, timestamps, ids);
 
         int l = 0;
         for (auto && accum_mat : poses) {
 
           Eigen::Quaternionf q(accum_mat.block<3,3>(0,0));
-          trajFile<<std::fixed << std::setprecision(6) << timestamps[l]<<" ";
-          trajFile<<accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 
+          trajFile<<std::fixed << std::setprecision(18) << std::scientific << accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 
           trajFile<<q.x()<<" "<<q.y()<<" "<<q.z()<<" "<<q.w()<<"\n";
           trajFile.flush();
           

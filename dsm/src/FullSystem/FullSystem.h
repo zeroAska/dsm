@@ -102,6 +102,9 @@ namespace dsm
     void getTrajectory(std::vector<Eigen::Matrix4f> &poses, std::vector<double> &timestamps,
                        std::vector<int> & ids) const;
 
+    void getFullTrajectory(std::vector<Eigen::Matrix4f> &poses, std::vector<double> &timestamps,
+                           std::vector<int> &ids) const;
+
     void getStructure(std::vector<Eigen::Vector3f>& structure) const;
 
     float getCamTrackingMeanTime() const;
@@ -248,6 +251,10 @@ namespace dsm
     float maxIDepthTracker;
     float minIDepthOpt;
     float maxIDepthOpt;
+
+    // tartan air requires
+    // all frames (KFs and non-KFs)
+    std::vector<std::shared_ptr<Frame>> allFrames;
 
     // image writing
     int saveID;
