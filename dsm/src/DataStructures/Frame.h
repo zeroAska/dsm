@@ -44,6 +44,7 @@
 namespace cvo {
   class ImageStereo;
   class RawImage;
+  template <typename DepthT>
   class ImageRGBD;
   class CvoPointCloud;
   //  class CvoPoint;
@@ -70,7 +71,7 @@ namespace dsm
 
 		EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-                enum DepthType { MONO = 0, STEREO = 1, RGBD = 2};
+                enum DepthType { MONO = 0, STEREO = 1, RGBD_FLOAT = 2, RGBD_UINT16 = 3};
 
 		// control flag
 		enum Type { FRAME = 0, KEYFRAME = 1};
@@ -86,7 +87,9 @@ namespace dsm
                 Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageStereo> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, std::shared_ptr<cvo::CvoPointCloud> full_pc);
 
                 // rgb-d
-                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc);
+
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD<float>> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc);
+                Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD<uint16_t>> left_img, pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd, float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc);
 
 		~Frame();
 
@@ -261,4 +264,27 @@ namespace dsm
 		// ceres optimization parameters
 		std::unique_ptr<FrameParameterBlock> frameBlock_;
 	};
+
+
+  class FrameStereo : public Frame {
+    
+  };
+
+  class FrameRGBD : public Frame {
+    FrameRGBD (int id,
+               double timestamp,
+               unsigned char* image,
+               std::shared_ptr<cvo::ImageRGBD<float>> color_img,
+               pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,
+               float depth_scale
+               );
+    FrameRGBD (int id,
+               double timestamp,
+               unsigned char* image,
+               std::shared_ptr<cvo::ImageRGBD<uint16_t>> color_img,
+               pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,
+               float depth_scale
+               );
+    
+  };
 }

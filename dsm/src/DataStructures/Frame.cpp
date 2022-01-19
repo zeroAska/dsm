@@ -129,7 +129,8 @@ namespace dsm
     this->setErrorDistribution(errorDist);
   }
 
-  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,  float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
+
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD<float>> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,  float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
 
     frameID_(id),
     timestamp_(timestamp),
@@ -141,7 +142,7 @@ namespace dsm
     trackingPoints_(new_frame_pcd),
     rawImg(color_img),
     //rgbdDepth(color_img->depth_image().begin(), color_img->depth_image().end()),
-    depthType(DepthType::RGBD),
+    depthType(DepthType::RGBD_FLOAT),
     depthScale(depth_scale),
     fullPoints_(full_pc)
   {
@@ -177,7 +178,60 @@ namespace dsm
 
   }
 
-  
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD<uint16_t>> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,  float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
+
+    frameID_(id),
+    timestamp_(timestamp),
+    trackingParent_(nullptr),
+    affineLight_(0.f, 0.f),
+    thisToParentLight_(0.f, 0.f),
+    type_(Type::FRAME),
+    status_(Status::INACTIVE),
+    trackingPoints_(new_frame_pcd),
+    rawImg(color_img),
+    //rgbdDepth(color_img->depth_image().begin(), color_img->depth_image().end()),
+    depthType(DepthType::RGBD_UINT16),
+    depthScale(depth_scale),
+    fullPoints_(full_pc)
+  {
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+
+    // image pyramids
+    this->images_ = std::make_unique<ImagePyramid<float>>(calib.levels(), image);
+
+    // gradient pyramids
+    this->gradients_ = std::make_unique<GradientPyramid<float>>(calib.levels(), *this->images_);
+
+    // identity poses
+    this->thisToParentPose_ = Sophus::SE3f();
+    this->camToWorld_ = Sophus::SE3f();
+
+    this->graphNode = nullptr;
+
+    this->flaggedToDrop_ = false;
+
+    // error distribution
+    std::shared_ptr<IDistribution> errorDist;
+    if (settings.useTDistribution)
+    {
+      errorDist = std::make_shared<TDistribution>(settings.defaultNu, settings.defaultMu, settings.defaultSigma);
+    }
+    else
+    {
+      errorDist = std::make_shared<RobustNormalDistribution>(settings.defaultMu, settings.defaultSigma);
+    }
+
+    this->setErrorDistribution(errorDist);
+
+  }
+
+  /*  
+  template 
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD<float>> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,  float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc);
+  template 
+  Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD<uint16_t>> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,  float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc);
+  */
   
   
   Frame::~Frame()

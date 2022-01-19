@@ -134,7 +134,7 @@ namespace dsm
         if ( !read_fails)
         {
           std::vector<uint16_t> source_dep_data(source_dep.begin<uint16_t>(), source_dep.end<uint16_t>());          
-          std::shared_ptr<cvo::ImageRGBD> source_raw(new cvo::ImageRGBD(source_left, source_dep_data));
+          std::shared_ptr<cvo::ImageRGBD<uint16_t>> source_raw(new cvo::ImageRGBD(source_left, source_dep_data));
           
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
           

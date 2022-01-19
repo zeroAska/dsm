@@ -105,7 +105,8 @@ namespace dsm
           reader.set_start_index(id);
         }
 
-        cv::Mat source_left, source_dep;
+        cv::Mat source_left;
+        std::vector<float> source_dep;        
         std::cout<< " Read new image "<<id<<std::endl;
         bool read_fails = reader.read_next_rgbd(source_left, source_dep);
 
@@ -113,13 +114,14 @@ namespace dsm
 
         if (!read_fails)
         {
-          std::vector<uint16_t> source_dep_data(source_dep.begin<uint16_t>(), source_dep.end<uint16_t>());
-          std::shared_ptr<cvo::ImageRGBD> source_raw(new cvo::ImageRGBD(source_left, source_dep_data));
+
+          std::shared_ptr<cvo::ImageRGBD<float>> source_raw(new cvo::ImageRGBD(source_left, source_dep));
 
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
 
           cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib);
           std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib));
+          source_full->write_to_color_pcd("source_full.pcd");
 
           cvo::CvoPointCloud_to_pcl(source_cvo, *source_pcd);
 

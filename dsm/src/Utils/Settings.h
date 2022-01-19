@@ -209,6 +209,7 @@ namespace dsm
           int gapCovisibleToTemporal;
           int numPointsPerFrame;
           int candidatePointsSampling;
+          float maxInitIdepth;
 
 		// Secure Division
 		static const float DIVISION_EPS;

@@ -63,7 +63,7 @@ weightConstant = 2500
 trackingMaxLevel = 3
 
 pointDetectionLevels = 2
-numCandidates = 2500
+numCandidates = 5000
 numBlocksPerDimension = 20
 minGradAdd = 7
 
@@ -113,7 +113,11 @@ minNumTrackedFramesToCreateKF = 1
 showDepthMap = true
 showDepthMapLvl = 0
 
+candidatePointsSampling = 1
+
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.65
+trackingCosLimit = 0.7
 enableDepthRegression = false
-gapCovisibleToTemporal = 20
+gapCovisibleToTemporal = 10
+
+

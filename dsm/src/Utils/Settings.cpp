@@ -183,6 +183,7 @@ namespace dsm
                 this->gapCovisibleToTemporal = 10;
                 this->numPointsPerFrame = 2000;
                 this->candidatePointsSampling = 0; // 0: canny   1: FAST
+                this->maxInitIdepth = 0.02f;
 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -355,6 +356,10 @@ namespace dsm
                 }
                 if (this->checkParameter("candidatePointsSampling", name, value, this->candidatePointsSampling)) {
                   std::cout<<"candidatePointsSampling is "<<this->candidatePointsSampling<<std::endl;
+                  return;
+                }
+                if (this->checkParameter("maxInitIdepth", name, value, this->maxInitIdepth)) {
+                  std::cout<<"maxInitIdepth is "<<this->maxInitIdepth<<std::endl;
                   return;
                 }
                 

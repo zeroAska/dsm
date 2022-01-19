@@ -1768,14 +1768,63 @@ namespace dsm
 
 
     int maxKeypoints, minKeypoints;
+    /*
+    cv::Ptr<cv::FastAdjuster::FastAdjuster> adjust = new cv::FastAdjuster::FastAdjuster();
+    cv::Ptr<cv::FeatureDetector> detector = new cv::DynamicAdaptedFeatureDetector::DynamicAdaptedFeatureDetector(adjust,expected_points * 0.8, expected_points * 1.2, 5);
+    std::vector<cv::KeyPoint> keypoints;
+    detector->detect(left_gray, keypoints);
+    std::cout<<"Fast sampled "<<keypoints.size()<<" points \n";
+    */
+
+    /*
+    int starting_threshold = 20;
+    cv::FAST(left_gray, keypoints, starting_threshold, true);
+    int counter;
+    while (keypoints.size() < expected_points * 0.9)
+      cv::FAST(left_gray, keypoints, starting_threshold, true);
+
+    int minHessian = 400;
+    std::vector<cv::KeyPoint> keypoints;    
+    cv::FAST(left_gray,keypoints, 20,false);
+
+    //// for geometric
+    int thresh, max_points, min_points, break_thresh;
+    if (pt_type == RGBD) {
+      thresh = 9; num_want = 15000; num_min = 12000; break_thresh = 13;
+    } else if (pt_type == STEREO) {
+      thresh = 4; num_want = 24000; num_min = 15000; break_thresh = 50;
+      if (left_image.num_classes() > 0)
+        num_want = 28000;
+        }
+    while (keypoints.size() > num_want)  {
+      keypoints.clear();
+      thresh++;
+      cv::FAST(left_gray,keypoints, thresh,false);
+      if (thresh == break_thresh) break;
+    }
+    while (keypoints.size() < num_min ) {
+      keypoints.clear();
+      thresh--;
+      cv::FAST(left_gray,keypoints, thresh,false);
+      if (thresh== 0) break;
+
+    }
     
-    //cv::Ptr<cv::FastAdjuster::FastAdjuster> adjust = new cv::FastAdjuster::FastAdjuster();
-    //cv::Ptr<cv::FeatureDetector> detector = new cv::DynamicAdaptedFeatureDetector::DynamicAdaptedFeatureDetector(adjust,500,1000,5);
-    //vector<KeyPoint> keypoints;
-    //detector->detect(left_gray, keypoints);
-    //std::cout<<"Fast sampled "<<keypoints.size()<<" points \n";    
-    cv::FAST(left_gray, keypoints, 20,false);    
-    cv::KeyPointsFilter::retainBest(keypoints, 1000);
+    */
+
+    cv::Ptr< cv::ORB > orb_detector = cv::ORB::create (expected_points,
+                                                     /* float scaleFactor=*/1.2f,
+                                                     /* int nlevels=*/8,
+                                                     /* int edgeThreshold=*/31,
+                                                     /*int firstLevel=*/0,
+                                                     /*int WTA_K=*/2,
+                                                     /*int scoreType=*/cv::ORB::HARRIS_SCORE,
+                                                     /*int patchSize=*/31,
+                                                     /*int fastThreshold=*/20);
+    
+    orb_detector->detect ( left_gray, keypoints );
+    
+    //cv::KeyPointsFilter::retainBest(keypoints, 1000);
     for (auto && kp: keypoints) {
       int c = (int)kp.pt.x;
       int r = (int)kp.pt.y;
@@ -1831,13 +1880,36 @@ namespace dsm
       }
       
     }
+
+    cv::Ptr< cv::ORB > orb_detector = cv::ORB::create (expected_points / 3,
+                                                     /* float scaleFactor=*/1.2f,
+                                                     /* int nlevels=*/8,
+                                                     /* int edgeThreshold=*/31,
+                                                     /*int firstLevel=*/0,
+                                                     /*int WTA_K=*/2,
+                                                     /*int scoreType=*/cv::ORB::HARRIS_SCORE,
+                                                     /*int patchSize=*/31,
+                                                     /*int fastThreshold=*/20);
+    std::vector<cv::KeyPoint> keypoints; 
+    orb_detector->detect ( left_gray, keypoints );
+
+    int found_orb = 0;
+    for (int i = 0; i < keypoints.size(); i++) {
+      int c = (int)keypoints[i].pt.x;        
+      int r = (int)keypoints[i].pt.y;
+      selected_inds_map[r * left_gray.cols + c] = 0;
+      found_orb++;
+    }
+    std::cout<<"orb size "<<keypoints.size()<<". ";
+    
     std::cout<<"Canny size "<<tmp_uvs_canny.size()<<", surface size "<<tmp_uvs_surface.size()<<"\n";
     int total_selected_canny = tmp_uvs_canny.size();
     int total_selected_surface = tmp_uvs_surface.size();
     int total = 0;
-    int found = 0;
+    expected_points -= found_orb;
+
     for (int i = 0; i < tmp_uvs_canny.size(); i++) {
-      if (rand() % total_selected_canny < expected_points * 3 / 5 ) {
+      if (rand() % total_selected_canny < expected_points * 1 / 2 ) {
         //final_selected_uv.push_back(tmp_uvs_canny[i]);
         auto c = tmp_uvs_canny[i](0);        
         auto r = tmp_uvs_canny[i](1);
@@ -1847,7 +1919,7 @@ namespace dsm
       
     }
     for (int i = 0; i < tmp_uvs_surface.size(); i++) {
-      if (rand() % total_selected_surface < expected_points * 2 / 5 ) {
+      if (rand() % total_selected_surface < expected_points * 1 / 2 ) {
         //final_selected_uv.push_back(tmp_uvs_surface[i]);
         auto c = tmp_uvs_surface[i](0);        
         auto r = tmp_uvs_surface[i](1);
@@ -1857,7 +1929,7 @@ namespace dsm
       
     }
     
-    return total;
+    return total + found_orb;
     //std::cout<<" final selected uv size is "<<final_selected_uv.size()<<std::endl;
     //cv::imwrite("canny.png", detected_edges);    
     
@@ -1896,13 +1968,13 @@ namespace dsm
       num = stereo_surface_sampling(left_gray,
                                     true,
                                     true,
-                                    1500,
+                                    settings.numCandidates,
                                     // output
                                     selected_inds_map
                                     //std::vector<Vec2i, Eigen::aligned_allocator<Vec2i>> & final_selected_uv                   
                                     );
     else
-      num = FAST_corner_sampling(left_gray, settings.numPointsPerFrame,
+      num = FAST_corner_sampling(left_gray, settings.numCandidates,
                                  selected_inds_map);
     
 
@@ -1928,9 +2000,16 @@ namespace dsm
           float idepth = 0;
           if (frame->depthType == Frame::DepthType::STEREO)
             idepth = std::dynamic_pointer_cast<cvo::ImageStereo> (frame->getRawImage())->disparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
-          else if (frame->depthType == Frame::DepthType::RGBD)
-            idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD>(frame->getRawImage())->depth_image()[width * row + col]); 
-          if ( ! std::isfinite(idepth) || idepth < 0.03f ) continue;
+          else if (frame->depthType == Frame::DepthType::RGBD_FLOAT) {
+            //float depth = (std::dynamic_pointer_cast<cvo::ImageRGBD<float>>(frame->getRawImage())->depth_image()[width * row + col]) / frame->depthScale;
+            //         if (depth < 20)
+            // idepth = 1/depth;
+            idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<float>>(frame->getRawImage())->depth_image()[width * row + col]);
+          } else if (frame->depthType == Frame::DepthType::RGBD_UINT16) {
+            idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<uint16_t>>(frame->getRawImage())->depth_image()[width * row + col]);
+            
+          }
+          if ( ! std::isfinite(idepth) || idepth < settings.maxInitIdepth ) continue;
           std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth));
 
           candidates.emplace_back(std::move(new_candidate));
@@ -2017,16 +2096,17 @@ namespace dsm
                                          kernel,
                                          association_mat);
       int counter = 0;
+      /*
       for (int j = 0; j < candidates.size(); j++) {
         kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
         counter++;
-      }
+        }*/
 
       //for (int j=0; j < association_mat.outerSize(); ++j) {
-      /*
+      
       for (int j = 0; j < association_mat.source_inliers.size(); j++) {
         int kfPtIdx = association_mat.source_inliers[j];
-        kf->candidatesHighQuaity()[kfPtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
+        //kf->candidatesHighQuaity()[kfPtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
         kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
         for (Eigen::SparseMatrix<float, Eigen::RowMajor>::InnerIterator it(association_mat.pairs,kfPtIdx); it; ++it) {
           float weight = it.value();
@@ -2038,9 +2118,10 @@ namespace dsm
           kf->candidates()[kfPtIdx]->addIdepthObservation(obsIdepth,weight);
         }
         //}
-        if (kf->candidatesHighQuaity()[j] == CandidatePoint::PointStatus::OPTIMIZED)
+        if (kf->candidates()[kfPtIdx]->status() == CandidatePoint::PointStatus::OPTIMIZED)
+            //kf->candidatesHighQuaity()[j] == CandidatePoint::PointStatus::OPTIMIZED)
           counter++;
-          }*/
+      }
       std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n"<<std::flush;
 
       if (include_curr) {
