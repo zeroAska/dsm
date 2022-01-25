@@ -109,6 +109,16 @@ namespace dsm
     }
 
 
+    // updateCovis Debug use
+    inline VoxelMap* voxelMap()
+    {
+      return this->voxelMap_.get();
+    }
+
+    inline CovisibilityGraph* covisGraph() {
+      return this->covisibilityGraph_.get();
+    }
+
 
   // private:
 

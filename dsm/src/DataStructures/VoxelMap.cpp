@@ -1,6 +1,11 @@
 #include "VoxelMap.h"
 #include "Frame.h"
 
+// updateCovis Debug use
+// #include <pcl/point_types.h>
+// #include <pcl/point_cloud.h>
+// #include <pcl/io/pcd_io.h>
+
 namespace dsm {
 
     VoxelMap::VoxelMap(float voxelSize) : voxelSize_(voxelSize) {
@@ -124,4 +129,41 @@ namespace dsm {
         VoxelCoord resCoord{res[0], res[1], res[2]};
         return resCoord;
     }
+
+    // updateCovis debug use
+    // void VoxelMap::save_voxels_pcd(std::string filename) const {
+    //     pcl::PointCloud<pcl::PointXYZ> pc;
+    //     for (const auto& voxelPair : vmap_) {
+    //         const VoxelCoord& vc = voxelPair.first;
+    //         pcl::PointXYZ p;
+    //         p.x = vc.xc;
+    //         p.y = vc.yc;
+    //         p.z = vc.zc;
+    //         pc.push_back(p);
+    //     }
+    //     pcl::io::savePCDFile(filename, pc);
+    //     std::cout << "Wrote voxel centers to " << filename << std::endl;
+    // }
+
+    // void VoxelMap::save_points_pcd(std::string filename) const {
+    //     pcl::PointCloud<pcl::PointXYZ> pc;
+    //     for (const auto& voxelPair : vmap_) {
+    //         for (ActivePoint* pt : voxelPair.second.voxPoints) {
+    //             // get pt coord in world frame
+    //             Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
+    //             Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
+    //             Eigen::Vector4f p_cam_4;
+    //             p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+    //             Eigen::Vector4f p_wld = Tcw * p_cam_4;
+    //             // push to pcl cloud
+    //             pcl::PointXYZ p;
+    //             p.x = p_wld(0);
+    //             p.y = p_wld(1);
+    //             p.z = p_wld(2);
+    //             pc.push_back(p);
+    //         }
+    //     }
+    //     pcl::io::savePCDFile(filename, pc);
+    //     std::cout << "Wrote voxel centers to " << filename << std::endl;
+    // }
 }

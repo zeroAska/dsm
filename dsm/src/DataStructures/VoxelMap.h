@@ -128,6 +128,13 @@ namespace dsm {
          */
         size_t size();
 
+
+    // updateCovis Debug use
+    // public:
+    //     void save_voxels_pcd(std::string filename) const;
+
+    //     void save_points_pcd(std::string filename) const;
+
     private:
         /**
          * @brief finds the voxel center coordinate that contains a given point

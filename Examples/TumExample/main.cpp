@@ -118,8 +118,8 @@ namespace dsm
         //reader.read_next_stereo(source_left, source_right, NUM_CLASSES, semantics_source);
         std::cout<< " Read new image "<<id<<std::endl;
         bool read_fails = reader.read_next_rgbd(source_left, source_dep);
-        read_fails = reader.read_next_rgbd(source_left, source_dep);
-        read_fails = reader.read_next_rgbd(source_left, source_dep);
+        // read_fails = reader.read_next_rgbd(source_left, source_dep);
+        // read_fails = reader.read_next_rgbd(source_left, source_dep);
         //kitti.read_next_stereo(source_left, source_right);
         //std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left, NUM_CLASSES, semantics_source));
         //std::shared_ptr<cvo::RawImage> source_raw(new cvo::RawImage(source_left));

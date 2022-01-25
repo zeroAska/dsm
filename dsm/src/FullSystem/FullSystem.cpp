@@ -2564,10 +2564,63 @@ namespace dsm
     // cvo BA
     if (cvo_align) {
       Utils::Time t_cvoba_init =  std::chrono::steady_clock::now();
-      this->cvoMultiAlign(activeKeyframes, edgesCovisibleToTemporal); // TL: commented out to speed up
+      this->cvoMultiAlign(activeKeyframes, edgesCovisibleToTemporal);
       Utils::Time t_cvoba_end =  std::chrono::steady_clock::now();
       cvoBATime.push_back(Utils::elapsedTime(t_cvoba_init, t_cvoba_end));    
-      // this->lmcw->updateVoxelMapCovisGraph();
+      
+      // updateCovis Debug use
+      // save voxel map to pcd, only run this when there're 3 frames in activeKFs
+      // std::vector<Frame*> connections_before;
+      // if (this->createNewKeyframeID == 10)
+      // {
+      //   this->lmcw->voxelMap()->save_voxels_pcd("Before_BA_voxel.pcd");
+      //   this->lmcw->voxelMap()->save_points_pcd("Before_BA_points.pcd");
+      //   this->lmcw->covisGraph()->getAllConnections(activeKeyframes[1], connections_before);
+      //   // simulate a BA, adjust frame 1 pose
+      //   auto kf = activeKeyframes[1];
+      //   Eigen::Matrix4f kf_to_world_f;
+      //   kf_to_world_f << 1, 0, 0, 4,
+      //                    0, 1, 0, 4,
+      //                    0, 0, 1, 0,
+      //                    0, 0, 0, 1;
+      //   Sophus::SE3f pose_BA(kf_to_world_f);
+      //   kf->setCamToWorld(pose_BA);
+      // }
+      ///////////////////////////////////////////////////////////////////
+
+
+      this->lmcw->updateVoxelMapCovisGraph();
+
+
+      // updateCovis Debug use
+      // save voxel map to pcd
+      // if (this->createNewKeyframeID == 10)
+      // {
+      //   this->lmcw->voxelMap()->save_voxels_pcd("After_BA_voxel.pcd");
+      //   this->lmcw->voxelMap()->save_points_pcd("After_BA_points.pcd");
+      //   std::ofstream outfile("update_graph.txt");
+      //   for (int i = 0; i < this->lmcw->getActiveWindowSize(); i++)
+      //   {
+      //     std::vector<Frame*> connections_after;
+      //     this->lmcw->covisGraph()->getAllConnections(activeKeyframes[i], connections_after);
+      //     // print covisibility results, should expect frame1 connected to 0 and 2 before, and connect to nothing after
+
+      //     outfile << "Before BA, frame " << i <<  " was connected to: ";
+      //     for (const Frame* f : connections_before)
+      //     {
+      //       outfile << f->frameID() << ", ";
+      //     }
+      //     outfile << "\nAfter BA, frame " << i <<  " was connected to: ";
+      //     for (const Frame* f : connections_after)
+      //     {
+      //       outfile << f->frameID() << ", ";
+      //     }
+      //     outfile << "\n";
+      //   }
+
+      //   outfile.close();
+      // }
+      ///////////////////////////////////////////////////////////////////
     }
 
 
