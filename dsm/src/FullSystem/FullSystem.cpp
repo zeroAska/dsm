@@ -235,7 +235,7 @@ namespace dsm
     return !this->trackingIsGood;
   }
 
-  void FullSystem::getTrajectory(std::vector<Eigen::Matrix4f> &poses, std::vector<double> &timestamps,
+  void FullSystem::getTrajectory(std::vector<Eigen::Matrix4f,  Eigen::aligned_allocator<Eigen::Matrix4f>> &poses, std::vector<double> &timestamps,
                                  std::vector<int> & ids) const
   {
     const auto& allKeyframes = this->lmcw->allKeyframes();
@@ -252,6 +252,28 @@ namespace dsm
       ids.push_back(kf->frameID());
     }
   }
+
+  void FullSystem::getFullTrajectory(std::vector<Eigen::Matrix4f,  Eigen::aligned_allocator<Eigen::Matrix4f>> &poses, std::vector<double> &timestamps,
+                           std::vector<int> &ids) const
+    {
+      poses.clear();
+      timestamps.clear();
+      poses.reserve(allFrames.size());
+      timestamps.reserve(allFrames.size());
+
+      for (const auto& frm : allFrames)
+      {
+        if (frm->type() == Frame::KEYFRAME)
+        {
+          poses.push_back(frm->camToWorld().matrix());
+        } else {
+          // non-KF, find parent KF
+          poses.push_back(frm->parent()->camToWorld().matrix() * frm->thisToParentPose().matrix());
+        }
+        timestamps.push_back(frm->timestamp());
+        ids.push_back(frm->frameID());
+      }
+    }
   
 
   void FullSystem::getStructure(std::vector<Eigen::Vector3f>& structure) const
@@ -1356,8 +1378,12 @@ namespace dsm
     this->lastTrackedFrame = frame;
 
     Utils::Time t2 = std::chrono::steady_clock::now();
-    //std::cout << "Tracking: " << Utils::elapsedTime(t1, t2) << "\n";
     
+    std::cout << "Tracking: " << Utils::elapsedTime(t1, t2) << "\n";
+    std::string msg = "Tracking: " + std::to_string(Utils::elapsedTime(t1, t2)) + "\t";
+    auto& log = Log::getInstance();
+    log.addNewLog(frame->frameID());
+    log.addCurrentLog(frame->frameID(), msg);
   
   }
 
@@ -1476,6 +1502,9 @@ namespace dsm
 
     // Create new frame
     //std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, image, left_img, new_frame_pcd, depth_img, depth_scale);
+
+    // store all frames
+    allFrames.push_back(trackingNewFrame);
 
     if (settings.debugPrintLog)
     {
@@ -1952,10 +1981,6 @@ namespace dsm
 
     auto & rawImg = * (frame->getRawImage());
 
-    // Create new candidates in the frame
-    // They have to be homogeneously distributed in the image	
-    // int num = this->pointDetector->detect(frame, (int)settings.numCandidates, this->pixelMask,
-    //                                     this->outputWrapper);
 
     cv::Mat left_gray;
     cv::cvtColor(rawImg.image(), left_gray, cv::COLOR_BGR2GRAY);
@@ -1964,7 +1989,8 @@ namespace dsm
     std::fill(selected_inds_map.begin(), selected_inds_map.end(), -1);
     
     int num = 0;
-    if (settings.candidatePointsSampling == 0)
+    switch (settings.candidatePointsSampling) {
+    case 0:
       num = stereo_surface_sampling(left_gray,
                                     true,
                                     true,
@@ -1973,11 +1999,21 @@ namespace dsm
                                     selected_inds_map
                                     //std::vector<Vec2i, Eigen::aligned_allocator<Vec2i>> & final_selected_uv                   
                                     );
-    else
+      break;
+    case 1:
       num = FAST_corner_sampling(left_gray, settings.numCandidates,
                                  selected_inds_map);
-    
-
+      break;
+    case 2:
+      // Create new candidates in the frame
+      // They have to be homogeneously distributed in the image	
+      num = this->pointDetector->detect(frame, (int)settings.numCandidates, selected_inds_map.data(),
+                                        this->outputWrapper);
+      break;
+      //default:
+      //break;
+    }
+    std::cout<<"PointDetector detects "<<num<<" points\n";
     // create candidates
     auto& candidates = frame->candidates();
     candidates.reserve(num);
@@ -2087,9 +2123,9 @@ namespace dsm
           0, 0.01, 0,
           0,  0,   0.03;
       else
-        kernel << 0.1, 0, 0,
-          0, 0.1, 0,
-          0, 0, 0.1;
+        kernel << 1, 0, 0,
+          0, 1, 0,
+          0, 0, 1;
       cvo_align->compute_association_gpu(candidates_cvo,
                                          *candidates_curr,
                                          kfToFrameEigen,

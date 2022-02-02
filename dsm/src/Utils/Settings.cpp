@@ -126,7 +126,7 @@ namespace dsm
 		this->trackingMaxLevel = 3;										// 3
 			
 		this->pointDetectionLevels = 2;									// 2
-		this->numCandidates = 1500;										// 1500
+		this->numCandidates = 3000;										// 1500
 		this->numBlocksPerDimension = 20;								// 20
 		this->minGradAdd = 7.f;											// 7
 
@@ -182,7 +182,7 @@ namespace dsm
                 this->enableDepthRegression = true;
                 this->gapCovisibleToTemporal = 10;
                 this->numPointsPerFrame = 2000;
-                this->candidatePointsSampling = 0; // 0: canny   1: FAST
+                this->candidatePointsSampling = 0; // 0: canny   1: FAST  2: DSO
                 this->maxInitIdepth = 0.02f;
 
 		// update the rest
