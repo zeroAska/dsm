@@ -1184,9 +1184,9 @@ namespace dsm
               // if prevFrame is already a temporal frame, don't skip
               // if (prevFramePt->currentID() > this->activeKeyframes_.front()->keyframeID()) continue;
               // trace refKF of an ActivePoint
-              const std::shared_ptr<Frame> covisFrame = allKeyframes_[prevFramePt->currentID()];  // Q: correct?
+              const std::shared_ptr<Frame> covisFrame = allKeyframes_[prevFramePt->reference()->keyframeID()];  // Q: correct?
               // if prevFrame and owner are the same frame, skip
-              if (prevFramePt->currentID() == owner->keyframeID()) continue;
+              if (prevFramePt->reference()->keyframeID() == owner->keyframeID()) continue;
               // refKF should already have a CovisibilityNode
               CovisibilityNode* refNode = covisFrame->graphNode;
               // intialize or update weight
@@ -1399,15 +1399,16 @@ namespace dsm
 
   void LMCW::updateVoxelMapCovisGraph()
   {
-    int numActiveKeyframes = (int)this->activeKeyframes_.size();
-    const int firstTemporalID = this->activeKeyframes_[this->temporalWindowIndex]->keyframeID();
-    for (int i = this->temporalWindowIndex; i < numActiveKeyframes; i++)
+    const int numActiveKeyframes = (int)this->activeKeyframes_.size();
+    for (int i = this->temporalWindowIndex; i < numActiveKeyframes - 1; i++)
     {
+      // for each temporal frame, update its activePoints location
       const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
       std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
       CovisibilityNode* curFrameNode = owner->graphNode;
-      for (std::unique_ptr<ActivePoint>& actPt : activePoints)
+      for (int j = 0; j < activePoints.size(); j++)
       {
+        std::unique_ptr<ActivePoint>& actPt = activePoints[j];
         // if voxel didn't change, no action required
         const Voxel* newVoxel = voxelMap_->query_point(actPt.get());
         if (newVoxel == actPt->voxel()) continue;
@@ -1416,11 +1417,12 @@ namespace dsm
         std::vector<ActivePoint*> oldPoints = actPt->voxel()->voxPoints;
         for (ActivePoint* oldPt : oldPoints)
         {
-          // if (oldPt->currentID() >= firstTemporalID) break; // stop if we've reached temporal frames
           CovisibilityNode* covisFrameNode = oldPt->reference()->graphNode;
-          const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[oldPt->currentID()];
+          const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[oldPt->reference()->keyframeID()];
+          // no edge between a frame and itself
+          if (covisFrame == owner) continue;
           int newWeight = curFrameNode->edges[covisFrameNode] - 1;
-          if (newWeight == 0)
+          if (newWeight <= 0)
             covisibilityGraph_->disconnect(covisFrame, owner);
           else if (newWeight > 0)
             covisibilityGraph_->connect(covisFrame, owner, newWeight);
@@ -1435,9 +1437,10 @@ namespace dsm
         std::vector<ActivePoint*> newPoints = this->voxelMap_->query_point(actPt.get())->voxPoints;
         for (ActivePoint* newPt : newPoints)
         {
-          // if (newPt->currentID() >= firstTemporalID) break; // stop if we've reached temporal frames
           CovisibilityNode* covisFrameNode = newPt->reference()->graphNode;
-          const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[newPt->currentID()];
+          const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[newPt->reference()->keyframeID()];
+          // no edge between a frame and itself
+          if (covisFrame == owner) continue;
           int newWeight = curFrameNode->edges[covisFrameNode] + 1;
           covisibilityGraph_->connect(covisFrame, owner, newWeight);
         }
