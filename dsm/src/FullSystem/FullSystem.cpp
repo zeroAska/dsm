@@ -2655,7 +2655,7 @@ namespace dsm
       this->cvoMultiAlign(activeKeyframes, edgesCovisibleToTemporal); // TL: commented out to speed up
       Utils::Time t_cvoba_end =  std::chrono::steady_clock::now();
       cvoBATime.push_back(Utils::elapsedTime(t_cvoba_init, t_cvoba_end));    
-      // this->lmcw->updateVoxelMapCovisGraph();
+      this->lmcw->updateVoxelMapCovisGraph();
     }
 
 
