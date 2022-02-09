@@ -30,6 +30,7 @@
 
 namespace cvo {
   class CvoGPU;
+  class CvoPointCloud;
 }
 
 namespace dsm
@@ -41,6 +42,7 @@ namespace dsm
   class CovisibilityNode;
   class IVisualizer;
   class VoxelMap;
+  class ActivePoint;
   
 
   // optimization window
@@ -128,6 +130,7 @@ namespace dsm
 
     // selects the covisible window part
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
+    void selectCovisibleMap(cvo::CvoPointCloud & covisMapOutput);
 
     // voxelMap based covisbility selection
     std::list<std::pair<CovisibilityNode *, CovisibilityNode *>>  selectCovisibleWindowCvo();

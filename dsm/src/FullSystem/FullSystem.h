@@ -47,7 +47,7 @@ namespace cvo {
   class CvoGPU;
   class Calibration;
   class CvoFrame;
-
+  class CvoPointCloud;
 }
 
 namespace dsm
@@ -152,6 +152,11 @@ namespace dsm
     void createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame);
     void cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                        const std::list<std::pair<CovisibilityNode *, CovisibilityNode*>> & edgesCovisibleToTemporal);
+    void cvoMultiAlign(
+                       const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
+                       const cvo::CvoPointCloud & covisMapCvo);
+                                 
+    
     void dumpFramesToPcd (const std::string & graphDefFileName,
                           const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                           const std::vector<std::shared_ptr<cvo::CvoFrame>> & cvo_frames,

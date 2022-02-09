@@ -2512,6 +2512,111 @@ namespace dsm
    
   }
 
+
+  void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
+                                 const cvo::CvoPointCloud & covisMapCvo
+                                 
+                                 ) {
+    const auto& settings = Settings::getInstance();
+    
+    //cvo::CvoPointCloud covisMapCvo;
+    //activePointsToCvoPointCloud(covisMap, covisMapCvo);
+    int temporalStartIndex = 0;
+    bool isUsingCovis = covisMapCvo.num_points() > 0 &&  !settings.doOnlyTemporalOpt;
+    
+    if (activeKeyframes.size() < 4) return;
+    std::vector<cvo::CvoPointCloud> cvo_pcs;
+    std::vector<cvo::CvoFrame::Ptr> cvo_frames;
+    cvo_pcs.resize(activeKeyframes.size()-1); // only temporal 
+    std::vector<bool> const_flags_in_BA(cvo_pcs.size()); // only temporal
+    std::cout<<"CvoMultiAlign: Temporal Frames are ";    
+    for (int i = 0; i < activeKeyframes.size()-1; i++) {
+      auto kf = activeKeyframes[i];
+      std::cout<<kf->frameID()<<", ";
+      
+      kf->activePointsToCvoPointCloud(cvo_pcs[i]);
+      if (isUsingCovis && i == 0) {
+        std::cout<<"Now adding the covisMap into the first frame. Frame frame has initially "<<cvo_pcs[i].num_points()<<std::endl;
+        cvo_pcs[i] = cvo_pcs[i] + covisMapCvo;
+        std::cout<<"After adding the covisMap, the first frame has "<<cvo_pcs[i].num_points()<<std::endl;
+        
+      }
+      assert(kf->activePoints().size() != 0);
+      Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
+      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data()));
+      cvo_frames.push_back(cvo_ptr);
+
+      const_flags_in_BA[i] = (i <= temporalStartIndex);
+    }
+    //if (temporalStartIndex == 0)
+
+
+
+    // read edges to construct graph
+    // TODO: edges will be constructed from the covisibility graph later
+    std::list<std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr>> edges;
+    std::list<std::pair<int, int>> edges_inds;    
+    for (int i = temporalStartIndex; i < cvo_frames.size(); i++) {
+      for (int j = i+1; j < std::min(i+4, (int)cvo_frames.size()); j++) {
+        std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[i], cvo_frames[j]);
+        edges.push_back(p);
+        edges_inds.push_back(std::make_pair(activeKeyframes[i]->frameID(),
+                                            activeKeyframes[j]->frameID()));
+      }
+    }
+
+    /*
+    if (isUsingCovis) {
+
+      cvo::CvoFrame::Ptr cvo_ptr(new  cvo::CvoFrame(&covisMapCvo, cvo_frames[0]->pose_vec));
+      for (int i = 1; i < cvo_pcs.size(); i++) {
+        std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_ptr, cvo_frames[i]);
+        edges.push_back(p);
+        std::cout<<"add edge between covisMap and frame "<<i<<std::endl;
+      }
+      cvo_pcs.push_back(covisMapCvo);
+      cvo_frames.push_back(cvo_ptr);
+      const_flags_in_BA.push_back(true);
+
+
+      covisMapCvo.write_to_color_pcd("covisMap.pcd");
+    }
+    */
+
+    static int irls_counter = 0;
+    dumpFramesToPcd (std::to_string(irls_counter)+"_graph.txt",
+                     activeKeyframes,
+                     cvo_frames,
+                     edges_inds);
+
+    irls_counter++;
+
+    
+    
+    double time = 0;    
+
+
+    cvo_align->align(cvo_frames, const_flags_in_BA,  edges, &time);
+    std::cout<<"cvo BA time is "<<time<<", for "<<cvo_frames.size()<<" frames\n";
+
+    for (int i = 0; i < activeKeyframes.size()-1; i++) {
+      auto kf = activeKeyframes[i];
+      Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = Eigen::Matrix<double, 4,4, Eigen::RowMajor>::Identity();
+      kf_to_world.block<3,4>(0,0) = Eigen::Map<Eigen::Matrix<double, 3,4, Eigen::RowMajor>>(cvo_frames[i]->pose_vec);
+      Eigen::Matrix4f kf_to_world_f = kf_to_world.cast<float>();
+      Sophus::SE3f pose_BA(kf_to_world_f);
+      kf->setCamToWorld(pose_BA);
+    }
+    std::cout<<"just written CVO BA results to all frames\n";
+
+    Frame::Ptr lastKf = activeKeyframes.back();
+    Frame::Ptr secondLastKf = activeKeyframes[activeKeyframes.size()-2];
+    Sophus::SE3f lastKfToWorld = secondLastKf->camToWorld() * lastKf->thisToParentPose();
+    lastKf->setCamToWorld(lastKfToWorld);
+    
+  }
+    
+  
   void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                                  const std::list<std::pair<CovisibilityNode *, CovisibilityNode*>> & edgesCovisibleToTemporal) {
     if (activeKeyframes.size() < 4) return;
@@ -2626,6 +2731,7 @@ namespace dsm
     Utils::Time t_window_init = std::chrono::steady_clock::now();    
     // this->lmcw->selectWindow(this->ceresOptimizer);  //TL: need to split to two functions
     this->lmcw->selectTemporalWindowCvo();
+    
     Utils::Time t_window_end = std::chrono::steady_clock::now();
     windowConstructionTime.push_back(Utils::elapsedTime(t_window_init, t_window_end));
 
@@ -2638,9 +2744,12 @@ namespace dsm
     // select new active points from the temporal window
     this->lmcw->activatePointsCvo();
 
-    std::list<std::pair<CovisibilityNode*, CovisibilityNode*>> edgesCovisibleToTemporal;
+    cvo::CvoPointCloud covisMapCvo;    
+    // std::list<std::pair<CovisibilityNode*, CovisibilityNode*>> edgesCovisibleToTemporal;
     if (!settings.doOnlyTemporalOpt)
-      edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
+      //edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
+      this->lmcw->selectCovisibleMap(covisMapCvo);
+
     //this->lmcw->selectCovisibleWindowCvo2();
     //if (lmcw->allKeyframes().size() > 1 && lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->activePoints().size())
     //  this->lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->dump_active_points_to_pcd("active_points.pcd");    
@@ -2652,7 +2761,8 @@ namespace dsm
     // cvo BA
     if (cvo_align) {
       Utils::Time t_cvoba_init =  std::chrono::steady_clock::now();
-      this->cvoMultiAlign(activeKeyframes, edgesCovisibleToTemporal);
+      //this->cvoMultiAlign(activeKeyframes, edgesCovisibleToTemporal);
+      this->cvoMultiAlign( activeKeyframes, covisMapCvo);
       Utils::Time t_cvoba_end =  std::chrono::steady_clock::now();
       cvoBATime.push_back(Utils::elapsedTime(t_cvoba_init, t_cvoba_end));    
       // updateCovis Debug use

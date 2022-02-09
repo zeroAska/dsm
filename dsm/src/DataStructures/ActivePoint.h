@@ -35,6 +35,10 @@
 
 #include <Eigen/Core>
 
+namespace cvo {
+  class CvoPointCloud;
+}
+
 namespace dsm
 {
 	class Frame;
@@ -42,7 +46,7 @@ namespace dsm
 
 	class PointParameterBlock;
 	class PhotometricResidual;
-
+  
 	class Voxel;
 
 	// Active point in the sliding window
@@ -117,12 +121,17 @@ namespace dsm
 		void setParallax(float p);
 
 
-                Eigen::Vector3f xyz();
-                Eigen::VectorXf features() {return features_;}
-                Eigen::VectorXf semantics() {return semantics_;}
+                Eigen::Vector3f xyz() const;
+                const Eigen::VectorXf & features() const  {return features_;}
+                const Eigen::VectorXf & semantics() const {return semantics_;}
 
-				const Voxel* voxel() const;
-				void setVoxel(const Voxel* voxelIn);
+                const Voxel* voxel() const;
+                void setVoxel(const Voxel* voxelIn);
+
+                template <typename PointPtr>
+                static  void activePointsToCvoPointCloud(const std::vector<PointPtr> & activePoints,
+                                                         cvo::CvoPointCloud & cvoPoints);
+                                
 
 	private:
 
@@ -171,4 +180,6 @@ namespace dsm
 		float iDepthHessian_;				// sum of all the inverse depth hessians
 		float parallax_;					// maximum parallax within the observations
 	};
+
+  
 }

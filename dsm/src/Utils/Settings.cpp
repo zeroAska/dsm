@@ -184,6 +184,7 @@ namespace dsm
                 this->numPointsPerFrame = 2000;
                 this->candidatePointsSampling = 0; // 0: canny   1: FAST  2: DSO
                 this->maxInitIdepth = 0.02f;
+                this->covisMapSize = 2000;
 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -360,6 +361,10 @@ namespace dsm
                 }
                 if (this->checkParameter("maxInitIdepth", name, value, this->maxInitIdepth)) {
                   std::cout<<"maxInitIdepth is "<<this->maxInitIdepth<<std::endl;
+                  return;
+                }
+                if (this->checkParameter("covisMapSize", name, value, this->covisMapSize)) {
+                  std::cout<<"covisMapSize is "<<this->covisMapSize<<std::endl;
                   return;
                 }
                 

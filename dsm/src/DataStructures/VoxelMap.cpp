@@ -82,7 +82,7 @@ namespace dsm {
         std::cout<<"Voxel map destructed\n";
     }
 
-    const Voxel* VoxelMap::query_point(ActivePoint* pt) const {
+    const Voxel* VoxelMap::query_point(const ActivePoint* pt) const {
         // 1. convert to integer coord to look up its voxel
         VoxelCoord intCoord = point_to_voxel_center(pt);
         if (!vmap_.count(intCoord))
@@ -106,7 +106,7 @@ namespace dsm {
         return vmap_.size();
     }
 
-    VoxelCoord VoxelMap::point_to_voxel_center(ActivePoint* pt) const {
+    VoxelCoord VoxelMap::point_to_voxel_center(const ActivePoint* pt) const {
         // 1. get pt coord in world frame
         Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
         Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame

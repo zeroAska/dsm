@@ -211,6 +211,8 @@ namespace dsm
           int candidatePointsSampling;
           float maxInitIdepth;
 
+          int covisMapSize;
+
 		// Secure Division
 		static const float DIVISION_EPS;
 

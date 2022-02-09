@@ -29,7 +29,7 @@
 #include "Utils/Interpolation.h"
 #include "Optimization/PointParameterBlock.h"
 #include "Optimization/PhotometricResidual.h"
-
+#include "utils/CvoPointCloud.hpp"
 namespace dsm
 {
   ActivePoint::ActivePoint(int32_t creationID, const std::unique_ptr<CandidatePoint>& candidate, float filteredIdepth) :
@@ -111,7 +111,7 @@ namespace dsm
                   
   }
 
-  Eigen::Vector3f ActivePoint::xyz() {
+  Eigen::Vector3f ActivePoint::xyz() const  {
 
     const auto& calib = GlobalCalibration::getInstance();
     const Eigen::Matrix3f& invK = calib.invMatrix3f(0);
@@ -281,4 +281,32 @@ namespace dsm
   {
     this->voxel_ = voxelIn;
   }
+
+  template <typename PointPtr>
+  void ActivePoint::activePointsToCvoPointCloud(const std::vector<PointPtr> & activePoints_,
+                                                cvo::CvoPointCloud & output) {
+    int num_points = activePoints_.size();
+    if (num_points < 1) return;
+    int num_features = activePoints_[0]->features().size();
+    int num_semantics = activePoints_[0]->semantics().size();
+    output.reserve(num_points, num_features, num_semantics);
+
+    for (int i = 0; i < num_points; i++) {
+      auto & p = *activePoints_[i];
+      Eigen::Vector3f xyz = p.xyz();
+      auto features = p.features();
+      auto semantics = p.semantics();
+      output.add_point(i, xyz, features, semantics);
+    }
+  
+  }
+
+
+  template void ActivePoint::activePointsToCvoPointCloud<const ActivePoint *>(const std::vector<const ActivePoint *> & activePoints_,
+                                                                     cvo::CvoPointCloud & output);
+  template void ActivePoint::activePointsToCvoPointCloud<std::unique_ptr<ActivePoint>>(const std::vector<std::unique_ptr<ActivePoint>> & activePoints_,
+                                                                              cvo::CvoPointCloud & output);
+  
+
+  
 }

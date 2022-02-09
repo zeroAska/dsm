@@ -63,7 +63,7 @@ weightConstant = 2500
 trackingMaxLevel = 3
 
 pointDetectionLevels = 2
-numCandidates = 2500
+numCandidates = 1500
 numBlocksPerDimension = 20
 minGradAdd = 7
 

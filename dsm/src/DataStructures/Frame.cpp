@@ -515,20 +515,8 @@ namespace dsm
   
   void Frame::activePointsToCvoPointCloud(cvo::CvoPointCloud & output
                                           ) {
-    int num_points = activePoints_.size();
-    if (num_points < 1) return;
-    int num_features = activePoints_[0]->features().size();
-    int num_semantics = activePoints_[0]->semantics().size();
-    output.reserve(num_points, num_features, num_semantics);
 
-    for (int i = 0; i < num_points; i++) {
-      auto & p = *activePoints_[i];
-      Eigen::Vector3f xyz = p.xyz();
-      Eigen::VectorXf features = p.features();
-      Eigen::VectorXf semantics = p.semantics();
-      output.add_point(i, xyz, features, semantics);
-    }
-      
+    ActivePoint::activePointsToCvoPointCloud(activePoints_, output);
     
   }
 
