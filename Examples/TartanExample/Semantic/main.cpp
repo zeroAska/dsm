@@ -82,9 +82,8 @@ namespace dsm
       double timestamp;
 
       std::ofstream trajFile(trajFileName);
-      //trajFile << std::setprecision(6) << std::endl;
+      trajFile << std::setprecision(6) << std::endl;
 
-      trajFile.close();
       const double fps = 0.1;//reader.fps();
 
       // create DSM
@@ -107,21 +106,21 @@ namespace dsm
         }
 
         cv::Mat source_left;
-        std::vector<float> source_dep;        
+        std::vector<float> source_dep, source_semantics;
+        int num_semantic_class = 10;
         std::cout<< " Read new image "<<id<<std::endl;
-        bool read_fails = reader.read_next_rgbd(source_left, source_dep);
+        bool read_fails = reader.read_next_rgbd(source_left, source_dep, num_semantic_class, source_semantics);
 
         if (read_fails) this->shouldStop = true;
 
         if (!read_fails)
         {
+          std::shared_ptr<cvo::ImageRGBD<float>> source_raw(new cvo::ImageRGBD(source_left, source_dep, num_semantic_class, source_semantics));
 
-          std::shared_ptr<cvo::ImageRGBD<float>> source_raw(new cvo::ImageRGBD(source_left, source_dep));
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
 
           cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib);
           std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib));
-          source_full->write_to_color_pcd("source_full.pcd");
 
           cvo::CvoPointCloud_to_pcl(source_cvo, *source_pcd);
 
@@ -185,34 +184,27 @@ namespace dsm
 
 
         std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
-<<<<<<< HEAD
-        //std::vector<Eigen::Matrix4f> poses;
-=======
         // std::vector<Eigen::Matrix4f> poses;
->>>>>>> 2441d611bbe46855f2e3873569ce5d639c31ac9e
         std::vector<double> timestamps;
         std::vector<int> ids;
         DSM->getFullTrajectory(poses, timestamps, ids);
 
         int l = 0;
         for (auto && accum_mat : poses) {
-          std::ofstream trajFile(trajFileName, std::ios::app);
+
           Eigen::Quaternionf q(accum_mat.block<3,3>(0,0));
           trajFile<<std::fixed << std::setprecision(18) << std::scientific << accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 
           trajFile<<q.x()<<" "<<q.y()<<" "<<q.z()<<" "<<q.w()<<"\n";
           trajFile.flush();
-          trajFile.close();          
+          
           DSM->printLog();          
           l++;
 
         }
-        std::cout<<"Wrote "<<l<<"lines of poses to the file\n";
         
         
       }
-
-      sleep(2);
-      exit(0);
+      trajFile.close();
     }
 
   private:
