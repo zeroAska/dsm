@@ -105,16 +105,17 @@ namespace dsm
           reader.set_start_index(id);
         }
 
-        cv::Mat source_left, source_dep;
+        cv::Mat source_left;
+        std::vector<float> source_dep, source_semantics;
+        int num_semantic_class = 10;
         std::cout<< " Read new image "<<id<<std::endl;
-        bool read_fails = reader.read_next_rgbd(source_left, source_dep);
+        bool read_fails = reader.read_next_rgbd(source_left, source_dep, num_semantic_class, source_semantics);
 
         if (read_fails) this->shouldStop = true;
 
         if (!read_fails)
         {
-          std::vector<uint16_t> source_dep_data(source_dep.begin<uint16_t>(), source_dep.end<uint16_t>());
-          std::shared_ptr<cvo::ImageRGBD<uint16_t>> source_raw(new cvo::ImageRGBD(source_left, source_dep_data));
+          std::shared_ptr<cvo::ImageRGBD<float>> source_raw(new cvo::ImageRGBD(source_left, source_dep, num_semantic_class, source_semantics));
 
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
 
