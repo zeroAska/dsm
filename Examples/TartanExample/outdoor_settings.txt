@@ -94,7 +94,7 @@ optMaxLevel = 2
 
 numActivePoints = 1500
 
-maxTemporalKeyframes = 5
+maxTemporalKeyframes = 7
 maxCovisibleKeyframes = 3
 numAlwaysKeepKeyframes = 3
 

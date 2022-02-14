@@ -185,11 +185,7 @@ namespace dsm
 
 
         std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
-<<<<<<< HEAD
-        //std::vector<Eigen::Matrix4f> poses;
-=======
         // std::vector<Eigen::Matrix4f> poses;
->>>>>>> 2441d611bbe46855f2e3873569ce5d639c31ac9e
         std::vector<double> timestamps;
         std::vector<int> ids;
         DSM->getFullTrajectory(poses, timestamps, ids);

@@ -2557,7 +2557,11 @@ namespace dsm
     std::list<std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr>> edges;
     std::list<std::pair<int, int>> edges_inds;    
     for (int i = temporalStartIndex; i < cvo_frames.size(); i++) {
-      for (int j = i+1; j < std::min(i+4, (int)cvo_frames.size()); j++) {
+      int max_ind = std::min(i+4, (int)cvo_frames.size());
+      if (isUsingCovis && i == 0) {
+        max_ind = (cvo_frames.size());
+      }
+      for (int j = i+1; j < max_ind; j++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[i], cvo_frames[j]);
         edges.push_back(p);
         edges_inds.push_back(std::make_pair(activeKeyframes[i]->frameID(),
