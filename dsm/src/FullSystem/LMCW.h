@@ -131,6 +131,7 @@ namespace dsm
     // selects the covisible window part
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
     void selectCovisibleMap(cvo::CvoPointCloud & covisMapOutput);
+    void selectSampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo);    
 
     // voxelMap based covisbility selection
     std::list<std::pair<CovisibilityNode *, CovisibilityNode *>>  selectCovisibleWindowCvo();

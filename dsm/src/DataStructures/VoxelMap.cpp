@@ -8,162 +8,288 @@
 
 namespace dsm {
 
-    VoxelMap::VoxelMap(float voxelSize) : voxelSize_(voxelSize) {
-        // std::cout << "Assigned voxelSize_" << voxelSize << std::endl;
-    }
+  VoxelMap::VoxelMap(float voxelSize) : voxelSize_(voxelSize) {
+    // std::cout << "Assigned voxelSize_" << voxelSize << std::endl;
+  }
 
-    bool VoxelMap::insert_point(ActivePoint* pt) {
-        // 1. find coresponding voxel coordinates
-        VoxelCoord intCoord = point_to_voxel_center(pt);
-        // 2. insert point to map
-        if (vmap_.count(intCoord)) {
-            // voxel already exists
-            // std::cout << "Existing voxel" << std::endl;
-            std::vector<ActivePoint*>& voxPts = vmap_[intCoord].voxPoints;
-            // Check if the point already exists
-            for (auto it = voxPts.begin(); it != voxPts.end(); it++) {
-                // TODO: make sure this equal is correct
-                if (*it == pt)
-                    return false;
-            }
-            // add only if point didn't exist
-            vmap_[intCoord].voxPoints.push_back(pt);
+  bool VoxelMap::insert_point(ActivePoint* pt) {
+    // 1. find coresponding voxel coordinates
+    VoxelCoord intCoord = point_to_voxel_center(pt);
+    // 2. insert point to map
+    if (vmap_.count(intCoord)) {
+      // voxel already exists
+      // std::cout << "Existing voxel" << std::endl;
+      std::vector<ActivePoint*>& voxPts = vmap_[intCoord].voxPoints;
+      // Check if the point already exists
+      for (auto it = voxPts.begin(); it != voxPts.end(); it++) {
+        // TODO: make sure this equal is correct
+        if (*it == pt)
+          return false;
+      }
+      // add only if point didn't exist
+      vmap_[intCoord].voxPoints.push_back(pt);
+    } else {
+      // voxel didn't exist, create voxel and add the point
+      vmap_[intCoord] = Voxel(intCoord.xc, intCoord.yc, intCoord.zc);
+      vmap_[intCoord].voxPoints.push_back(pt);
+    }
+    // std::cout << "=============================================\n";
+    return true;
+  }
+
+  bool VoxelMap::delete_point(ActivePoint* pt) {
+    // 1. convert to integer coord to look up its voxel
+    VoxelCoord intCoord = point_to_voxel_center(pt);
+    if (!vmap_.count(intCoord))
+      return false;
+    // 2. remove this point from the voxel
+    std::vector<ActivePoint*>& curVoxPts = vmap_[intCoord].voxPoints;
+    // iterate through to find the point to remove
+    for (auto it = curVoxPts.begin(); it != curVoxPts.end(); it++) {
+      if (*it == pt) {
+        curVoxPts.erase(it);
+        break;
+      }
+    }
+    // if the voxel contains no point after removal, erase the voxel too
+    if (curVoxPts.empty()) {
+      vmap_.erase(intCoord);
+    }
+    return true;
+  }
+
+  bool VoxelMap::delete_point_BA(ActivePoint* pt, const Voxel* voxel) {
+    VoxelCoord intCoord{voxel->xc, voxel->yc, voxel->zc};
+    if (!vmap_.count(intCoord))
+      return false;
+    // 2. remove this point from the voxel
+    std::vector<ActivePoint*>& curVoxPts = vmap_[intCoord].voxPoints;
+    // iterate through to find the point to remove
+    for (auto it = curVoxPts.begin(); it != curVoxPts.end(); it++) {
+      if (*it == pt) {
+        curVoxPts.erase(it);
+        break;
+      }
+    }
+    // if the voxel contains no point after removal, erase the voxel too
+    if (curVoxPts.empty()) {
+      vmap_.erase(intCoord);
+    }
+    return true;
+  }
+
+  VoxelMap::~VoxelMap() {
+    std::cout<<"Voxel map destructed\n";
+  }
+
+  const Voxel* VoxelMap::query_point(const ActivePoint* pt) const {
+    // 1. convert to integer coord to look up its voxel
+    VoxelCoord intCoord = point_to_voxel_center(pt);
+    if (!vmap_.count(intCoord))
+      return nullptr;
+    // std::cout << vmap_[intCoord].xc << ", " << vmap_[intCoord].yc << ", " << vmap_[intCoord].zc << std::endl;
+    return &vmap_.at(intCoord);
+  }
+
+  const Voxel* VoxelMap::query_point(float globalX, float globalY, float globalZ) const {
+    VoxelCoord intCoord = point_to_voxel_center(globalX, globalY, globalZ);
+    if (!vmap_.count(intCoord))
+      return nullptr;
+    // std::cout << vmap_[intCoord].xc << ", " << vmap_[intCoord].yc << ", " << vmap_[intCoord].zc << std::endl;
+    return &vmap_.at(intCoord);
+    
+  }  
+
+  std::unordered_set<int> VoxelMap::voxel_seen_frames(ActivePoint* pt) const {
+    std::unordered_set<int> resSet;
+    const Voxel* curVoxel = query_point(pt);
+    if (curVoxel == nullptr)
+      return resSet;
+    for (const ActivePoint* p : curVoxel->voxPoints) {
+      resSet.insert(p->currentID());
+    }
+    return resSet;
+  }
+
+  size_t VoxelMap::size() {
+    return vmap_.size();
+  }
+
+  VoxelCoord VoxelMap::point_to_voxel_center(const ActivePoint* pt) const {
+    // 1. get pt coord in world frame
+    Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
+    Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
+    Eigen::Vector4f p_cam_4;
+    p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+    Eigen::Vector4f p_wld = Tcw * p_cam_4;
+    // 2. find its corresponding voxel
+    std::vector<float> res(3);
+    std::vector<float> orig = {p_wld(0), p_wld(1), p_wld(2)};
+    for (int i = 0; i < 3; i++) {
+      // find remainder
+      float rem = fmod(orig[i], voxelSize_);
+      int addOne = 0;
+      if (rem >= 0.0)
+        addOne = rem > (voxelSize_ / 2.0f);
+      else 
+        addOne = -(rem < (voxelSize_ / 2.0f));
+      res[i] = (int(orig[i] / voxelSize_) + addOne) * voxelSize_;
+    }
+    VoxelCoord resCoord{res[0], res[1], res[2]};
+    return resCoord;
+  }
+
+  VoxelCoord VoxelMap::point_to_voxel_center(float globalX, float globalY, float globalZ) const {
+    // 1. get pt coord in world frame
+    Eigen::Vector4f p_wld;
+    p_wld << globalX, globalY, globalZ, 1.0;
+    // 2. find its corresponding voxel
+    std::vector<float> res(3);
+    std::vector<float> orig = {p_wld(0), p_wld(1), p_wld(2)};
+    for (int i = 0; i < 3; i++) {
+      // find remainder
+      float rem = fmod(orig[i], voxelSize_);
+      int addOne = 0;
+      if (rem >= 0.0)
+        addOne = rem > (voxelSize_ / 2.0f);
+      else 
+        addOne = -(rem < (voxelSize_ / 2.0f));
+      res[i] = (int(orig[i] / voxelSize_) + addOne) * voxelSize_;
+    }
+    VoxelCoord resCoord{res[0], res[1], res[2]};
+    return resCoord;
+  }
+  
+
+
+  const Voxel* VoxelMap::query_point_raycasting(const ActivePoint * pt, float minDist, float maxDist) {
+    Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
+    Eigen::Vector3f xyz = Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f p_c_normalized = xyz * pt->iDepth();
+    Eigen::Vector3f p_cam = p_c_normalized * minDist; // pt in cam frame normalized
+    Eigen::Vector3f p_cam_max = p_c_normalized * maxDist;
+    Eigen::Vector4f p_cam_4;
+    p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+    Eigen::Vector3f p = (Tcw * p_cam_4).head<3>();
+    Eigen::Vector3f p_max = Tcw.block<3,3>(0,0) * p_cam_max + Tcw.block<3,1>(0,3);
+
+    
+    Eigen::Vector3f dir = (p_max - p).normalized();  //(Tcw.block<3,3>(0,0) * (p_max - p_cam)).normalized(); //''Eigen::Map<Eigen::Vector3f>(dirArr);
+    
+    //int ix = std::floor(p(0));// | 0
+    //int iy = std::floor(p(1));// | 0
+    //int iz = std::floor(p(2));// | 0
+    VoxelCoord p_voxel = point_to_voxel_center(p(0), p(1), p(2));
+    float ix = p_voxel.xc;
+    float iy = p_voxel.yc;
+    float iz = p_voxel.zc;
+      
+ 
+    float stepx = ((dir(0) > 0) ? voxelSize_ : -voxelSize_);
+    float stepy = ((dir(1) > 0) ? voxelSize_ : -voxelSize_);
+    float stepz = ((dir(2) > 0) ? voxelSize_ : -voxelSize_);
+    
+    float txDelta = std::abs(voxelSize_ / dir(0));
+    float tyDelta = std::abs(voxelSize_ / dir(1));
+    float tzDelta = std::abs(voxelSize_ / dir(2));
+    
+    float xdist = (stepx > 0) ? (ix + voxelSize_ - p(0)) : (p(0) - ix - voxelSize_);
+    float ydist = (stepy > 0) ? (iy + voxelSize_ - p(1)) : (p(1) - iy - voxelSize_);
+    float zdist = (stepz > 0) ? (iz + voxelSize_ - p(2)) : (p(2) - iz - voxelSize_);    
+
+    //float txMax = (txDelta < std::numeric_limits<float>::max()) ? txDelta * xdist : std::numeric_limits<float>::max();
+    //float tyMax = (tyDelta < std::numeric_limits<float>::max()) ? tyDelta * ydist : std::numeric_limits<float>::max();
+    //float tzMax = (tzDelta <  std::numeric_limits<float>::max()) ? tzDelta * zdist :  std::numeric_limits<float>::max();
+    float txMax = (txDelta < std::numeric_limits<float>::max()) ? xdist / dir(0) : std::numeric_limits<float>::max();
+    float tyMax = (tyDelta < std::numeric_limits<float>::max()) ? ydist / dir(1) : std::numeric_limits<float>::max();
+    float tzMax = (tzDelta <  std::numeric_limits<float>::max()) ? zdist / dir(2) :  std::numeric_limits<float>::max();
+        
+    int steppedIndex = -1 ;
+
+    float t = 0;
+    //std::cout<<"voxelSize is "<<voxelSize_<<"Starting position "<<p.transpose()<<", ending position "<<p_max.transpose()<<", actual depth "<<xyz.transpose()<<"\n";
+    while (t < maxDist) {
+      Eigen::Vector3f curr_p = p + dir * t;
+      //std::cout<<"Current Point "<<curr_p.transpose()<< ", query voxel "<<ix<<", "<<iy<<", "<<iz<<", t="<<t<<", raw position is "<<xyz.transpose()<<std::endl;
+      
+      const Voxel * nextVoxel = query_point(ix, iy, iz);
+      
+      if (nextVoxel) {
+        return nextVoxel;
+      }
+      if (txMax < tyMax) {
+        if (txMax < tzMax) {
+          ix += stepx;
+          t = txMax;
+          txMax += txDelta;
+          //steppedIndex = 0;
         } else {
-            // voxel didn't exist, create voxel and add the point
-            vmap_[intCoord] = Voxel(intCoord.xc, intCoord.yc, intCoord.zc);
-            vmap_[intCoord].voxPoints.push_back(pt);
+          iz += stepz;
+          t = tzMax;
+          tzMax += tzDelta;
+          //steppedIndex = 2;
         }
-        // std::cout << "=============================================\n";
-        return true;
-    }
-
-    bool VoxelMap::delete_point(ActivePoint* pt) {
-        // 1. convert to integer coord to look up its voxel
-        VoxelCoord intCoord = point_to_voxel_center(pt);
-        if (!vmap_.count(intCoord))
-            return false;
-        // 2. remove this point from the voxel
-        std::vector<ActivePoint*>& curVoxPts = vmap_[intCoord].voxPoints;
-        // iterate through to find the point to remove
-        for (auto it = curVoxPts.begin(); it != curVoxPts.end(); it++) {
-            if (*it == pt) {
-                curVoxPts.erase(it);
-                break;
-            }
+      } else {
+        if (tyMax < tzMax) {
+          iy += stepy;
+          t = tyMax;
+          tyMax += tyDelta;
+          //steppedIndex = 1;
+        } else {
+          iz += stepz;
+          t = tzMax;
+          tzMax += tzDelta;
+          //steppedIndex = 2;
         }
-        // if the voxel contains no point after removal, erase the voxel too
-        if (curVoxPts.empty()) {
-            vmap_.erase(intCoord);
-        }
-        return true;
+      }
+
+
     }
 
-    bool VoxelMap::delete_point_BA(ActivePoint* pt, const Voxel* voxel) {
-        VoxelCoord intCoord{voxel->xc, voxel->yc, voxel->zc};
-        if (!vmap_.count(intCoord))
-            return false;
-        // 2. remove this point from the voxel
-        std::vector<ActivePoint*>& curVoxPts = vmap_[intCoord].voxPoints;
-        // iterate through to find the point to remove
-        for (auto it = curVoxPts.begin(); it != curVoxPts.end(); it++) {
-            if (*it == pt) {
-                curVoxPts.erase(it);
-                break;
-            }
-        }
-        // if the voxel contains no point after removal, erase the voxel too
-        if (curVoxPts.empty()) {
-            vmap_.erase(intCoord);
-        }
-        return true;
-    }
+    return nullptr;
 
-    VoxelMap::~VoxelMap() {
-        std::cout<<"Voxel map destructed\n";
-    }
+    // raycast algo paper
+    // http://www.cse.chalmers.se/edu/year/2010/course/TDA361/grid.pdf    
+    // consider raycast vector to be parametrized by t
+    //   vec = [px,py,pz] + t * [dx,dy,dz]
 
-    const Voxel* VoxelMap::query_point(const ActivePoint* pt) const {
-        // 1. convert to integer coord to look up its voxel
-        VoxelCoord intCoord = point_to_voxel_center(pt);
-        if (!vmap_.count(intCoord))
-            return nullptr;
-        // std::cout << vmap_[intCoord].xc << ", " << vmap_[intCoord].yc << ", " << vmap_[intCoord].zc << std::endl;
-        return &vmap_.at(intCoord);
-    }
+    
+  }
 
-    std::unordered_set<int> VoxelMap::voxel_seen_frames(ActivePoint* pt) const {
-        std::unordered_set<int> resSet;
-        const Voxel* curVoxel = query_point(pt);
-        if (curVoxel == nullptr)
-            return resSet;
-        for (const ActivePoint* p : curVoxel->voxPoints) {
-            resSet.insert(p->currentID());
-        }
-        return resSet;
-    }
+  // updateCovis debug use
+  // void VoxelMap::save_voxels_pcd(std::string filename) const {
+  //     pcl::PointCloud<pcl::PointXYZ> pc;
+  //     for (const auto& voxelPair : vmap_) {
+  //         const VoxelCoord& vc = voxelPair.first;
+  //         pcl::PointXYZ p;
+  //         p.x = vc.xc;
+  //         p.y = vc.yc;
+  //         p.z = vc.zc;
+  //         pc.push_back(p);
+  //     }
+  //     pcl::io::savePCDFile(filename, pc);
+  //     std::cout << "Wrote voxel centers to " << filename << std::endl;
+  // }
 
-    size_t VoxelMap::size() {
-        return vmap_.size();
-    }
-
-    VoxelCoord VoxelMap::point_to_voxel_center(const ActivePoint* pt) const {
-        // 1. get pt coord in world frame
-        Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
-        Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
-        Eigen::Vector4f p_cam_4;
-        p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
-        Eigen::Vector4f p_wld = Tcw * p_cam_4;
-        // 2. find its corresponding voxel
-        std::vector<float> res(3);
-        std::vector<float> orig = {p_wld(0), p_wld(1), p_wld(2)};
-        for (int i = 0; i < 3; i++) {
-            // find remainder
-            float rem = fmod(orig[i], voxelSize_);
-            int addOne = 0;
-            if (rem >= 0.0)
-                addOne = rem > (voxelSize_ / 2.0f);
-            else 
-                addOne = -(rem < (voxelSize_ / 2.0f));
-            res[i] = (int(orig[i] / voxelSize_) + addOne) * voxelSize_;
-        }
-        VoxelCoord resCoord{res[0], res[1], res[2]};
-        return resCoord;
-    }
-
-    // updateCovis debug use
-    // void VoxelMap::save_voxels_pcd(std::string filename) const {
-    //     pcl::PointCloud<pcl::PointXYZ> pc;
-    //     for (const auto& voxelPair : vmap_) {
-    //         const VoxelCoord& vc = voxelPair.first;
-    //         pcl::PointXYZ p;
-    //         p.x = vc.xc;
-    //         p.y = vc.yc;
-    //         p.z = vc.zc;
-    //         pc.push_back(p);
-    //     }
-    //     pcl::io::savePCDFile(filename, pc);
-    //     std::cout << "Wrote voxel centers to " << filename << std::endl;
-    // }
-
-    // void VoxelMap::save_points_pcd(std::string filename) const {
-    //     pcl::PointCloud<pcl::PointXYZ> pc;
-    //     for (const auto& voxelPair : vmap_) {
-    //         for (ActivePoint* pt : voxelPair.second.voxPoints) {
-    //             // get pt coord in world frame
-    //             Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
-    //             Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
-    //             Eigen::Vector4f p_cam_4;
-    //             p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
-    //             Eigen::Vector4f p_wld = Tcw * p_cam_4;
-    //             // push to pcl cloud
-    //             pcl::PointXYZ p;
-    //             p.x = p_wld(0);
-    //             p.y = p_wld(1);
-    //             p.z = p_wld(2);
-    //             pc.push_back(p);
-    //         }
-    //     }
-    //     pcl::io::savePCDFile(filename, pc);
-    //     std::cout << "Wrote voxel centers to " << filename << std::endl;
-    // }
+  // void VoxelMap::save_points_pcd(std::string filename) const {
+  //     pcl::PointCloud<pcl::PointXYZ> pc;
+  //     for (const auto& voxelPair : vmap_) {
+  //         for (ActivePoint* pt : voxelPair.second.voxPoints) {
+  //             // get pt coord in world frame
+  //             Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
+  //             Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
+  //             Eigen::Vector4f p_cam_4;
+  //             p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+  //             Eigen::Vector4f p_wld = Tcw * p_cam_4;
+  //             // push to pcl cloud
+  //             pcl::PointXYZ p;
+  //             p.x = p_wld(0);
+  //             p.y = p_wld(1);
+  //             p.z = p_wld(2);
+  //             pc.push_back(p);
+  //         }
+  //     }
+  //     pcl::io::savePCDFile(filename, pc);
+  //     std::cout << "Wrote voxel centers to " << filename << std::endl;
+  // }
 }

@@ -833,7 +833,7 @@ namespace dsm
     return edgesCovisibleToTemporal;
   }
 
-  void LMCW::selectCovisibleMap(cvo::CvoPointCloud & covisMapCvo) {
+  void LMCW::selectSampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo) {
     assert(this->temporalWindowIndex == 0);
 
     Utils::Time t1 = std::chrono::steady_clock::now();
@@ -848,22 +848,25 @@ namespace dsm
 
     std::unordered_set<const Voxel *> covisVoxels;
     std::unordered_set<int> frameIDs;
-    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size(); i++) {
+    int numFeatures = 0, numSemantics=0;
+    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
       frameIDs.insert(activeKeyframes_[i]->frameID());
       const std::vector<std::unique_ptr<ActivePoint>> & activePoints = activeKeyframes_[i]->activePoints();
       // find best covisible frame for each temporal frame
       for (int j = 0; j < activePoints.size(); j++) {
         const ActivePoint * p = activePoints[j].get();
-        const Voxel *  p_voxel = voxelMap_->query_point(p);
-        if (covisVoxels.find(p_voxel) == covisVoxels.end())
+        const Voxel * p_voxel = voxelMap_->query_point_raycasting(p);
+        //const Voxel *  p_voxel = voxelMap_->query_point(p);
+        if (p_voxel && covisVoxels.find(p_voxel) == covisVoxels.end())
           covisVoxels.insert(p_voxel);
       }
     }
-
+    
     int avgPointsPerVoxel = settings.covisMapSize / covisVoxels.size() + 1;
     std::cout<<"Covis Voxels number: "<<covisVoxels.size()<<", avg points per voxel: "<<avgPointsPerVoxel<<". ";
     std::list<const ActivePoint *> covisPoints;
     for (auto && voxel : covisVoxels) {
+      int counter = 0;
       int sampleChance = voxel->voxPoints.size() / avgPointsPerVoxel;
       for (auto && p : voxel->voxPoints) {
         if ( (sampleChance < 1
@@ -871,6 +874,7 @@ namespace dsm
              && frameIDs.find( p->reference()->frameID() ) == frameIDs.end() ) {
           covisPoints.push_back(p);
         }
+        
       }
     }
     std::cout<<"Actual sampled map size is "<<covisPoints.size()<<std::endl;
@@ -887,7 +891,8 @@ namespace dsm
       covisMapCvo.add_point(index, xyz, p->features(), p->semantics());
       index++;
     }
-    
+
+    covisMapCvo.write_to_color_pcd("covisMap.pcd");
 
     //if (selectCovisibleKeyframes.empty()) return edgesCovisibleToTemporal;
 
@@ -977,6 +982,86 @@ namespace dsm
 
 
   }
+
+  void LMCW::selectCovisibleMap(cvo::CvoPointCloud & covisMapCvo) {
+    assert(this->temporalWindowIndex == 0);
+
+    Utils::Time t1 = std::chrono::steady_clock::now();
+    
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+    const Eigen::Matrix3f& K = calib.matrix3f(0);
+    const int w = calib.width(0);
+    const int h = calib.height(0);
+    
+    const int firstKeyframeID = this->activeKeyframes_.front()->keyframeID();
+
+    std::unordered_set<const Voxel *> covisVoxels;
+    std::unordered_set<int> frameIDs;
+    int numFeatures = 0, numSemantics=0;
+    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
+      frameIDs.insert(activeKeyframes_[i]->frameID());
+      const std::vector<std::unique_ptr<ActivePoint>> & activePoints = activeKeyframes_[i]->activePoints();
+      // find best covisible frame for each temporal frame
+      for (int j = 0; j < activePoints.size(); j++) {
+        const ActivePoint * p = activePoints[j].get();
+        if (!numFeatures && !numSemantics) {
+          numFeatures = p->features().size();
+          numSemantics = p->semantics().size();
+        }
+        
+        const Voxel * p_voxel = voxelMap_->query_point_raycasting(p);
+        //const Voxel *  p_voxel = voxelMap_->query_point(p);
+        if (p_voxel && covisVoxels.find(p_voxel) == covisVoxels.end()) {
+          covisVoxels.insert(p_voxel);
+        }
+      }
+    }
+    
+    std::cout<<"Covis Voxels number: "<<covisVoxels.size()<<"\n";
+    if (covisVoxels.size() < 100) return;
+    covisMapCvo.reserve(covisVoxels.size(),
+                        numFeatures,
+                        numSemantics);
+    auto firstTemporalToWorld = activeKeyframes_[0]->camToWorld();
+    int index = 0;    
+    for (auto && voxel : covisVoxels) {
+      Eigen::Vector3f meanPos = Eigen::Vector3f::Zero();
+      Eigen::VectorXf meanFeature = Eigen::VectorXf::Zero(numFeatures);
+      Eigen::VectorXf meanSemantics = Eigen::VectorXf::Zero(numSemantics);
+      int counter = 0;
+      //int sampleChance = voxel->voxPoints.size() / avgPointsPerVoxel;
+      for (auto && p : voxel->voxPoints) {
+        //if (frameIDs.find( p->reference()->frameID() ) == frameIDs.end()) {
+
+          auto camToWorld = p->reference()->camToWorld();
+          Sophus::SE3f covisFrameToFirstTemporal = camToWorld.inverse() * firstTemporalToWorld;
+          Eigen::Vector3f xyz = covisFrameToFirstTemporal * p->xyz();
+          meanPos = (meanPos + xyz).eval();
+          meanFeature = (meanFeature + p->features()).eval();
+          if (numSemantics)
+            meanSemantics = (meanSemantics + p->semantics()).eval();
+          //} 
+        counter ++;
+      }
+      
+      meanPos = (meanPos / (float)counter).eval();
+      meanFeature = (meanFeature / (float) counter).eval();
+      if (numSemantics)
+        meanSemantics = (meanSemantics / (float) counter).eval();
+      covisMapCvo.add_point(index, meanPos, meanFeature, meanSemantics);
+
+      index++;
+    }
+    // std::cout<<"Actual sampled map size is "<<covisPoints.size()<<std::endl;
+
+
+    Utils::Time t2 = std::chrono::steady_clock::now();
+    std::cout << "selectCovisibleMap time is "<< std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
+              << "ms\n";
+
+  }
+  
 
   void LMCW::selectCovisibleWindowCvo2()
   {
@@ -1314,6 +1399,7 @@ namespace dsm
 
           // update covisibilityGraph_
           const Voxel* tracedVoxel = voxelMap_->query_point(point.get());
+          //const Voxel* tracedVoxel = voxelMap_->query_point_raycasting(point.get());
           if (tracedVoxel)
           {
             // voxel exists, add edges in covisGraph
