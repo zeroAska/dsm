@@ -1032,7 +1032,7 @@ namespace dsm
       int counter = 0;
       //int sampleChance = voxel->voxPoints.size() / avgPointsPerVoxel;
       for (auto && p : voxel->voxPoints) {
-        //if (frameIDs.find( p->reference()->frameID() ) == frameIDs.end()) {
+        // if (frameIDs.find( p->reference()->frameID() ) == frameIDs.end()) {
 
           auto camToWorld = p->reference()->camToWorld();
           Sophus::SE3f covisFrameToFirstTemporal = camToWorld.inverse() * firstTemporalToWorld;
@@ -1042,6 +1042,7 @@ namespace dsm
           if (numSemantics)
             meanSemantics = (meanSemantics + p->semantics()).eval();
           //} 
+
         counter ++;
       }
       
