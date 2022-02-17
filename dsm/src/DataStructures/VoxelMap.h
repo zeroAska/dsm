@@ -114,6 +114,9 @@ namespace dsm {
          * @return nullptr if no voxel exists at the given pt, or the voxel
          */
         const Voxel* query_point(const ActivePoint* pt) const;
+        const Voxel* query_point(float globalX, float globalY, float globalZ) const;
+
+        const Voxel* query_point_raycasting(const ActivePoint * pt, float minDist=0.5, float maxDist=55.0);
 
         /**
          * @brief obtain the frameIds that have seen this voxel
@@ -142,6 +145,7 @@ namespace dsm {
          * @return the coordinate of the voxel center
          */
         VoxelCoord point_to_voxel_center(const ActivePoint* pt) const;
+        VoxelCoord point_to_voxel_center(float globalX, float globalY, float globalZ) const;
 
     private:
         float voxelSize_ = 0.1f;                               // Edge length of a single voxel cubic

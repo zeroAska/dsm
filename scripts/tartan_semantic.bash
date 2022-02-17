@@ -1,10 +1,10 @@
 clear
-cd build && make -j && cd ..
+#cd build && make -j && cd ..
 
 for difficulty in Easy #Hard
 do
 #for i in abandonedfactory abandonedfactory_night seasonsforest seasonsforest_winter ocean
-for i in seasidetown japanesealley soulcity ocean
+for i in seasidetown endofworld gascola  soulcity ocean
 do
 	 rm -rf tartan_semantic_${difficulty}_$i
 	mkdir -p tartan_semantic_${difficulty}_$i

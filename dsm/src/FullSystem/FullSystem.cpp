@@ -215,13 +215,16 @@ namespace dsm
 
     std::cout<<"FullSystem Cvo constructor..\n";
     this->cvo_align.reset(new cvo::CvoGPU(cvoParamsFile));
+
+        
     
     auto& globalCalib = GlobalCalibration::getInstance();
     globalCalib.setBaseline(calib.baseline());
     globalCalib.setDepthScale(calib.scaling_factor());
     lastTrackingCos = 1;
 
-    this->lmcw = std::make_unique<LMCW>(w, h, cvo_align.get(), outputWrapper, 0.05);
+    auto& settings = Settings::getInstance();
+    this->lmcw = std::make_unique<LMCW>(w, h, cvo_align.get(), outputWrapper, settings.voxelSize);
   }
   
 
@@ -494,7 +497,6 @@ namespace dsm
   {
 
     auto& settings = Settings::getInstance();
-
     // track frame
     Utils::Time t1 = std::chrono::steady_clock::now();
 
@@ -2592,6 +2594,7 @@ namespace dsm
                      activeKeyframes,
                      cvo_frames,
                      edges_inds);
+    covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
 
     irls_counter++;
 

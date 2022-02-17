@@ -212,6 +212,7 @@ namespace dsm
           float maxInitIdepth;
 
           int covisMapSize;
+          float voxelSize;
 
 		// Secure Division
 		static const float DIVISION_EPS;
