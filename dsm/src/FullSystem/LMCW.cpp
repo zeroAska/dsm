@@ -854,14 +854,32 @@ namespace dsm
       const std::vector<std::unique_ptr<ActivePoint>> & activePoints = activeKeyframes_[i]->activePoints();
       // find best covisible frame for each temporal frame
       for (int j = 0; j < activePoints.size(); j++) {
-        const ActivePoint * p = activePoints[j].get();
+        ActivePoint * p = activePoints[j].get();
+        /***************
+         * for debugging
+         ***************/
+        //bool debug_insert = voxelMap_->insert_point(p);
+        //if (debug_insert)
+        //  std::cout<<"raycast: the point is already inserted before\n";
+        //else
+        //  std::cout<<"raycast: the point has just been inserted\n";
+        /***************
+         * for debugging
+         ***************/
+        
         const Voxel * p_voxel = voxelMap_->query_point_raycasting(p);
+        //
+
         //const Voxel *  p_voxel = voxelMap_->query_point(p);
         if (p_voxel && covisVoxels.find(p_voxel) == covisVoxels.end())
           covisVoxels.insert(p_voxel);
       }
     }
-    
+
+    if (covisVoxels.size() == 0) {
+      std::cout<<"Zero covis voxels.\n";
+      return;
+    }
     int avgPointsPerVoxel = settings.covisMapSize / covisVoxels.size() + 1;
     std::cout<<"Covis Voxels number: "<<covisVoxels.size()<<", avg points per voxel: "<<avgPointsPerVoxel<<". ";
     std::list<const ActivePoint *> covisPoints;
@@ -886,13 +904,14 @@ namespace dsm
     int index = 0;
     for (auto && p: covisPoints) {
       auto camToWorld = p->reference()->camToWorld();
-      Sophus::SE3f covisFrameToFirstTemporal = camToWorld.inverse() * firstTemporalToWorld;
+      //Sophus::SE3f covisFrameToFirstTemporal = camToWorld.inverse() * firstTemporalToWorld;
+      Sophus::SE3f covisFrameToFirstTemporal =  firstTemporalToWorld.inverse() * camToWorld;
       Eigen::Vector3f xyz = covisFrameToFirstTemporal * p->xyz();
       covisMapCvo.add_point(index, xyz, p->features(), p->semantics());
       index++;
     }
 
-    covisMapCvo.write_to_color_pcd("covisMap.pcd");
+    //covisMapCvo.write_to_color_pcd("covisMap.pcd");
 
     //if (selectCovisibleKeyframes.empty()) return edgesCovisibleToTemporal;
 
@@ -1477,6 +1496,12 @@ namespace dsm
       std::cout<<"Frame "<<owner->frameID()<<" just activated "<<counter<<" points.\n";
       owner->dump_active_points_to_pcd(std::to_string(owner->frameID())+".pcd");
     }
+
+
+    // this->voxelMap_->save_voxels_pcd("covisible_voxels.pcd");
+    //this->voxelMap_->save_points_pcd("covisible_points.pcd");
+
+    
     Utils::Time t2 = std::chrono::steady_clock::now();
 
     if (settings.debugPrintLog && settings.debugLogActivePoints)

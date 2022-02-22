@@ -2594,7 +2594,10 @@ namespace dsm
                      activeKeyframes,
                      cvo_frames,
                      edges_inds);
-    covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
+    //if(covisMapCvo.num_points())
+    //  covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
+    if(covisMapCvo.num_points())
+      cvo_frames[0]->points->write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
 
     irls_counter++;
 
@@ -2755,7 +2758,7 @@ namespace dsm
     // std::list<std::pair<CovisibilityNode*, CovisibilityNode*>> edgesCovisibleToTemporal;
     if (!settings.doOnlyTemporalOpt)
       //edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
-      this->lmcw->selectCovisibleMap(covisMapCvo);
+      this->lmcw->selectSampledCovisibleMap(covisMapCvo);
 
     //this->lmcw->selectCovisibleWindowCvo2();
     //if (lmcw->allKeyframes().size() > 1 && lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->activePoints().size())

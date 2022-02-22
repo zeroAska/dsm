@@ -92,7 +92,7 @@ minBAIterations = 1
 maxBAIterations = 100
 optMaxLevel = 2				
 
-numActivePoints = 1500
+numActivePoints = 2000
 
 maxTemporalKeyframes = 7
 maxCovisibleKeyframes = 3
@@ -116,9 +116,9 @@ showDepthMapLvl = 0
 candidatePointsSampling = 2
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.6
+trackingCosLimit = 0.55
 enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
-covisMapSize = 2000
-voxelSize = 0.1
+covisMapSize = 3000
+voxelSize = 0.05

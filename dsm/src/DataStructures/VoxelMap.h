@@ -45,7 +45,9 @@ namespace dsm
         float zc;
 
         bool operator==(const VoxelCoord& other) const {
-            return (xc == other.xc && yc == other.yc && zc == other.zc);
+          return (std::lrint(100 * xc) == std::lrint(other.xc * 100)
+                  && std::lrint(100 * yc) == std::lrint( other.yc * 100)
+                  &&  std::lrint(100 * zc) == std::lrint(100*other.zc));
         }
 
         friend std::ostream& operator<<(std::ostream& os, const VoxelCoord& vc) {
@@ -59,7 +61,9 @@ template<>
 struct std::hash<dsm::VoxelCoord> {
     std::size_t operator()(dsm::VoxelCoord const& vc) const {
         int p1 = 204803, p2 = 618637, p3 = 779189;
-        return (static_cast<int>(vc.xc * 100 * p1) ^ static_cast<int>(vc.yc * 100 * p2) ^ static_cast<int>(vc.zc * 100 * p3));
+        return (static_cast<int>(std::lrint(vc.xc * 100 * p1))
+                ^ static_cast<int>(std::lrint(vc.yc * 100 * p2))
+                ^ static_cast<int>(std::lrint(vc.zc * 100 * p3)));
     }
 };
 
@@ -134,9 +138,9 @@ namespace dsm {
 
     // updateCovis Debug use
     // public:
-    //     void save_voxels_pcd(std::string filename) const;
+         void save_voxels_pcd(std::string filename) const;
 
-    //     void save_points_pcd(std::string filename) const;
+         void save_points_pcd(std::string filename) const;
 
     private:
         /**

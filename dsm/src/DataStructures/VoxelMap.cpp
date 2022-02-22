@@ -15,6 +15,7 @@ namespace dsm {
   bool VoxelMap::insert_point(ActivePoint* pt) {
     // 1. find coresponding voxel coordinates
     VoxelCoord intCoord = point_to_voxel_center(pt);
+    //std::cout<<"insert the point to "<<intCoord.xc<<", "<<intCoord.yc<<", "<<intCoord.zc<<"\n";    
     // 2. insert point to map
     if (vmap_.count(intCoord)) {
       // voxel already exists
@@ -23,8 +24,8 @@ namespace dsm {
       // Check if the point already exists
       for (auto it = voxPts.begin(); it != voxPts.end(); it++) {
         // TODO: make sure this equal is correct
-        if (*it == pt)
-          return false;
+        if (*it == pt) 
+          return false; 
       }
       // add only if point didn't exist
       vmap_[intCoord].voxPoints.push_back(pt);
@@ -93,9 +94,10 @@ namespace dsm {
 
   const Voxel* VoxelMap::query_point(float globalX, float globalY, float globalZ) const {
     VoxelCoord intCoord = point_to_voxel_center(globalX, globalY, globalZ);
+    //std::cout << "query_point intCoord is "<<intCoord.xc << ", " << intCoord.yc << ", " << intCoord.zc << std::endl;    
     if (!vmap_.count(intCoord))
       return nullptr;
-    // std::cout << vmap_[intCoord].xc << ", " << vmap_[intCoord].yc << ", " << vmap_[intCoord].zc << std::endl;
+
     return &vmap_.at(intCoord);
     
   }  
@@ -122,18 +124,24 @@ namespace dsm {
     Eigen::Vector4f p_cam_4;
     p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
     Eigen::Vector4f p_wld = Tcw * p_cam_4;
+    //std::cout<<"point world pos is "<<p_wld.transpose();
     // 2. find its corresponding voxel
     std::vector<float> res(3);
     std::vector<float> orig = {p_wld(0), p_wld(1), p_wld(2)};
     for (int i = 0; i < 3; i++) {
       // find remainder
-      float rem = fmod(orig[i], voxelSize_);
-      int addOne = 0;
-      if (rem >= 0.0)
-        addOne = rem > (voxelSize_ / 2.0f);
-      else 
-        addOne = -(rem < (voxelSize_ / 2.0f));
-      res[i] = (int(orig[i] / voxelSize_) + addOne) * voxelSize_;
+      //float rem = fmod(orig[i], voxelSize_);
+      //float rem = std::remainder(orig[i], voxelSize_);      
+      // float rem = std::remander(orig[i], voxelSize_);
+      //if (std::abs(std::abs(rem) - voxelSize_) < 1e-6 ) rem = 0;      
+      //int addOne = 0;
+      //if (rem >= 0.0)
+      //  addOne = rem > (voxelSize_ / 2.0f);
+      //else 
+      //   addOne = - (std::abs(rem) > (voxelSize_/2.0)); // -(rem < (voxelSize_ / 2.0f));
+      //std::cout<<", rem is "<<rem<<", ";
+      //res[i] = (int(orig[i] / voxelSize_) + addOne) * voxelSize_;
+      res[i] = float(std::lrint(orig[i] / voxelSize_) ) * voxelSize_;
     }
     VoxelCoord resCoord{res[0], res[1], res[2]};
     return resCoord;
@@ -143,18 +151,24 @@ namespace dsm {
     // 1. get pt coord in world frame
     Eigen::Vector4f p_wld;
     p_wld << globalX, globalY, globalZ, 1.0;
+    //std::cout<<"point world pos is "<<p_wld.transpose();    
     // 2. find its corresponding voxel
     std::vector<float> res(3);
     std::vector<float> orig = {p_wld(0), p_wld(1), p_wld(2)};
     for (int i = 0; i < 3; i++) {
       // find remainder
-      float rem = fmod(orig[i], voxelSize_);
-      int addOne = 0;
-      if (rem >= 0.0)
-        addOne = rem > (voxelSize_ / 2.0f);
-      else 
-        addOne = -(rem < (voxelSize_ / 2.0f));
-      res[i] = (int(orig[i] / voxelSize_) + addOne) * voxelSize_;
+      //float rem = fmod(orig[i], voxelSize_);
+      //float rem = std::remainder(orig[i], voxelSize_);
+      //if (std::abs(std::abs(rem) - voxelSize_) < 1e-6 ) rem = 0;
+      //float rem = std::remainder()
+      //int addOne = 0;
+      //if (rem >= 0.0)
+      //  addOne = rem > (voxelSize_ / 2.0f);
+      //else 
+      //  addOne = -(std::fabs(rem) > (voxelSize_ / 2.0f));
+      //std::cout<<", rem is "<<rem<<", ";      
+      //res[i] = (int(orig[i] / voxelSize_) + addOne) * voxelSize_;
+      res[i] = (float)(std::lrint(orig[i] / voxelSize_)) * voxelSize_;
     }
     VoxelCoord resCoord{res[0], res[1], res[2]};
     return resCoord;
@@ -163,9 +177,11 @@ namespace dsm {
 
 
   const Voxel* VoxelMap::query_point_raycasting(const ActivePoint * pt, float minDist, float maxDist) {
+    
     Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
-    Eigen::Vector3f xyz = Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
-    Eigen::Vector3f p_c_normalized = xyz * pt->iDepth();
+    Eigen::Vector3f xyz_cam = pt->xyz();// = //Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f xyz_w = Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f p_c_normalized = xyz_cam * pt->iDepth();
     Eigen::Vector3f p_cam = p_c_normalized * minDist; // pt in cam frame normalized
     Eigen::Vector3f p_cam_max = p_c_normalized * maxDist;
     Eigen::Vector4f p_cam_4;
@@ -193,9 +209,9 @@ namespace dsm {
     float tyDelta = std::abs(voxelSize_ / dir(1));
     float tzDelta = std::abs(voxelSize_ / dir(2));
     
-    float xdist = (stepx > 0) ? (ix + voxelSize_ - p(0)) : (p(0) - ix - voxelSize_);
-    float ydist = (stepy > 0) ? (iy + voxelSize_ - p(1)) : (p(1) - iy - voxelSize_);
-    float zdist = (stepz > 0) ? (iz + voxelSize_ - p(2)) : (p(2) - iz - voxelSize_);    
+    float xdist = (stepx > 0) ? (ix + voxelSize_ /2 - p(0)) : ( ix - voxelSize_/2 - p(0) );
+    float ydist = (stepy > 0) ? (iy + voxelSize_ /2 - p(1)) : ( iy - voxelSize_/2 - p(1));
+    float zdist = (stepz > 0) ? (iz + voxelSize_ /2 - p(2)) : ( iz - voxelSize_/2 - p(2));    
 
     //float txMax = (txDelta < std::numeric_limits<float>::max()) ? txDelta * xdist : std::numeric_limits<float>::max();
     //float tyMax = (tyDelta < std::numeric_limits<float>::max()) ? tyDelta * ydist : std::numeric_limits<float>::max();
@@ -207,12 +223,16 @@ namespace dsm {
     int steppedIndex = -1 ;
 
     float t = 0;
-    //std::cout<<"voxelSize is "<<voxelSize_<<"Starting position "<<p.transpose()<<", ending position "<<p_max.transpose()<<", actual depth "<<xyz.transpose()<<"\n";
+    VoxelCoord p_voxel_actual = point_to_voxel_center(xyz_w(0), xyz_w(1), xyz_w(2));
+    //std::cout<<"voxelSize is "<<voxelSize_<<"Starting position "<<p.transpose()<<", ending position "<<p_max.transpose()<<", actual depth "<<xyz_w.transpose()
+    //         <<", actual voxel coord is "<<p_voxel_actual.xc<<", "<<p_voxel_actual.yc<<", "<<p_voxel_actual.zc<<"\n";
     while (t < maxDist) {
-      Eigen::Vector3f curr_p = p + dir * t;
-      //std::cout<<"Current Point "<<curr_p.transpose()<< ", query voxel "<<ix<<", "<<iy<<", "<<iz<<", t="<<t<<", raw position is "<<xyz.transpose()<<std::endl;
-      
-      const Voxel * nextVoxel = query_point(ix, iy, iz);
+      //Eigen::Vector3f curr_p = p + dir * t;
+      //p_voxel_actual = point_to_voxel_center(curr_p(0), curr_p(1), curr_p(2));
+      /// std::cout<<"Current Point "<<curr_p.transpose()<< ", query voxel "<<ix<<", "<<iy<<", "<<iz<<", t="<<t<<", raw position is "<<xyz_w.transpose()
+      //         <<", actual voxel coord is "<<p_voxel_actual.xc<<", "<<p_voxel_actual.yc<<", "<<p_voxel_actual.zc
+      //         <<std::endl;              
+      const Voxel * nextVoxel = query_point( ix, iy, iz);
       
       if (nextVoxel) {
         return nextVoxel;
@@ -222,11 +242,15 @@ namespace dsm {
           ix += stepx;
           t = txMax;
           txMax += txDelta;
+          // tyMax += txDelta * dir(1);
+          //tzMax += txDelta * dir(2);
+          //std::cout<<"Update tx, tx="<<txMax<<", ty="<<tyMax<<", tzMax="<<tzMax<<std::endl;
           //steppedIndex = 0;
         } else {
           iz += stepz;
           t = tzMax;
           tzMax += tzDelta;
+          //std::cout<<"Update tz, tx="<<txMax<<", ty="<<tyMax<<", tzMax="<<tzMax<<std::endl;
           //steppedIndex = 2;
         }
       } else {
@@ -234,11 +258,13 @@ namespace dsm {
           iy += stepy;
           t = tyMax;
           tyMax += tyDelta;
+          //std::cout<<"Update ty, tx="<<txMax<<", ty="<<tyMax<<", tzMax="<<tzMax<<std::endl;          
           //steppedIndex = 1;
         } else {
           iz += stepz;
           t = tzMax;
           tzMax += tzDelta;
+          // std::cout<<"Update tz, tx="<<txMax<<", ty="<<tyMax<<", tzMax="<<tzMax<<std::endl;          
           //steppedIndex = 2;
         }
       }
@@ -256,40 +282,40 @@ namespace dsm {
     
   }
 
-  // updateCovis debug use
-  // void VoxelMap::save_voxels_pcd(std::string filename) const {
-  //     pcl::PointCloud<pcl::PointXYZ> pc;
-  //     for (const auto& voxelPair : vmap_) {
-  //         const VoxelCoord& vc = voxelPair.first;
-  //         pcl::PointXYZ p;
-  //         p.x = vc.xc;
-  //         p.y = vc.yc;
-  //         p.z = vc.zc;
-  //         pc.push_back(p);
-  //     }
-  //     pcl::io::savePCDFile(filename, pc);
-  //     std::cout << "Wrote voxel centers to " << filename << std::endl;
-  // }
+  //updateCovis debug use
+  void VoxelMap::save_voxels_pcd(std::string filename) const {
+      pcl::PointCloud<pcl::PointXYZ> pc;
+      for (const auto& voxelPair : vmap_) {
+          const VoxelCoord& vc = voxelPair.first;
+          pcl::PointXYZ p;
+          p.x = vc.xc;
+          p.y = vc.yc;
+          p.z = vc.zc;
+          pc.push_back(p);
+      }
+      pcl::io::savePCDFile(filename, pc);
+      std::cout << "Wrote voxel centers to " << filename << std::endl;
+  }
 
-  // void VoxelMap::save_points_pcd(std::string filename) const {
-  //     pcl::PointCloud<pcl::PointXYZ> pc;
-  //     for (const auto& voxelPair : vmap_) {
-  //         for (ActivePoint* pt : voxelPair.second.voxPoints) {
-  //             // get pt coord in world frame
-  //             Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
-  //             Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
-  //             Eigen::Vector4f p_cam_4;
-  //             p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
-  //             Eigen::Vector4f p_wld = Tcw * p_cam_4;
-  //             // push to pcl cloud
-  //             pcl::PointXYZ p;
-  //             p.x = p_wld(0);
-  //             p.y = p_wld(1);
-  //             p.z = p_wld(2);
-  //             pc.push_back(p);
-  //         }
-  //     }
-  //     pcl::io::savePCDFile(filename, pc);
-  //     std::cout << "Wrote voxel centers to " << filename << std::endl;
-  // }
+  void VoxelMap::save_points_pcd(std::string filename) const {
+    pcl::PointCloud<pcl::PointXYZ> pc;
+    for (const auto& voxelPair : vmap_) {
+      for (ActivePoint* pt : voxelPair.second.voxPoints) {
+        // get pt coord in world frame
+        Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
+        Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
+        Eigen::Vector4f p_cam_4;
+        p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+        Eigen::Vector4f p_wld = Tcw * p_cam_4;
+        //             // push to pcl cloud
+        pcl::PointXYZ p;
+        p.x = p_wld(0);
+        p.y = p_wld(1);
+        p.z = p_wld(2);
+        pc.push_back(p);
+      }
+    }
+    pcl::io::savePCDFile(filename, pc);
+    std::cout << "Wrote voxel centers to " << filename << std::endl;
+  }
 }
