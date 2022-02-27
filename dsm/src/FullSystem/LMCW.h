@@ -41,6 +41,7 @@ namespace dsm
   class CovisibilityGraph;
   class CovisibilityNode;
   class IVisualizer;
+  template <typename PointType>
   class VoxelMap;
   class ActivePoint;
   
@@ -112,7 +113,7 @@ namespace dsm
 
 
     // updateCovis Debug use
-    inline VoxelMap* voxelMap()
+    inline VoxelMap<ActivePoint>* voxelMap()
     {
       return this->voxelMap_.get();
     }
@@ -161,7 +162,7 @@ namespace dsm
     std::unique_ptr<CovisibilityGraph> covisibilityGraph_;
 
     // voxel map
-    std::unique_ptr<VoxelMap> voxelMap_;
+    std::unique_ptr<VoxelMap<ActivePoint>> voxelMap_;
 
     // visualizer
     IVisualizer* const outputWrapper_;

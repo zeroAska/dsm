@@ -7,12 +7,19 @@
 // #include <pcl/io/pcd_io.h>
 
 namespace dsm {
+  template class Voxel<ActivePoint>;
+  template class VoxelMap<ActivePoint>;
 
-  VoxelMap::VoxelMap(float voxelSize) : voxelSize_(voxelSize) {
+  template class Voxel<SimplePoint>;
+  template class VoxelMap<SimplePoint>;
+
+  template <typename PointType>
+  VoxelMap<PointType>::VoxelMap(float voxelSize) : voxelSize_(voxelSize) {
     // std::cout << "Assigned voxelSize_" << voxelSize << std::endl;
   }
 
-  bool VoxelMap::insert_point(ActivePoint* pt) {
+  template <typename PointType>
+  bool VoxelMap<PointType>::insert_point(PointType* pt) {
     // 1. find coresponding voxel coordinates
     VoxelCoord intCoord = point_to_voxel_center(pt);
     //std::cout<<"insert the point to "<<intCoord.xc<<", "<<intCoord.yc<<", "<<intCoord.zc<<"\n";    
@@ -20,7 +27,7 @@ namespace dsm {
     if (vmap_.count(intCoord)) {
       // voxel already exists
       // std::cout << "Existing voxel" << std::endl;
-      std::vector<ActivePoint*>& voxPts = vmap_[intCoord].voxPoints;
+      std::vector<PointType*>& voxPts = vmap_[intCoord].voxPoints;
       // Check if the point already exists
       for (auto it = voxPts.begin(); it != voxPts.end(); it++) {
         // TODO: make sure this equal is correct
@@ -31,20 +38,21 @@ namespace dsm {
       vmap_[intCoord].voxPoints.push_back(pt);
     } else {
       // voxel didn't exist, create voxel and add the point
-      vmap_[intCoord] = Voxel(intCoord.xc, intCoord.yc, intCoord.zc);
+      vmap_[intCoord] = Voxel<PointType>(intCoord.xc, intCoord.yc, intCoord.zc);
       vmap_[intCoord].voxPoints.push_back(pt);
     }
     // std::cout << "=============================================\n";
     return true;
   }
 
-  bool VoxelMap::delete_point(ActivePoint* pt) {
+  template <typename PointType>
+  bool VoxelMap<PointType>::delete_point(PointType* pt) {
     // 1. convert to integer coord to look up its voxel
     VoxelCoord intCoord = point_to_voxel_center(pt);
     if (!vmap_.count(intCoord))
       return false;
     // 2. remove this point from the voxel
-    std::vector<ActivePoint*>& curVoxPts = vmap_[intCoord].voxPoints;
+    std::vector<PointType*>& curVoxPts = vmap_[intCoord].voxPoints;
     // iterate through to find the point to remove
     for (auto it = curVoxPts.begin(); it != curVoxPts.end(); it++) {
       if (*it == pt) {
@@ -59,12 +67,13 @@ namespace dsm {
     return true;
   }
 
-  bool VoxelMap::delete_point_BA(ActivePoint* pt, const Voxel* voxel) {
+  template <typename PointType>
+  bool VoxelMap<PointType>::delete_point_BA(PointType* pt, const Voxel<PointType>* voxel) {
     VoxelCoord intCoord{voxel->xc, voxel->yc, voxel->zc};
     if (!vmap_.count(intCoord))
       return false;
     // 2. remove this point from the voxel
-    std::vector<ActivePoint*>& curVoxPts = vmap_[intCoord].voxPoints;
+    std::vector<PointType*>& curVoxPts = vmap_[intCoord].voxPoints;
     // iterate through to find the point to remove
     for (auto it = curVoxPts.begin(); it != curVoxPts.end(); it++) {
       if (*it == pt) {
@@ -79,11 +88,13 @@ namespace dsm {
     return true;
   }
 
-  VoxelMap::~VoxelMap() {
+  template <typename PointType>
+  VoxelMap<PointType>::~VoxelMap() {
     std::cout<<"Voxel map destructed\n";
   }
 
-  const Voxel* VoxelMap::query_point(const ActivePoint* pt) const {
+  template <typename PointType>
+  const Voxel<PointType>* VoxelMap<PointType>::query_point(const PointType* pt) const {
     // 1. convert to integer coord to look up its voxel
     VoxelCoord intCoord = point_to_voxel_center(pt);
     if (!vmap_.count(intCoord))
@@ -92,7 +103,8 @@ namespace dsm {
     return &vmap_.at(intCoord);
   }
 
-  const Voxel* VoxelMap::query_point(float globalX, float globalY, float globalZ) const {
+  template <typename PointType>
+  const Voxel<PointType>* VoxelMap<PointType>::query_point(float globalX, float globalY, float globalZ) const {
     VoxelCoord intCoord = point_to_voxel_center(globalX, globalY, globalZ);
     //std::cout << "query_point intCoord is "<<intCoord.xc << ", " << intCoord.yc << ", " << intCoord.zc << std::endl;    
     if (!vmap_.count(intCoord))
@@ -102,22 +114,64 @@ namespace dsm {
     
   }  
 
-  std::unordered_set<int> VoxelMap::voxel_seen_frames(ActivePoint* pt) const {
+  template <typename PointType>
+  std::unordered_set<int> VoxelMap<PointType>::voxel_seen_frames(PointType* pt) const {
     std::unordered_set<int> resSet;
-    const Voxel* curVoxel = query_point(pt);
+    const Voxel<PointType>* curVoxel = query_point(pt);
     if (curVoxel == nullptr)
       return resSet;
-    for (const ActivePoint* p : curVoxel->voxPoints) {
+    for (const PointType* p : curVoxel->voxPoints) {
       resSet.insert(p->currentID());
     }
     return resSet;
   }
 
-  size_t VoxelMap::size() {
+  template <typename PointType>
+  size_t VoxelMap<PointType>::size() {
     return vmap_.size();
   }
 
-  VoxelCoord VoxelMap::point_to_voxel_center(const ActivePoint* pt) const {
+  template <typename PointType>
+  const std::vector<PointType*> VoxelMap<PointType>::sample_points() const {
+    std::vector<PointType*> res;
+    for (const auto& voxelPair : vmap_) {
+      const std::vector<PointType*> voxPts = voxelPair.second.voxPoints;
+      if (voxPts.empty()) {
+        std::cout << "Shouldn't be empty, skipping\n";
+        continue;
+      }
+      res.push_back(voxPts[0]);
+    }
+    return res;
+  }
+
+  template <>
+  VoxelCoord VoxelMap<SimplePoint>::point_to_voxel_center(const SimplePoint* pt) const {
+    //std::cout<<"point world pos is "<<p_wld.transpose();
+    // 2. find its corresponding voxel
+    std::vector<float> res(3);
+    std::vector<float> orig = {pt->x, pt->y, pt->z};
+    for (int i = 0; i < 3; i++) {
+      // find remainder
+      //float rem = fmod(orig[i], voxelSize_);
+      //float rem = std::remainder(orig[i], voxelSize_);      
+      // float rem = std::remander(orig[i], voxelSize_);
+      //if (std::abs(std::abs(rem) - voxelSize_) < 1e-6 ) rem = 0;      
+      //int addOne = 0;
+      //if (rem >= 0.0)
+      //  addOne = rem > (voxelSize_ / 2.0f);
+      //else 
+      //   addOne = - (std::abs(rem) > (voxelSize_/2.0)); // -(rem < (voxelSize_ / 2.0f));
+      //std::cout<<", rem is "<<rem<<", ";
+      //res[i] = (int(orig[i] / voxelSize_) + addOne) * voxelSize_;
+      res[i] = float(std::lrint(orig[i] / voxelSize_) ) * voxelSize_;
+    }
+    VoxelCoord resCoord{res[0], res[1], res[2]};
+    return resCoord;
+  }
+
+  template <>
+  VoxelCoord VoxelMap<ActivePoint>::point_to_voxel_center(const ActivePoint* pt) const {
     // 1. get pt coord in world frame
     Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
     Eigen::Vector3f p_cam = pt->xyz(); // pt in cam frame
@@ -147,7 +201,8 @@ namespace dsm {
     return resCoord;
   }
 
-  VoxelCoord VoxelMap::point_to_voxel_center(float globalX, float globalY, float globalZ) const {
+  template <typename PointType>
+  VoxelCoord VoxelMap<PointType>::point_to_voxel_center(float globalX, float globalY, float globalZ) const {
     // 1. get pt coord in world frame
     Eigen::Vector4f p_wld;
     p_wld << globalX, globalY, globalZ, 1.0;
@@ -175,8 +230,8 @@ namespace dsm {
   }
   
 
-
-  const Voxel* VoxelMap::query_point_raycasting(const ActivePoint * pt, float minDist, float maxDist) {
+  template <>
+  const Voxel<ActivePoint>* VoxelMap<ActivePoint>::query_point_raycasting(const ActivePoint * pt, float minDist, float maxDist) {
     
     Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
     Eigen::Vector3f xyz_cam = pt->xyz();// = //Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
@@ -232,7 +287,7 @@ namespace dsm {
       /// std::cout<<"Current Point "<<curr_p.transpose()<< ", query voxel "<<ix<<", "<<iy<<", "<<iz<<", t="<<t<<", raw position is "<<xyz_w.transpose()
       //         <<", actual voxel coord is "<<p_voxel_actual.xc<<", "<<p_voxel_actual.yc<<", "<<p_voxel_actual.zc
       //         <<std::endl;              
-      const Voxel * nextVoxel = query_point( ix, iy, iz);
+      const Voxel<ActivePoint> * nextVoxel = query_point( ix, iy, iz);
       
       if (nextVoxel) {
         return nextVoxel;
@@ -283,7 +338,8 @@ namespace dsm {
   }
 
   //updateCovis debug use
-  void VoxelMap::save_voxels_pcd(std::string filename) const {
+  template <typename PointType>
+  void VoxelMap<PointType>::save_voxels_pcd(std::string filename) const {
       pcl::PointCloud<pcl::PointXYZ> pc;
       for (const auto& voxelPair : vmap_) {
           const VoxelCoord& vc = voxelPair.first;
@@ -297,7 +353,8 @@ namespace dsm {
       std::cout << "Wrote voxel centers to " << filename << std::endl;
   }
 
-  void VoxelMap::save_points_pcd(std::string filename) const {
+  template <>
+  void VoxelMap<ActivePoint>::save_points_pcd(std::string filename) const {
     pcl::PointCloud<pcl::PointXYZ> pc;
     for (const auto& voxelPair : vmap_) {
       for (ActivePoint* pt : voxelPair.second.voxPoints) {
