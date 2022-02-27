@@ -2524,7 +2524,7 @@ namespace dsm
     //cvo::CvoPointCloud covisMapCvo;
     //activePointsToCvoPointCloud(covisMap, covisMapCvo);
     int temporalStartIndex = 0;
-    bool isUsingCovis = covisMapCvo.num_points() > 0 &&  !settings.doOnlyTemporalOpt;
+    bool isUsingCovis = covisMapCvo.num_points() > 300 &&  !settings.doOnlyTemporalOpt;
     
     if (activeKeyframes.size() < 4) return;
     std::vector<cvo::CvoPointCloud> cvo_pcs;
@@ -2537,19 +2537,23 @@ namespace dsm
       std::cout<<kf->frameID()<<", ";
       
       kf->activePointsToCvoPointCloud(cvo_pcs[i]);
-      if (isUsingCovis && i == 0) {
-        std::cout<<"Now adding the covisMap into the first frame. Frame frame has initially "<<cvo_pcs[i].num_points()<<std::endl;
-        cvo_pcs[i] = cvo_pcs[i] + covisMapCvo;
-        std::cout<<"After adding the covisMap, the first frame has "<<cvo_pcs[i].num_points()<<std::endl;
-        
-      }
+      //if (isUsingCovis && i == 0) {
+      //  std::cout<<"Now adding the covisMap into the first frame. Frame frame has initially "<<cvo_pcs[i].num_points()<<std::endl;
+      //  cvo_pcs[i] = cvo_pcs[i] + covisMapCvo;
+      //  std::cout<<"After adding the covisMap, the first frame has "<<cvo_pcs[i].num_points()<<std::endl;
+      //}
       assert(kf->activePoints().size() != 0);
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
       cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data()));
       cvo_frames.push_back(cvo_ptr);
 
-      const_flags_in_BA[i] = (i <= temporalStartIndex);
+      //const_flags_in_BA[i] = (i <= temporalStartIndex);
+      
+      const_flags_in_BA[i] = false;
+      if (!isUsingCovis && i == 0)
+        const_flags_in_BA[i] = true;
     }
+    
     //if (temporalStartIndex == 0)
 
 
@@ -2560,9 +2564,9 @@ namespace dsm
     std::list<std::pair<int, int>> edges_inds;    
     for (int i = temporalStartIndex; i < cvo_frames.size(); i++) {
       int max_ind = std::min(i+4, (int)cvo_frames.size());
-      if (isUsingCovis && i == 0) {
-        max_ind = (cvo_frames.size());
-      }
+      //if (isUsingCovis && i == 0) {
+      //  max_ind = (cvo_frames.size());
+      //}
       for (int j = i+1; j < max_ind; j++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[i], cvo_frames[j]);
         edges.push_back(p);
@@ -2571,23 +2575,29 @@ namespace dsm
       }
     }
 
-    /*
-    if (isUsingCovis) {
 
-      cvo::CvoFrame::Ptr cvo_ptr(new  cvo::CvoFrame(&covisMapCvo, cvo_frames[0]->pose_vec));
-      for (int i = 1; i < cvo_pcs.size(); i++) {
+    if (isUsingCovis ) {
+      std::cout<<"Now adding the covisMap into the end of the sliding window. covisMap has initially "<<covisMapCvo.num_points()<<std::endl;
+      auto kf = activeKeyframes[0];
+      Eigen::Matrix<double, 3,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>().block<3,4>(0,0);
+      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&covisMapCvo, kf_to_world.data()));
+
+      //cvo_pcs[i] = cvo_pcs[i] + covisMapCvo;
+      //std::cout<<"After adding the covisMap, the first frame has "<<cvo_pcs[i].num_points()<<std::endl;
+
+      //cvo::CvoFrame::Ptr cvo_ptr(new  cvo::CvoFrame(&covisMapCvo, cvo_frames[0]->pose_vec));
+      for (int i = 0; i < cvo_frames.size(); i++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_ptr, cvo_frames[i]);
         edges.push_back(p);
         std::cout<<"add edge between covisMap and frame "<<i<<std::endl;
       }
-      cvo_pcs.push_back(covisMapCvo);
+      
+      //cvo_pcs.push_back(covisMapCvo);
       cvo_frames.push_back(cvo_ptr);
       const_flags_in_BA.push_back(true);
-
-
-      covisMapCvo.write_to_color_pcd("covisMap.pcd");
+      //covisMapCvo.write_to_color_pcd("covisMap.pcd");
     }
-    */
+
 
     static int irls_counter = 0;
     dumpFramesToPcd (std::to_string(irls_counter)+"_graph.txt",
@@ -2596,8 +2606,8 @@ namespace dsm
                      edges_inds);
     //if(covisMapCvo.num_points())
     //  covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
-    if(covisMapCvo.num_points())
-      cvo_frames[0]->points->write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
+    if(isUsingCovis) 
+      covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
 
     irls_counter++;
 

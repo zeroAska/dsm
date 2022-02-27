@@ -116,7 +116,7 @@ showDepthMapLvl = 0
 candidatePointsSampling = 2
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.55
+trackingCosLimit = 0.5
 enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
