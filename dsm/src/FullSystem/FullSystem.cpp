@@ -409,7 +409,8 @@ namespace dsm
       this->lmcw->insertNewKeyframe(frame);
 
       // create candidates
-      this->createCandidates(frame);
+      this->createCandidates2(frame);
+      // this->createCandidates(frame);
       this->lastTrackedFrame = frame;
       
       // set as initializer reference
@@ -2049,7 +2050,7 @@ namespace dsm
           }
           if ( ! std::isfinite(idepth) || idepth < settings.maxInitIdepth ) continue;
           std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth));
-
+          // Eigen::Vector3f xyz = new_candidate->xyz();
           candidates.emplace_back(std::move(new_candidate));
             //D}
         } else
@@ -2077,6 +2078,158 @@ namespace dsm
 
     //std::string fname("candidates_after_creation.pcd");
     //frame->dump_candidates_to_pcd(fname);
+    std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
+  }
+
+ void FullSystem::createCandidates2(const std::shared_ptr<Frame>& frame)
+  {
+    const auto& calib = GlobalCalibration::getInstance();
+    const auto & intrinsic = calib.matrix3f(0);
+    float baseline = calib.getBaseline();
+    const auto& settings = Settings::getInstance();
+
+    const int32_t width = calib.width(0);
+    const int32_t height = calib.height(0);
+    const int32_t distToBorder = Pattern::padding() + 1;
+
+    auto & rawImg = * (frame->getRawImage());
+
+
+    cv::Mat left_gray;
+    cv::cvtColor(rawImg.image(), left_gray, cv::COLOR_BGR2GRAY);
+    //std::vector<int32_t> selected_inds_map(this->pixelMask, this->pixelMask + sizeof(int32_t) * left_gray.total());
+    std::vector<int32_t> selected_inds_map(left_gray.rows * left_gray.cols);
+    std::fill(selected_inds_map.begin(), selected_inds_map.end(), -1);
+    
+    int num = 0;
+    VoxelMap<SimplePoint> voxel_filter(0.5); // TL: change this to a yaml parameter
+    // add all pixels to voxel filter
+    std::vector<SimplePoint> temp_pt_vec;
+    temp_pt_vec.reserve(height * width);
+    // for (const auto& pt : pcPts) {
+    //   temp_pt_vec.emplace_back(curr_xyz(0), curr_xyz(1), curr_xyz(2), idx);
+    // }
+    for (int32_t row = distToBorder; row < height - distToBorder; ++row)
+    {
+      for (int32_t col = distToBorder; col < width - distToBorder; ++col)
+      {
+        int32_t idx = col + row * width;
+        // project to 3d
+        float idepth = 0;
+        if (frame->depthType == Frame::DepthType::STEREO)
+          idepth = std::dynamic_pointer_cast<cvo::ImageStereo> (frame->getRawImage())->disparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
+        else if (frame->depthType == Frame::DepthType::RGBD_FLOAT) {
+          idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<float>>(frame->getRawImage())->depth_image()[width * row + col]);
+        } else if (frame->depthType == Frame::DepthType::RGBD_UINT16) {
+          idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<uint16_t>>(frame->getRawImage())->depth_image()[width * row + col]);
+        }
+        if ( ! std::isfinite(idepth) || idepth < settings.maxInitIdepth ) continue;
+        
+        const Eigen::Matrix3f& invK = calib.invMatrix3f(0);
+        Eigen::Vector3f curr_xyz;
+        curr_xyz << col, row, 1.0;
+        curr_xyz = (curr_xyz / idepth).eval();
+        curr_xyz = (invK * curr_xyz).eval();
+
+        temp_pt_vec.emplace_back(curr_xyz(0), curr_xyz(1), curr_xyz(2), idx);
+        voxel_filter.insert_point(&temp_pt_vec.back());
+      }
+    }
+    // Pick one point from every existing voxel
+    const std::vector<SimplePoint*> downsampled = voxel_filter.sample_points();
+    for (const SimplePoint* pt : downsampled) {
+      if (pt->pixelIdx >= selected_inds_map.size())
+        std::cout << "Something is wrong\n";
+      selected_inds_map[pt->pixelIdx] = 0;
+    }
+    num = downsampled.size();
+
+    // switch (settings.candidatePointsSampling) {
+    // case 0:
+    //   num = stereo_surface_sampling(left_gray,
+    //                                 true,
+    //                                 true,
+    //                                 settings.numCandidates,
+    //                                 // output
+    //                                 selected_inds_map
+    //                                 //std::vector<Vec2i, Eigen::aligned_allocator<Vec2i>> & final_selected_uv                   
+    //                                 );
+    //   break;
+    // case 1:
+    //   num = FAST_corner_sampling(left_gray, settings.numCandidates,
+    //                              selected_inds_map);
+    //   break;
+    // case 2:
+    //   // Create new candidates in the frame
+    //   // They have to be homogeneously distributed in the image	
+    //   num = this->pointDetector->detect(frame, (int)settings.numCandidates, selected_inds_map.data(),
+    //                                     this->outputWrapper);
+    //   break;
+    //   //default:
+    //   //break;
+    // }
+    std::cout<<"Voxel filter detects "<<num<<" points\n";
+    // create candidates
+    auto& candidates = frame->candidates();
+    candidates.reserve(num);
+
+    int cc = 0;
+
+    Utils::Time t1 = std::chrono::steady_clock::now();
+
+    for (int32_t row = distToBorder; row < height - distToBorder; ++row)
+    {
+      for (int32_t col = distToBorder; col < width - distToBorder; ++col)
+      {
+        int32_t idx = col + row * width;
+
+        //if (this->pixelMask[idx] < 0) continue;
+        if (selected_inds_map[idx] != 0) continue;
+        cc++;
+        // create a point
+        if (cvo_align!=nullptr) {
+          float idepth = 0;
+          if (frame->depthType == Frame::DepthType::STEREO)
+            idepth = std::dynamic_pointer_cast<cvo::ImageStereo> (frame->getRawImage())->disparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
+          else if (frame->depthType == Frame::DepthType::RGBD_FLOAT) {
+            //float depth = (std::dynamic_pointer_cast<cvo::ImageRGBD<float>>(frame->getRawImage())->depth_image()[width * row + col]) / frame->depthScale;
+            //         if (depth < 20)
+            // idepth = 1/depth;
+            idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<float>>(frame->getRawImage())->depth_image()[width * row + col]);
+          } else if (frame->depthType == Frame::DepthType::RGBD_UINT16) {
+            idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<uint16_t>>(frame->getRawImage())->depth_image()[width * row + col]);
+            
+          }
+          if ( ! std::isfinite(idepth) || idepth < settings.maxInitIdepth ) continue;
+          std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth));
+
+          candidates.emplace_back(std::move(new_candidate));
+            //D}
+        } else
+          candidates.emplace_back(std::make_unique<CandidatePoint>((float)col, (float)row, selected_inds_map[idx] , frame));
+      }
+    }
+    
+    candidates.shrink_to_fit();
+    frame->initCandidateQualityFlag();
+    std::cout<<"Create "<<candidates.size()<<" new candidates for frame "<<frame->frameID()<<std::endl;
+
+    Utils::Time t2 = std::chrono::steady_clock::now();
+		
+    if (settings.debugPrintLog && settings.debugLogPixelDetection)
+    {
+      const std::string msg = "PointDetect: " + std::to_string(candidates.size()) + "\t";
+
+      auto& log = Log::getInstance();
+      log.addCurrentLog(frame->frameID(), msg);
+    }
+
+    // reserve memory
+    auto& activePoints = frame->activePoints();
+    activePoints.reserve(candidates.size());
+
+    std::string fname("voxelFilter/candidates_after_creation.pcd");
+    frame->dump_candidates_to_pcd(fname);
     std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }
 

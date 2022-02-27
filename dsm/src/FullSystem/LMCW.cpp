@@ -63,7 +63,7 @@ namespace dsm
 
   LMCW::LMCW(int width, int height,  const cvo::CvoGPU * align, IVisualizer *visualizer, float voxelSize)
     : cvo_align(align) ,     temporalWindowIndex(0), numActivePoints(0), outputWrapper_(visualizer), 
-    voxelMap_(new VoxelMap(voxelSize)) {
+    voxelMap_(new VoxelMap<ActivePoint>(voxelSize)) {
     const auto& settings = Settings::getInstance();
     const int levels = settings.pyramidLevels;
 
@@ -846,7 +846,7 @@ namespace dsm
     
     const int firstKeyframeID = this->activeKeyframes_.front()->keyframeID();
 
-    std::unordered_set<const Voxel *> covisVoxels;
+    std::unordered_set<const Voxel<ActivePoint> *> covisVoxels;
     std::unordered_set<int> frameIDs;
     int numFeatures = 0, numSemantics=0;
     for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
@@ -867,7 +867,7 @@ namespace dsm
          * for debugging
          ***************/
         
-        const Voxel * p_voxel = voxelMap_->query_point_raycasting(p);
+        const Voxel<ActivePoint> * p_voxel = voxelMap_->query_point_raycasting(p);
         //
 
         //const Voxel *  p_voxel = voxelMap_->query_point(p);
@@ -1015,7 +1015,7 @@ namespace dsm
     
     const int firstKeyframeID = this->activeKeyframes_.front()->keyframeID();
 
-    std::unordered_set<const Voxel *> covisVoxels;
+    std::unordered_set<const Voxel<ActivePoint> *> covisVoxels;
     std::unordered_set<int> frameIDs;
     int numFeatures = 0, numSemantics=0;
     for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
@@ -1029,7 +1029,7 @@ namespace dsm
           numSemantics = p->semantics().size();
         }
         
-        const Voxel * p_voxel = voxelMap_->query_point_raycasting(p);
+        const Voxel<ActivePoint> * p_voxel = voxelMap_->query_point_raycasting(p);
         //const Voxel *  p_voxel = voxelMap_->query_point(p);
         if (p_voxel && covisVoxels.find(p_voxel) == covisVoxels.end()) {
           covisVoxels.insert(p_voxel);
@@ -1418,7 +1418,7 @@ namespace dsm
 
 
           // update covisibilityGraph_
-          const Voxel* tracedVoxel = voxelMap_->query_point(point.get());
+          const Voxel<ActivePoint>* tracedVoxel = voxelMap_->query_point(point.get());
           //const Voxel* tracedVoxel = voxelMap_->query_point_raycasting(point.get());
           if (tracedVoxel)
           {
@@ -1666,7 +1666,7 @@ namespace dsm
       {
         std::unique_ptr<ActivePoint>& actPt = activePoints[j];
         // if voxel didn't change, no action required
-        const Voxel* newVoxel = voxelMap_->query_point(actPt.get());
+        const Voxel<ActivePoint>* newVoxel = voxelMap_->query_point(actPt.get());
         if (newVoxel == actPt->voxel()) continue;
 
         // for each Active Point in the old voxel, decrease the edge weight

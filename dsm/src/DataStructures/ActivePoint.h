@@ -47,6 +47,7 @@ namespace dsm
 	class PointParameterBlock;
 	class PhotometricResidual;
   
+	template <typename PointType>
 	class Voxel;
 
 	// Active point in the sliding window
@@ -125,8 +126,8 @@ namespace dsm
                 const Eigen::VectorXf & features() const  {return features_;}
                 const Eigen::VectorXf & semantics() const {return semantics_;}
 
-                const Voxel* voxel() const;
-                void setVoxel(const Voxel* voxelIn);
+                const Voxel<ActivePoint>* voxel() const;
+                void setVoxel(const Voxel<ActivePoint>* voxelIn);
 
                 template <typename PointPtr>
                 static  void activePointsToCvoPointCloud(const std::vector<PointPtr> & activePoints,
@@ -173,7 +174,7 @@ namespace dsm
                 Eigen::VectorXf semantics_;
 
                 // voxel
-                const Voxel* voxel_;
+                const Voxel<ActivePoint>* voxel_;
                 
 
 		// optimization statistics

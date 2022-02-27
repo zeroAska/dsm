@@ -272,12 +272,12 @@ namespace dsm
     this->parallax_ = p;
   }
 
-  const Voxel* ActivePoint::voxel() const
+  const Voxel<ActivePoint>* ActivePoint::voxel() const
   {
     return this->voxel_;
   }
 
-  void ActivePoint::setVoxel(const Voxel* voxelIn)
+  void ActivePoint::setVoxel(const Voxel<ActivePoint>* voxelIn)
   {
     this->voxel_ = voxelIn;
   }
