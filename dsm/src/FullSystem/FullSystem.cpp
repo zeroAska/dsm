@@ -2049,7 +2049,8 @@ namespace dsm
             
           }
           if ( ! std::isfinite(idepth) || idepth < settings.maxInitIdepth ) continue;
-          std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth));
+          
+          std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth, CandidatePoint::GeometryType::EDGE));
           // Eigen::Vector3f xyz = new_candidate->xyz();
           candidates.emplace_back(std::move(new_candidate));
             //D}
@@ -2094,56 +2095,134 @@ namespace dsm
 
     auto & rawImg = * (frame->getRawImage());
 
-
+    Utils::Time t1 = std::chrono::steady_clock::now();
     cv::Mat left_gray;
     cv::cvtColor(rawImg.image(), left_gray, cv::COLOR_BGR2GRAY);
     //std::vector<int32_t> selected_inds_map(this->pixelMask, this->pixelMask + sizeof(int32_t) * left_gray.total());
     std::vector<int32_t> selected_inds_map(left_gray.rows * left_gray.cols);
-    std::fill(selected_inds_map.begin(), selected_inds_map.end(), -1);
     
+    std::fill(selected_inds_map.begin(), selected_inds_map.end(), -1);
     int num = 0;
-    VoxelMap<SimplePoint> voxel_filter(0.5); // TL: change this to a yaml parameter
-    // add all pixels to voxel filter
-    std::vector<SimplePoint> temp_pt_vec;
-    temp_pt_vec.reserve(height * width);
-    // for (const auto& pt : pcPts) {
-    //   temp_pt_vec.emplace_back(curr_xyz(0), curr_xyz(1), curr_xyz(2), idx);
-    // }
-    for (int32_t row = distToBorder; row < height - distToBorder; ++row)
-    {
-      for (int32_t col = distToBorder; col < width - distToBorder; ++col)
+    cv::Mat detected_edges;
+    //cv::Canny( left_gray, detected_edges, 50, 50*3, 3 );
+    num = this->pointDetector->detect(frame, (int)settings.numCandidates , selected_inds_map.data(),
+                                    this->outputWrapper);
+    
+    int counter = 0;
+    
+    std::unordered_set<int32_t> edge_indices;
+
+    float start_voxel_size = settings.inputDownsampleVoxelSize;
+    for (int trial_counter = 0; trial_counter < 5; trial_counter++ ) {
+
+      std::cout<<"Current num is "<<num<<
+        "Voxel Filter size "<<start_voxel_size<<"\n";
+      VoxelMap<SimplePoint> voxel_filter(start_voxel_size); // TL: change this to a yaml parameter
+      VoxelMap<SimplePoint> edge_voxel_filter(start_voxel_size / 8);
+      // add all pixels to voxel filter
+      std::vector<SimplePoint> temp_pt_vec;
+      temp_pt_vec.reserve(height * width);
+      // for (const auto& pt : pcPts) {
+      //   temp_pt_vec.emplace_back(curr_xyz(0), curr_xyz(1), curr_xyz(2), idx);
+      // }
+      for (int32_t row = distToBorder; row < height - distToBorder; ++row)
       {
-        int32_t idx = col + row * width;
-        // project to 3d
-        float idepth = 0;
-        if (frame->depthType == Frame::DepthType::STEREO)
-          idepth = std::dynamic_pointer_cast<cvo::ImageStereo> (frame->getRawImage())->disparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
-        else if (frame->depthType == Frame::DepthType::RGBD_FLOAT) {
-          idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<float>>(frame->getRawImage())->depth_image()[width * row + col]);
-        } else if (frame->depthType == Frame::DepthType::RGBD_UINT16) {
-          idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<uint16_t>>(frame->getRawImage())->depth_image()[width * row + col]);
-        }
-        if ( ! std::isfinite(idepth) || idepth < settings.maxInitIdepth ) continue;
+        for (int32_t col = distToBorder; col < width - distToBorder; ++col)
+        {
+          int32_t idx = col + row * width;
+          // project to 3d
+          float idepth = 0;
+          if (frame->depthType == Frame::DepthType::STEREO)
+            idepth = std::dynamic_pointer_cast<cvo::ImageStereo> (frame->getRawImage())->disparity()[width * row + col] / (std::abs(baseline) * intrinsic(0,0));
+          else if (frame->depthType == Frame::DepthType::RGBD_FLOAT) {
+            idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<float>>(frame->getRawImage())->depth_image()[width * row + col]);
+          } else if (frame->depthType == Frame::DepthType::RGBD_UINT16) {
+            idepth =  frame->depthScale / (std::dynamic_pointer_cast<cvo::ImageRGBD<uint16_t>>(frame->getRawImage())->depth_image()[width * row + col]);
+          }
+          if ( ! std::isfinite(idepth) || idepth < settings.maxInitIdepth ) continue;
         
-        const Eigen::Matrix3f& invK = calib.invMatrix3f(0);
-        Eigen::Vector3f curr_xyz;
-        curr_xyz << col, row, 1.0;
-        curr_xyz = (curr_xyz / idepth).eval();
-        curr_xyz = (invK * curr_xyz).eval();
+          const Eigen::Matrix3f& invK = calib.invMatrix3f(0);
+          Eigen::Vector3f curr_xyz;
+          curr_xyz << col, row, 1.0;
+          curr_xyz = (curr_xyz / idepth).eval();
+          curr_xyz = (invK * curr_xyz).eval();
 
-        temp_pt_vec.emplace_back(curr_xyz(0), curr_xyz(1), curr_xyz(2), idx);
-        voxel_filter.insert_point(&temp_pt_vec.back());
+          temp_pt_vec.emplace_back(curr_xyz(0), curr_xyz(1), curr_xyz(2), idx);
+          voxel_filter.insert_point(&temp_pt_vec.back());
+
+          //if (detected_edges.at<uint8_t>(row, col) > 0)
+          if (selected_inds_map[idx] == 0) {
+            edge_voxel_filter.insert_point(&temp_pt_vec.back());
+            selected_inds_map[idx] = -1;
+          }
+        }
       }
-    }
-    // Pick one point from every existing voxel
-    const std::vector<SimplePoint*> downsampled = voxel_filter.sample_points();
-    for (const SimplePoint* pt : downsampled) {
-      if (pt->pixelIdx >= selected_inds_map.size())
-        std::cout << "Something is wrong\n";
-      selected_inds_map[pt->pixelIdx] = 0;
-    }
-    num = downsampled.size();
 
+    
+      // Pick one point from every existing voxel
+      const std::vector<SimplePoint*> downsampled = voxel_filter.sample_points();
+      const std::vector<SimplePoint*> downsampled_edge = edge_voxel_filter.sample_points();
+      //num = downsampled.size() + downsampled_edge.size();
+      /*
+      if (num > 3000 && start_voxel_size < 0.6)
+        start_voxel_size += 0.1;
+      else if (num < 1500 && start_voxel_size > 0.1)
+        start_voxel_size -= 0.1;
+      else { 
+      */
+      for (const SimplePoint* pt : downsampled_edge) {
+        if (pt->pixelIdx >= selected_inds_map.size())
+          std::cout << "Something is wrong\n";
+        selected_inds_map[pt->pixelIdx] = 0;
+        edge_indices.insert(pt->pixelIdx);
+      }
+      
+      num =std::max(0,   settings.numCandidates -(int) downsampled_edge.size() );
+      
+      std::random_device rd;  //Will be used to obtain a seed for the random number engine
+      std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+      std::uniform_int_distribution<int> uniform_dist(0, downsampled.size()-1);
+      int surface_cc = 0;
+      for (const SimplePoint* pt : downsampled) {
+        if (pt->pixelIdx >= selected_inds_map.size())
+          std::cout << "Something is wrong\n";
+        if (uniform_dist(gen) < num) {
+          selected_inds_map[pt->pixelIdx] = 0;
+          surface_cc ++;
+        }
+        
+      }
+      std::cout<<"edge size "<<downsampled_edge.size()<<", surface size "<<surface_cc<<"\n";
+      num = surface_cc + downsampled_edge.size();      
+      
+      break;
+        //}
+    }
+
+    
+    //cv::Mat detected_edges;
+    //if (is_using_canny)
+    //cv::Canny( left_gray, detected_edges, 50, 50*3, 3 );
+    //int counter = 0;
+    
+    //std::vector<Eigen::Vector2i, Eigen::aligned_allocator<Eigen::Vector2i>> tmp_uvs_canny, tmp_uvs_surface;
+    //std::random_device rd;  //Will be used to obtain a seed for the random number engine
+    //std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+    //std::uniform_int_distribution<int> uniform_dist(0, voxPts.size()-1);
+    /*
+#pragma omp parallel for
+    for (int ind = 0; ind < left_gray.rows * left_gray.cols; ind ++) {
+      int r = ind / left_gray.cols;
+      int c = ind % left_gray.cols;
+
+      if (detected_edges.at<uint8_t>(r,c) > 0
+          //&& 
+          )
+        selected_inds_map[ind] = 0;
+      //selected_inds_map[ind] = ( detected_edges.at<uint8_t>(r, c) > 0
+      //                           && selected_inds_map[r * left_gray.cols + c] == 0)? 0 : -1;
+    }
+    */
     // switch (settings.candidatePointsSampling) {
     // case 0:
     //   num = stereo_surface_sampling(left_gray,
@@ -2168,14 +2247,14 @@ namespace dsm
     //   //default:
     //   //break;
     // }
-    std::cout<<"Voxel filter detects "<<num<<" points\n";
+    //std::cout<<"Voxel filter detects "<<num<<" points\n";
     // create candidates
     auto& candidates = frame->candidates();
     candidates.reserve(num);
 
     int cc = 0;
 
-    Utils::Time t1 = std::chrono::steady_clock::now();
+
 
     for (int32_t row = distToBorder; row < height - distToBorder; ++row)
     {
@@ -2201,7 +2280,14 @@ namespace dsm
             
           }
           if ( ! std::isfinite(idepth) || idepth < settings.maxInitIdepth ) continue;
-          std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth));
+
+          CandidatePoint::GeometryType geoType;
+          
+          geoType =   (edge_indices.find(idx) == edge_indices.end())
+            ? CandidatePoint::GeometryType::SURFACE :
+            CandidatePoint::GeometryType::EDGE;
+          
+          std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth, geoType ));
 
           candidates.emplace_back(std::move(new_candidate));
             //D}
@@ -2212,10 +2298,10 @@ namespace dsm
     
     candidates.shrink_to_fit();
     frame->initCandidateQualityFlag();
-    std::cout<<"Create "<<candidates.size()<<" new candidates for frame "<<frame->frameID()<<std::endl;
+    std::cout<<"Create "<<candidates.size()<<" new candidates for frame "<<frame->frameID();
 
     Utils::Time t2 = std::chrono::steady_clock::now();
-		
+    std::cout << ", total time is" << Utils::elapsedTime(t1, t2) << "ms" << std::endl;		
     if (settings.debugPrintLog && settings.debugLogPixelDetection)
     {
       const std::string msg = "PointDetect: " + std::to_string(candidates.size()) + "\t";
@@ -2667,6 +2753,31 @@ namespace dsm
    
   }
 
+  static
+  void write_transformed_pc(std::vector<cvo::CvoFrame::Ptr> & frames, std::string & fname
+                            //, int max_frames=-1
+                            ) {
+    pcl::PointCloud<pcl::PointXYZRGB> pc_all;
+    int counter = 0;
+    for (auto ptr : frames) {
+      //if (counter == max_frames) break;
+      cvo::CvoPointCloud new_pc;
+      Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
+      pose.block<3,4>(0,0) = Eigen::Map<cvo::Mat34d_row>(ptr->pose_vec);
+    
+      Eigen::Matrix4f pose_f = pose.cast<float>();
+      cvo::CvoPointCloud::transform(pose_f, *ptr->points, new_pc);
+
+      pcl::PointCloud<pcl::PointXYZRGB> pc_curr;
+      new_pc.export_to_pcd(pc_curr);
+
+      pc_all += pc_curr;
+      counter++;
+    }
+    pcl::io::savePCDFileASCII(fname, pc_all);
+  }
+  
+
 
   void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                                  const cvo::CvoPointCloud & covisMapCvo
@@ -2716,7 +2827,8 @@ namespace dsm
     std::list<std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr>> edges;
     std::list<std::pair<int, int>> edges_inds;    
     for (int i = temporalStartIndex; i < cvo_frames.size(); i++) {
-      int max_ind = std::min(i+4, (int)cvo_frames.size());
+      //int max_ind = std::min(i+4, (int)cvo_frames.size());
+      int max_ind = (int)cvo_frames.size();
       //if (isUsingCovis && i == 0) {
       //  max_ind = (cvo_frames.size());
       //}
@@ -2753,14 +2865,15 @@ namespace dsm
 
 
     static int irls_counter = 0;
-    dumpFramesToPcd (std::to_string(irls_counter)+"_graph.txt",
+    dumpFramesToPcd (std::to_string(activeKeyframes[0]->frameID())+"_graph.txt",
                      activeKeyframes,
                      cvo_frames,
                      edges_inds);
+    write_transformed_pc(cvo_frames, "before_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
     //if(covisMapCvo.num_points())
     //  covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
     if(isUsingCovis) 
-      covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
+      covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
 
     irls_counter++;
 
@@ -2781,7 +2894,8 @@ namespace dsm
       kf->setCamToWorld(pose_BA);
     }
     std::cout<<"just written CVO BA results to all frames\n";
-
+    write_transformed_pc(cvo_frames, "after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    
     Frame::Ptr lastKf = activeKeyframes.back();
     Frame::Ptr secondLastKf = activeKeyframes[activeKeyframes.size()-2];
     Sophus::SE3f lastKfToWorld = secondLastKf->camToWorld() * lastKf->thisToParentPose();
@@ -2884,7 +2998,7 @@ namespace dsm
     Utils::Time t1 = std::chrono::steady_clock::now();
 
     // initialize candidates
-    this->createCandidates(frame);    
+    this->createCandidates2(frame);    
     // this->trackCandidatesCvo(frame, true);
     this->trackCandidatesCvo(frame);
     

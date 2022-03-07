@@ -111,7 +111,7 @@ namespace dsm
     this->gxy /= norm;
   }
 
-  CandidatePoint::CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& frame, float invDepth) :
+  CandidatePoint::CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& frame, float invDepth, GeometryType geoType) :
     u0_(x, y), refFrame_(frame.get()), detectedLevel_(lvl), status_(UNINITIALIZED), lastObservation_(GOOD)
   {
     const auto& settings = Settings::getInstance();
@@ -154,6 +154,11 @@ namespace dsm
     features_[2] = ((float)(avg_pixel[2]) )/255.0;
     features_[3] = gradient_0/ 511.0 + 0.5;
     features_[4] = gradient_1/ 511.0 + 0.5;
+    geometric_type_.resize(2);
+    if (geoType == GeometryType::EDGE)
+      geometric_type_ << 1.0, 0.0;
+    else
+      geometric_type_ << 0.0, 1.0;
     int num_classes = rawImage.num_classes();
     if (num_classes) {
       semantics_.resize(num_classes);

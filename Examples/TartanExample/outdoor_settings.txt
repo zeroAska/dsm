@@ -63,7 +63,7 @@ weightConstant = 2500
 trackingMaxLevel = 3
 
 pointDetectionLevels = 2
-numCandidates = 4000
+numCandidates = 2500
 numBlocksPerDimension = 20
 minGradAdd = 7
 
@@ -116,9 +116,10 @@ showDepthMapLvl = 0
 candidatePointsSampling = 2
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.5
+trackingCosLimit = 0.7
 enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000
 voxelSize = 0.05
+inputDownsampleVoxelSize = 2.5

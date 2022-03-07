@@ -105,7 +105,7 @@ namespace dsm
     // cvo data
     this->features_ = candidate->features();
     this->semantics_ = candidate->semantics();
-
+    this->geometric_type_ = candidate->geometricType();
     // voxel set to nullptr
     voxel_ = nullptr;
                   
@@ -296,7 +296,8 @@ namespace dsm
       Eigen::Vector3f xyz = p.xyz();
       auto features = p.features();
       auto semantics = p.semantics();
-      output.add_point(i, xyz, features, semantics);
+      Eigen::VectorXf geoType = p.geometricType();
+      output.add_point(i, xyz, features, semantics, geoType);
     }
   
   }

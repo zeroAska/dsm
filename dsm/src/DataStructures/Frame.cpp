@@ -502,7 +502,8 @@ namespace dsm
       Eigen::Vector3f xyz = p.xyz();
       Eigen::VectorXf features = p.features();
       Eigen::VectorXf semantics = p.semantics();
-      output.add_point(i, xyz, features, semantics);
+      Eigen::VectorXf geoType = p.geometricType();
+      output.add_point(i, xyz, features, semantics, geoType);
     }
       
     

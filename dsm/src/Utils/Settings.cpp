@@ -186,7 +186,7 @@ namespace dsm
                 this->maxInitIdepth = 0.02f;
                 this->covisMapSize = 2000;
                 this->voxelSize = 0.2;
-
+                this->inputDownsampleVoxelSize = 0.6;
 		// update the rest
 		this->updateNonIndependentParameters();
 	}
@@ -345,7 +345,7 @@ namespace dsm
                   std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
                   return; 
                 }
-                if (this->checkParameter("gapCovisibleToTemporal", name, value, this->gapCovisibleToTemporal)) {
+                if (this->checkParameter("gapcovisibletotemporal", name, value, this->gapCovisibleToTemporal)) {
                   return;
                 }
                 
@@ -353,23 +353,27 @@ namespace dsm
                   // std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
                   return; 
                 }
-                if (this->checkParameter("numPointsPerFrame", name, value, this->numPointsPerFrame)) {
+                if (this->checkParameter("numpointsperframe", name, value, this->numPointsPerFrame)) {
                   return;
                 }
-                if (this->checkParameter("candidatePointsSampling", name, value, this->candidatePointsSampling)) {
+                if (this->checkParameter("candidatepointssampling", name, value, this->candidatePointsSampling)) {
                   std::cout<<"candidatePointsSampling is "<<this->candidatePointsSampling<<std::endl;
                   return;
                 }
-                if (this->checkParameter("maxInitIdepth", name, value, this->maxInitIdepth)) {
+                if (this->checkParameter("maxinitidepth", name, value, this->maxInitIdepth)) {
                   std::cout<<"maxInitIdepth is "<<this->maxInitIdepth<<std::endl;
                   return;
                 }
-                if (this->checkParameter("covisMapSize", name, value, this->covisMapSize)) {
+                if (this->checkParameter("covismapsize", name, value, this->covisMapSize)) {
                   std::cout<<"covisMapSize is "<<this->covisMapSize<<std::endl;
                   return;
                 }
-                if (this->checkParameter("voxelSize", name, value, this->voxelSize)) {
+                if (this->checkParameter("voxelsize", name, value, this->voxelSize)) {
                   std::cout<<"voxelSize is "<<this->voxelSize<<std::endl;
+                  return;
+                }
+                if (this->checkParameter("inputdownsamplevoxelsize", name, value, this->inputDownsampleVoxelSize)) {
+                  std::cout<<"inputDownsampleVoxelSize is "<<this->inputDownsampleVoxelSize<<std::endl;
                   return;
                 }
                 

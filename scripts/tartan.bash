@@ -2,14 +2,14 @@ clear
 cd build && \
 make -j && \
 cd .. && \ 
-for difficulty in Easy #Hard
+for difficulty in Easy Hard
 do
-for i in   endofworld abandonedfactory_night gascola soulcity abandonedfactory ocean seasidetown  seasonsforest seasonsforest_winter 
+for i in abandonedfactory_night endofworld gascola soulcity abandonedfactory  seasidetown  seasonsforest seasonsforest_winter hospital endofworld 
 	 do
 	 rm -rf tartan_${difficulty}_$i
 	mkdir -p tartan_${difficulty}_$i
 #gdb -ex run  --args \
-./build/bin/TartanRGBDExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/outdoor_settings.txt 0 test_${difficulty}_$i.txt 
+./build/bin/TartanRGBDExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/outdoor_settings.txt 0 test_${difficulty}_$i.txt  > log_tartan_${difficulty}_${i}.txt
 mv *.pcd tartan_${difficulty}_$i/
 mv *_graph.txt tartan_${difficulty}_$i/
 mv test_${difficulty}_$i.txt tartan_${difficulty}_$i/

@@ -1,6 +1,6 @@
 #include "VoxelMap.h"
 #include "Frame.h"
-
+#include <random>
 // updateCovis Debug use
 // #include <pcl/point_types.h>
 // #include <pcl/point_cloud.h>
@@ -134,13 +134,25 @@ namespace dsm {
   template <typename PointType>
   const std::vector<PointType*> VoxelMap<PointType>::sample_points() const {
     std::vector<PointType*> res;
+    std::random_device rd;  //Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+
+    int total_voxels = vmap_.size();
+    
     for (const auto& voxelPair : vmap_) {
       const std::vector<PointType*> voxPts = voxelPair.second.voxPoints;
+      
       if (voxPts.empty()) {
         std::cout << "Shouldn't be empty, skipping\n";
-        continue;
+        //continue;
       }
-      res.push_back(voxPts[0]);
+
+      else if (voxPts.size() == 1)
+        res.push_back(voxPts[0]);
+      else {
+        std::uniform_int_distribution<int> uniform_dist(0, voxPts.size()-1);
+        res.push_back(voxPts[uniform_dist(gen)]);
+      }
     }
     return res;
   }

@@ -907,7 +907,7 @@ namespace dsm
       //Sophus::SE3f covisFrameToFirstTemporal = camToWorld.inverse() * firstTemporalToWorld;
       Sophus::SE3f covisFrameToFirstTemporal =  firstTemporalToWorld.inverse() * camToWorld;
       Eigen::Vector3f xyz = covisFrameToFirstTemporal * p->xyz();
-      covisMapCvo.add_point(index, xyz, p->features(), p->semantics());
+      covisMapCvo.add_point(index, xyz, p->features(), p->semantics(), p->geometricType());
       index++;
     }
 
@@ -1048,6 +1048,7 @@ namespace dsm
       Eigen::Vector3f meanPos = Eigen::Vector3f::Zero();
       Eigen::VectorXf meanFeature = Eigen::VectorXf::Zero(numFeatures);
       Eigen::VectorXf meanSemantics = Eigen::VectorXf::Zero(numSemantics);
+      Eigen::VectorXf meanGeo = Eigen::VectorXf::Zero(2);
       int counter = 0;
       //int sampleChance = voxel->voxPoints.size() / avgPointsPerVoxel;
       for (auto && p : voxel->voxPoints) {
@@ -1058,6 +1059,7 @@ namespace dsm
           Eigen::Vector3f xyz = covisFrameToFirstTemporal * p->xyz();
           meanPos = (meanPos + xyz).eval();
           meanFeature = (meanFeature + p->features()).eval();
+          meanGeo = (meanGeo + p->geometricType()).eval();
           if (numSemantics)
             meanSemantics = (meanSemantics + p->semantics()).eval();
           //} 
@@ -1069,7 +1071,8 @@ namespace dsm
       meanFeature = (meanFeature / (float) counter).eval();
       if (numSemantics)
         meanSemantics = (meanSemantics / (float) counter).eval();
-      covisMapCvo.add_point(index, meanPos, meanFeature, meanSemantics);
+      meanGeo = (meanGeo / (float)counter).eval();
+      covisMapCvo.add_point(index, meanPos, meanFeature, meanSemantics, meanGeo);
 
       index++;
     }

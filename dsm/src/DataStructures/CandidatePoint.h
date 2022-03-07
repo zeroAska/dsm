@@ -34,10 +34,16 @@
 #include "Utils/LossFunction.h"
 #include "FullSystem/DSMLib.h"
 //#include "utils/CvoPointCloud.hpp"
+
+namespace cvo {
+  class CvoPointCloud;
+}
+
 namespace dsm
 {
   class Frame;
   class ActivePoint;
+
 
   // Candidate point class used for point initialization
   // before they are inserted into the optimization
@@ -52,6 +58,8 @@ namespace dsm
 
     // control flag
     enum PointStatus { UNINITIALIZED = 0, TRACED = 1, OPTIMIZED = 2, OUTLIER = 3 };
+    //
+    enum GeometryType { EDGE = 0, SURFACE = 1};
 
     // GOOD: succesfuly matched
     // BAD: error too big, outlier
@@ -61,7 +69,7 @@ namespace dsm
     enum ObserveStatus { GOOD = 0, BAD_ERROR = 1, BAD_EPILINE = 2, OOB = 3, SKIPPED = 4, BAD_CONDITIONED = 5 };
 
     CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& refFrame);
-    CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& frame, float invDepth);
+    CandidatePoint(float x, float y, int32_t lvl, const std::shared_ptr<Frame>& frame, float invDepth, GeometryType geoType);
 
 
     ~CandidatePoint();
@@ -106,6 +114,7 @@ namespace dsm
 
     Eigen::VectorXf features() {return features_;}
     Eigen::VectorXf semantics() {return semantics_;}
+    Eigen::VectorXf geometricType() {return geometric_type_;}
     Eigen::Vector3f xyz();
     void addIdepthObservation(float newObsIdepth, float newWeight);
     std::vector<float> & observedIdepths() {return observedIdepths_;}
@@ -173,6 +182,7 @@ namespace dsm
     //Eigen::Vector3f xyz_;
     Eigen::VectorXf features_;
     Eigen::VectorXf semantics_;
+    Eigen::VectorXf geometric_type_;
     std::vector<float> observedIdepths_;
     std::vector<float> cvoObservationWeights_;
 
