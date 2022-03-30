@@ -119,7 +119,8 @@ namespace dsm
           std::shared_ptr<cvo::ImageRGBD<float>> source_raw(new cvo::ImageRGBD(source_left, source_dep));
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
 
-          cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib, cvo::CvoPointCloud::CANNY_EDGES);
+          //cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib, cvo::CvoPointCloud::CANNY_EDGES);
+          cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib, cvo::CvoPointCloud::DSO_EDGES);
           std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib, cvo::CvoPointCloud::FULL));
           source_full->write_to_color_pcd("source_full.pcd");
 

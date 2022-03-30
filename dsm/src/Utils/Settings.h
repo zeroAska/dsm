@@ -214,6 +214,7 @@ namespace dsm
           int covisMapSize;
           float voxelSize;
           float inputDownsampleVoxelSize;
+          float covisEll;
 
 		// Secure Division
 		static const float DIVISION_EPS;

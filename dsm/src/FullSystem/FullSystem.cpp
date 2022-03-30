@@ -54,6 +54,9 @@
 #include <fstream>
 #include <time.h>
 #include "cvo/CvoGPU.hpp"
+#include "cvo/CvoParams.hpp"
+#include "cvo/IRLS_State_CPU.hpp"
+#include "cvo/IRLS_State.hpp"
 #include "utils/CvoPoint.hpp"
 #include "utils/CvoPointCloud.hpp"
 #include "utils/ImageStereo.hpp"
@@ -2118,7 +2121,7 @@ namespace dsm
       std::cout<<"Current num is "<<num<<
         "Voxel Filter size "<<start_voxel_size<<"\n";
       VoxelMap<SimplePoint> voxel_filter(start_voxel_size); // TL: change this to a yaml parameter
-      VoxelMap<SimplePoint> edge_voxel_filter(start_voxel_size / 8);
+      VoxelMap<SimplePoint> edge_voxel_filter(start_voxel_size / 7);
       // add all pixels to voxel filter
       std::vector<SimplePoint> temp_pt_vec;
       temp_pt_vec.reserve(height * width);
@@ -2186,10 +2189,10 @@ namespace dsm
       for (const SimplePoint* pt : downsampled) {
         if (pt->pixelIdx >= selected_inds_map.size())
           std::cout << "Something is wrong\n";
-        if (uniform_dist(gen) < num) {
+        // if (uniform_dist(gen) < num) {
           selected_inds_map[pt->pixelIdx] = 0;
           surface_cc ++;
-        }
+          //}
         
       }
       std::cout<<"edge size "<<downsampled_edge.size()<<", surface size "<<surface_cc<<"\n";
@@ -2373,14 +2376,14 @@ namespace dsm
                                          kernel,
                                          association_mat);
       int counter = 0;
-      /*
+      
       for (int j = 0; j < candidates.size(); j++) {
         kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
         counter++;
-        }*/
+      }
 
       //for (int j=0; j < association_mat.outerSize(); ++j) {
-      
+      /*   
       for (int j = 0; j < association_mat.source_inliers.size(); j++) {
         int kfPtIdx = association_mat.source_inliers[j];
         //kf->candidatesHighQuaity()[kfPtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
@@ -2398,7 +2401,7 @@ namespace dsm
         if (kf->candidates()[kfPtIdx]->status() == CandidatePoint::PointStatus::OPTIMIZED)
             //kf->candidatesHighQuaity()[j] == CandidatePoint::PointStatus::OPTIMIZED)
           counter++;
-      }
+          }*/
       std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n"<<std::flush;
 
       if (include_curr) {
@@ -2754,7 +2757,7 @@ namespace dsm
   }
 
   static
-  void write_transformed_pc(std::vector<cvo::CvoFrame::Ptr> & frames, std::string & fname
+  void write_transformed_pc(std::vector<cvo::CvoFrame::Ptr> & frames, const std::string & fname
                             //, int max_frames=-1
                             ) {
     pcl::PointCloud<pcl::PointXYZRGB> pc_all;
@@ -2825,6 +2828,7 @@ namespace dsm
     // read edges to construct graph
     // TODO: edges will be constructed from the covisibility graph later
     std::list<std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr>> edges;
+    std::list<cvo::BinaryState::Ptr> edge_states;
     std::list<std::pair<int, int>> edges_inds;    
     for (int i = temporalStartIndex; i < cvo_frames.size(); i++) {
       //int max_ind = std::min(i+4, (int)cvo_frames.size());
@@ -2837,6 +2841,15 @@ namespace dsm
         edges.push_back(p);
         edges_inds.push_back(std::make_pair(activeKeyframes[i]->frameID(),
                                             activeKeyframes[j]->frameID()));
+        const cvo::CvoParams & params = cvo_align->get_params();
+        cvo::BinaryState::Ptr edge_state(new cvo::BinaryStateCPU(cvo_frames[i],
+                                                                 cvo_frames[j],
+                                                                 &params
+                                                                 //params.multiframe_kdtree_num_neighbors,
+                                                                 
+                                                                 ));
+        edge_states.push_back(edge_state);
+        
       }
     }
 
@@ -2847,20 +2860,24 @@ namespace dsm
       Eigen::Matrix<double, 3,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>().block<3,4>(0,0);
       cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&covisMapCvo, kf_to_world.data()));
 
-      //cvo_pcs[i] = cvo_pcs[i] + covisMapCvo;
-      //std::cout<<"After adding the covisMap, the first frame has "<<cvo_pcs[i].num_points()<<std::endl;
-
-      //cvo::CvoFrame::Ptr cvo_ptr(new  cvo::CvoFrame(&covisMapCvo, cvo_frames[0]->pose_vec));
       for (int i = 0; i < cvo_frames.size(); i++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_ptr, cvo_frames[i]);
-        edges.push_back(p);
+        //edges.push_back(p);
+        
+        const cvo::CvoParams & params = cvo_align->get_params();
+        cvo::BinaryState::Ptr edge_state(new cvo::BinaryStateCPU(cvo_ptr,
+                                                                 cvo_frames[i],
+                                                                 &params,
+                                                                 params.multiframe_kdtree_num_neighbors,
+                                                                 settings.covisEll
+                                                                 ));
+        //edge_states.push_back(edge_state);
+        
         std::cout<<"add edge between covisMap and frame "<<i<<std::endl;
       }
       
-      //cvo_pcs.push_back(covisMapCvo);
-      cvo_frames.push_back(cvo_ptr);
-      const_flags_in_BA.push_back(true);
-      //covisMapCvo.write_to_color_pcd("covisMap.pcd");
+      //cvo_frames.push_back(cvo_ptr);
+      //const_flags_in_BA.push_back(true);
     }
 
 
@@ -2869,10 +2886,10 @@ namespace dsm
                      activeKeyframes,
                      cvo_frames,
                      edges_inds);
-    write_transformed_pc(cvo_frames, "before_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    write_transformed_pc(cvo_frames, "before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
     //if(covisMapCvo.num_points())
     //  covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
-    if(isUsingCovis) 
+    if(isUsingCovis && covisMapCvo.num_points() ) 
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
 
     irls_counter++;
@@ -2882,7 +2899,7 @@ namespace dsm
     double time = 0;    
 
 
-    cvo_align->align(cvo_frames, const_flags_in_BA,  edges, &time);
+    cvo_align->align(cvo_frames, const_flags_in_BA,  edge_states, &time);
     std::cout<<"cvo BA time is "<<time<<", for "<<cvo_frames.size()<<" frames\n";
 
     for (int i = 0; i < activeKeyframes.size()-1; i++) {
