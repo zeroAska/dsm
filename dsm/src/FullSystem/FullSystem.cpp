@@ -2754,7 +2754,7 @@ namespace dsm
   }
 
   static
-  void write_transformed_pc(std::vector<cvo::CvoFrame::Ptr> & frames, std::string & fname
+  void write_transformed_pc(std::vector<cvo::CvoFrame::Ptr> & frames, std::string fname
                             //, int max_frames=-1
                             ) {
     pcl::PointCloud<pcl::PointXYZRGB> pc_all;

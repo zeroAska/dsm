@@ -1,3 +1,4 @@
+ 
 
 #include <iostream>
 #include <thread>
@@ -7,7 +8,7 @@
 
 #include "opencv2/imgproc.hpp"
 
-#include "QtVisualizer.h"
+// #include "QtVisualizer.h"
 #include "FullSystem/FullSystem.h"
 
 // used by cvo point cloud registration
@@ -39,14 +40,14 @@ namespace dsm
     inline TartanProcessor() { this->shouldStop = false; }
     inline ~TartanProcessor() { this->join(); }
 
-    inline void run(cvo::TartanAirHandler& reader, QtVisualizer& visualizer, std::string& settingsFile,
+    inline void run(cvo::TartanAirHandler& reader, std::string& settingsFile,
                     std::string& cvoConfigFile, cvo::Calibration& cvo_calib, int startFrameId,
                     std::string& trajFileName
                     )
     {
       this->processThread = std::make_unique<std::thread>(&TartanProcessor::doRun, this,
                                                           std::ref(reader),
-                                                          std::ref(visualizer),
+                                                          // std::ref(visualizer),
                                                           std::ref(settingsFile),
                                                           std::ref(cvoConfigFile),
                                                           std::ref(cvo_calib),
@@ -57,7 +58,7 @@ namespace dsm
 
     inline void join()
     {
-      this->shouldStop = true;
+      // this->shouldStop = true;
 
       // wait the thread to exit
       if (this->processThread->joinable())
@@ -70,7 +71,7 @@ namespace dsm
 
   private:
     inline void doRun(cvo::TartanAirHandler& reader,
-                      QtVisualizer& visualizer,
+                      // QtVisualizer& visualizer,
                       std::string& settingsFile,
                       std::string& cvoConfigFile,
                       cvo::Calibration& cvo_calib,
@@ -94,17 +95,17 @@ namespace dsm
       while (!this->shouldStop)
       {
         //reset
-        if (visualizer.getDoReset())
-        {
-          DSM.reset();
-          id = startFrameId;
-          timestamp = 0;
-          image.release();
+        // if (visualizer.getDoReset())
+        // {
+        //   DSM.reset();
+        //   id = startFrameId;
+        //   timestamp = 0;
+        //   image.release();
 
-          visualizer.reset();
+        //   visualizer.reset();
 
-          reader.set_start_index(id);
-        }
+        //   reader.set_start_index(id);
+        // }
 
         cv::Mat source_left;
         std::vector<float> source_dep;        
@@ -139,8 +140,8 @@ namespace dsm
             DSM = std::make_unique<FullSystem>(color_img.cols,
                                                color_img.rows,
                                                cvo_calib, cvoConfigFile,
-                                               settingsFile,
-                                               &visualizer);
+                                               settingsFile);
+                                              //  &visualizer);
           }
 
           // process
@@ -148,7 +149,7 @@ namespace dsm
           std::shared_ptr<Frame> trackingNewFrame = std::make_shared<Frame>(id, timestamp, gray_img.data, source_raw, source_pcd, cvo_calib.scaling_factor(),
                                                                             source_full);
           DSM->trackFrame(id, timestamp, trackingNewFrame);
-          visualizer.publishLiveFrame(gray_img);
+          // visualizer.publishLiveFrame(gray_img);
 
           ++id;
           reader.next_frame_index();
@@ -247,8 +248,8 @@ int main(int argc, char *argv[])
 
   // Create the application before the window always!
   // create visualizer in the main thread
-  QApplication app(argc, argv);
-  dsm::QtVisualizer visualizer(app);
+  // QApplication app(argc, argv);
+  // dsm::QtVisualizer visualizer(app);
 
   std::cout << "\n";
 
@@ -260,22 +261,22 @@ int main(int argc, char *argv[])
   cvo::Calibration calib(cvo_calib_file, cvo::Calibration::RGBD);
 
   // add image size to the visualizer
-  visualizer.setImageSize(calib.image_cols(), calib.image_rows());
+  // visualizer.setImageSize(calib.image_cols(), calib.image_rows());
 
   // run processing in a second thread
   dsm::TartanProcessor processor;
-  processor.run(tartan,  visualizer, settingsFile, cvoConfigFile, calib, startFrameId, trajFileName);
+  processor.run(tartan, settingsFile, cvoConfigFile, calib, startFrameId, trajFileName);
 
   // run main window
   // it will block the main thread until closed
-  visualizer.run();
+  // visualizer.run();
 
   // join processing thread
   processor.join();
 
   std::cout << "Finished!" << std::endl;
 
-  app.exec();
+  // app.exec();
 
   return 0;
 }

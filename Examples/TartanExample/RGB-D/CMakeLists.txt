@@ -14,6 +14,6 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
         #${UnifiedCvo_INCLUDE_DIR} 
 	)
 
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} QtVisualizer dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tartan UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tartan UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
 target_compile_definitions(${PROGRAM_NAME} PUBLIC ${PCL_DEFINITIONS})
 set_target_properties(${PROGRAM_NAME} PROPERTIES FOLDER "Examples")
