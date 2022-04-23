@@ -116,11 +116,13 @@ showDepthMapLvl = 0
 candidatePointsSampling = 2
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.7
+trackingCosLimit = 0.5
 enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000
 voxelSize = 0.05
 inputDownsampleVoxelSize = 3.5
-covisEll = 3.5
+covisEll = 10
+
+covisUpdateFrames = 1

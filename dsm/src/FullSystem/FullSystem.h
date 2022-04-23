@@ -151,6 +151,11 @@ namespace dsm
 
     // Optimization
     void createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame);
+    void covisMapAlign(//std::vector<CvoFrame::Ptr> temporal_frames,
+                       const cvo::CvoPointCloud & tmpWindow,
+                       const cvo::CvoPointCloud & covisWindow,
+                       const std::vector<std::shared_ptr<Frame>> & activeKeyframes
+                       );
     void cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                        const std::list<std::pair<CovisibilityNode *, CovisibilityNode*>> & edgesCovisibleToTemporal);
     void cvoMultiAlign(

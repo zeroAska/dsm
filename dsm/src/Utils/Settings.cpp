@@ -188,6 +188,9 @@ namespace dsm
                 this->voxelSize = 0.2;
                 this->inputDownsampleVoxelSize = 0.6;
                 this->covisEll = 4.0;
+
+                this->covisUpdateFrames = 7;
+                
 		// update the rest
 		this->updateNonIndependentParameters();
 	}
@@ -377,8 +380,12 @@ namespace dsm
                   std::cout<<"inputDownsampleVoxelSize is "<<this->inputDownsampleVoxelSize<<std::endl;
                   return;
                 }
-                if (this->checkParameter("covisEll", name, value, this->covisEll)) {
+                if (this->checkParameter("covisell", name, value, this->covisEll)) {
                   std::cout<<"covisEll is "<<this->covisEll<<std::endl;
+                  return;
+                }
+                if (this->checkParameter("covisupdateframes", name, value, this->covisUpdateFrames)) {
+                  std::cout<<"covisUpdateFrames is "<<this->covisUpdateFrames<<std::endl;
                   return;
                 }
                 

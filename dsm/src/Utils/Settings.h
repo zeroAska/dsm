@@ -216,6 +216,8 @@ namespace dsm
           float inputDownsampleVoxelSize;
           float covisEll;
 
+          int covisUpdateFrames;
+
 		// Secure Division
 		static const float DIVISION_EPS;
 

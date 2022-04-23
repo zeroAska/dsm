@@ -2120,6 +2120,7 @@ namespace dsm
 
       std::cout<<"Current num is "<<num<<
         "Voxel Filter size "<<start_voxel_size<<"\n";
+      
       VoxelMap<SimplePoint> voxel_filter(start_voxel_size); // TL: change this to a yaml parameter
       VoxelMap<SimplePoint> edge_voxel_filter(start_voxel_size / 7);
       // add all pixels to voxel filter
@@ -2781,6 +2782,106 @@ namespace dsm
   }
   
 
+  void FullSystem::covisMapAlign(const cvo::CvoPointCloud & tmpWindow,
+                                 //std::vector<cvo::CvoFrame::Ptr> temporal_frames,
+                                 const cvo::CvoPointCloud & covisWindow,
+                                 const std::vector<std::shared_ptr<Frame>> & activeKeyframes
+                                 ) {
+    
+    const auto& settings = Settings::getInstance();
+
+    std::cout<<"Now adding the covisMap into the end of the sliding window. covisMap has initially "
+             <<covisWindow.num_points()<<std::endl;
+    auto kf = activeKeyframes[0];
+    Eigen::Matrix<double, 3,4, Eigen::RowMajor> kf_to_world =
+      kf->camToWorld().matrix().cast<double>().block<3,4>(0,0);
+
+    // downsample temporal frame
+    float start_voxel_size = 1.0; //settings.inputDownsampleVoxelSize;
+    VoxelMap<SimplePoint> tmpWindowVoxelMap(start_voxel_size);
+    std::vector<SimplePoint> tmpWindowVec;
+    tmpWindowVec.reserve(tmpWindow.num_points());
+    for (int i = 0; i < tmpWindow.num_points(); i++) {
+      auto & pt = tmpWindow.positions()[i];
+      tmpWindowVec.emplace_back(pt(0), pt(1), pt(2), i);
+      tmpWindowVoxelMap.insert_point(&tmpWindowVec.back());
+    }
+    const std::vector<SimplePoint *> downsampledTmpWindow = tmpWindowVoxelMap.sample_points();
+    std::vector<int> selectedInds;
+    for (const SimplePoint * pt : downsampledTmpWindow) {
+      selectedInds.push_back(pt->pixelIdx);
+    }
+    cvo::CvoPointCloud tmpCvo(covisWindow.feature_dimensions(), covisWindow.num_classes());
+    tmpCvo.reserve(selectedInds.size(), covisWindow.feature_dimensions(), covisWindow.num_classes());
+    for (int i = 0; i < selectedInds.size(); i++) {
+      int index = selectedInds[i];
+      Eigen::VectorXf semantic;
+      Eigen::Vector2f geoType = Eigen::Vector2f::Zero();
+      if (tmpWindow.geometric_types().size())
+        geoType = Eigen::Map<const Eigen::Vector2f> (&(tmpWindow.geometric_types().data()[ index * 2]));
+      if (tmpWindow.num_classes() > 0)
+        semantic = tmpWindow.semantics().row(index);
+      tmpCvo.add_point(i,
+                       tmpWindow.positions()[index],
+                       tmpWindow.features().row(index),
+                       semantic,
+                       geoType
+                       );
+    }
+    tmpCvo.write_to_color_pcd(std::to_string(kf->frameID())+"_tmp_window.pcd");
+
+    Eigen::Matrix4f T_t2s = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f tmp_frame_to_covis_frame;
+    cvo::CvoParams & init_param = cvo_align->get_params();
+    float ell_init = init_param.ell_init;
+    init_param.ell_init = settings.covisEll;  //init_param.ell_init_first_frame;
+    cvo_align->write_params(&init_param);
+    std::cout<<"start align covisMap with tmpMap...."<<" with covis ell as "<<init_param.ell_init<<"\n"<<std::flush;
+    cvo_align->align(  tmpCvo, covisWindow, T_t2s, tmp_frame_to_covis_frame );
+    init_param.ell_init = ell_init;
+    cvo_align->write_params(&init_param);
+    std::cout<<"end align, tmp_frame to covis_frame is \n"<<tmp_frame_to_covis_frame<<"\n";
+
+    cvo::CvoPointCloud covisInTmpFrame(covisWindow.num_features(), covisWindow.num_classes());
+    cvo::CvoPointCloud::transform(tmp_frame_to_covis_frame, covisWindow, covisInTmpFrame);
+    //covisInTmpFrame += covisWindow;
+    covisInTmpFrame += tmpCvo;
+    covisInTmpFrame.write_to_color_pcd(std::to_string(activeKeyframes[0]->frameID())+"_covis_with_tmp.pcd");
+
+    // original covisMap frame
+    Eigen::Matrix4f covis_to_world = (activeKeyframes[0]->camToWorld().matrix());
+    Eigen::Matrix4f world_frame_to_first_tmp_frame = covis_to_world * tmp_frame_to_covis_frame.inverse();    
+    for (int i = 0; i < activeKeyframes.size()-1; i++) { 
+      Eigen::Matrix4f first_tmp_frame_to_curr_frame = Eigen::Matrix4f::Identity();
+      if (i > 0)
+        first_tmp_frame_to_curr_frame = covis_to_world.inverse() *
+          activeKeyframes[i]->camToWorld().matrix();
+      Eigen::Matrix4f tmp_to_world = world_frame_to_first_tmp_frame * first_tmp_frame_to_curr_frame;
+      Sophus::SE3f pose_BA(tmp_to_world);
+      activeKeyframes[i]->setCamToWorld(pose_BA);
+    }
+    
+    
+    /*
+      for (int i = 0; i < cvo_frames.size(); i++) {
+      std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_ptr, cvo_frames[i]);
+      //edges.push_back(p);
+        
+      const cvo::CvoParams & params = cvo_align->get_params();
+      cvo::BinaryState::Ptr edge_state(new cvo::BinaryStateCPU(cvo_ptr,
+      cvo_frames[i],
+      &params,
+      params.multiframe_kdtree_num_neighbors,
+      settings.covisEll
+      ));
+      //edge_states.push_back(edge_state);
+        
+      std::cout<<"add edge between covisMap and frame "<<i<<std::endl;
+      }
+    */
+
+    //
+  }
 
   void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                                  const cvo::CvoPointCloud & covisMapCvo
@@ -2817,7 +2918,8 @@ namespace dsm
       //const_flags_in_BA[i] = (i <= temporalStartIndex);
       
       const_flags_in_BA[i] = false;
-      if (!isUsingCovis && i == 0)
+      //if (!isUsingCovis && i == 0)
+      if ( i == 0)
         const_flags_in_BA[i] = true;
     }
     
@@ -2855,6 +2957,7 @@ namespace dsm
 
 
     if (isUsingCovis ) {
+    //if (false) {
       std::cout<<"Now adding the covisMap into the end of the sliding window. covisMap has initially "<<covisMapCvo.num_points()<<std::endl;
       auto kf = activeKeyframes[0];
       Eigen::Matrix<double, 3,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>().block<3,4>(0,0);
@@ -2871,34 +2974,24 @@ namespace dsm
                                                                  params.multiframe_kdtree_num_neighbors,
                                                                  settings.covisEll
                                                                  ));
-        //edge_states.push_back(edge_state);
+        edge_states.push_back(edge_state);
         
         std::cout<<"add edge between covisMap and frame "<<i<<std::endl;
       }
       
-      //cvo_frames.push_back(cvo_ptr);
-      //const_flags_in_BA.push_back(true);
+      cvo_frames.push_back(cvo_ptr);
+      const_flags_in_BA.push_back(true);
     }
 
-
-    static int irls_counter = 0;
     dumpFramesToPcd (std::to_string(activeKeyframes[0]->frameID())+"_graph.txt",
                      activeKeyframes,
                      cvo_frames,
                      edges_inds);
     write_transformed_pc(cvo_frames, "before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
-    //if(covisMapCvo.num_points())
-    //  covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(irls_counter) + ".pcd");
     if(isUsingCovis && covisMapCvo.num_points() ) 
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
-
-    irls_counter++;
-
-    
     
     double time = 0;    
-
-
     cvo_align->align(cvo_frames, const_flags_in_BA,  edge_states, &time);
     std::cout<<"cvo BA time is "<<time<<", for "<<cvo_frames.size()<<" frames\n";
 
@@ -2911,8 +3004,30 @@ namespace dsm
       kf->setCamToWorld(pose_BA);
     }
     std::cout<<"just written CVO BA results to all frames\n";
-    write_transformed_pc(cvo_frames, "after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
-    
+    write_transformed_pc(cvo_frames, "temporal_after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
+
+    /*
+    if (isUsingCovis) {
+    //if (false) {
+      cvo::CvoPointCloud tmpWindow(covisMapCvo.num_features(), covisMapCvo.num_classes());
+      Eigen::Matrix4f pose_tmp_first = Eigen::Matrix4f::Identity();
+      if (activeKeyframes.size()) {
+        tmpWindow += *cvo_frames[0]->points;
+        pose_tmp_first = activeKeyframes[0]->camToWorld().matrix();
+      }
+      for (int i = 1; i < activeKeyframes.size()-1; i++) {
+        //if (counter == max_frames) break;
+        auto ptr = activeKeyframes[i];
+        cvo::CvoPointCloud new_pc(covisMapCvo.num_features(), covisMapCvo.num_classes());
+        Eigen::Matrix4f pose_f = pose_tmp_first.inverse() * ptr->camToWorld().matrix(); //Eigen::Matrix4d::Identity();
+        cvo::CvoPointCloud::transform(pose_f, *cvo_frames[i]->points, new_pc);
+        tmpWindow += new_pc;
+      }
+      covisMapAlign(tmpWindow,
+                    covisMapCvo, activeKeyframes );
+
+    }
+    */
     Frame::Ptr lastKf = activeKeyframes.back();
     Frame::Ptr secondLastKf = activeKeyframes[activeKeyframes.size()-2];
     Sophus::SE3f lastKfToWorld = secondLastKf->camToWorld() * lastKf->thisToParentPose();
