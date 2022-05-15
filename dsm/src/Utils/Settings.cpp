@@ -190,6 +190,7 @@ namespace dsm
                 this->covisEll = 4.0;
 
                 this->covisUpdateFrames = 7;
+                this->covisMinPoints = 1000;
                 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -386,6 +387,10 @@ namespace dsm
                 }
                 if (this->checkParameter("covisupdateframes", name, value, this->covisUpdateFrames)) {
                   std::cout<<"covisUpdateFrames is "<<this->covisUpdateFrames<<std::endl;
+                  return;
+                }
+                if (this->checkParameter("covisminpoints", name, value, this->covisMinPoints)) {
+                  std::cout<<"covisMinPoints is "<<this->covisMinPoints<<std::endl;
                   return;
                 }
                 

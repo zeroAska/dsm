@@ -55,7 +55,10 @@
 #include <time.h>
 #include "cvo/CvoGPU.hpp"
 #include "cvo/CvoParams.hpp"
+#include "cvo/CvoFrame.hpp"
+#include "cvo/CvoFrameGPU.hpp"
 #include "cvo/IRLS_State_CPU.hpp"
+#include "cvo/IRLS_State_GPU.hpp"
 #include "cvo/IRLS_State.hpp"
 #include "utils/CvoPoint.hpp"
 #include "utils/CvoPointCloud.hpp"
@@ -2892,7 +2895,8 @@ namespace dsm
     //cvo::CvoPointCloud covisMapCvo;
     //activePointsToCvoPointCloud(covisMap, covisMapCvo);
     int temporalStartIndex = 0;
-    bool isUsingCovis = covisMapCvo.num_points() > 300 &&  !settings.doOnlyTemporalOpt;
+    bool isUsingCovis = covisMapCvo.num_points() > settings.covisMinPoints &&  !settings.doOnlyTemporalOpt;
+    std::cout<<"covisMapCvo.num_points is "<<covisMapCvo.num_points()<<", setting covis min points is "<<settings.covisMinPoints<<"\n";
     
     if (activeKeyframes.size() < 4) return;
     std::vector<cvo::CvoPointCloud> cvo_pcs;
@@ -2912,7 +2916,7 @@ namespace dsm
       //}
       assert(kf->activePoints().size() != 0);
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
-      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data()));
+      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrameGPU(&cvo_pcs[i], kf_to_world.data()));
       cvo_frames.push_back(cvo_ptr);
 
       //const_flags_in_BA[i] = (i <= temporalStartIndex);
@@ -2943,10 +2947,15 @@ namespace dsm
         edges.push_back(p);
         edges_inds.push_back(std::make_pair(activeKeyframes[i]->frameID(),
                                             activeKeyframes[j]->frameID()));
+
         const cvo::CvoParams & params = cvo_align->get_params();
-        cvo::BinaryState::Ptr edge_state(new cvo::BinaryStateCPU(cvo_frames[i],
-                                                                 cvo_frames[j],
-                                                                 &params
+        const cvo::CvoParams * params_gpu = cvo_align->get_params_gpu();
+        cvo::BinaryState::Ptr edge_state(new cvo::BinaryStateGPU(std::dynamic_pointer_cast<cvo::CvoFrameGPU>(cvo_frames[i]),
+                                                                 std::dynamic_pointer_cast<cvo::CvoFrameGPU>(cvo_frames[j]),
+                                                                 &params,
+                                                                 params_gpu,
+                                                                 params.multiframe_num_neighbors,
+                                                                 params.multiframe_ell_init
                                                                  //params.multiframe_kdtree_num_neighbors,
                                                                  
                                                                  ));
@@ -2961,17 +2970,19 @@ namespace dsm
       std::cout<<"Now adding the covisMap into the end of the sliding window. covisMap has initially "<<covisMapCvo.num_points()<<std::endl;
       auto kf = activeKeyframes[0];
       Eigen::Matrix<double, 3,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>().block<3,4>(0,0);
-      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&covisMapCvo, kf_to_world.data()));
+      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrameGPU(&covisMapCvo, kf_to_world.data()));
 
       for (int i = 0; i < cvo_frames.size(); i++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_ptr, cvo_frames[i]);
         //edges.push_back(p);
         
         const cvo::CvoParams & params = cvo_align->get_params();
-        cvo::BinaryState::Ptr edge_state(new cvo::BinaryStateCPU(cvo_ptr,
-                                                                 cvo_frames[i],
+        const cvo::CvoParams * params_gpu = cvo_align->get_params_gpu();
+        cvo::BinaryState::Ptr edge_state(new cvo::BinaryStateGPU(std::dynamic_pointer_cast<cvo::CvoFrameGPU>(cvo_ptr),
+                                                                 std::dynamic_pointer_cast<cvo::CvoFrameGPU>(cvo_frames[i]),
                                                                  &params,
-                                                                 params.multiframe_kdtree_num_neighbors,
+                                                                 params_gpu,
+                                                                 params.multiframe_num_neighbors,
                                                                  settings.covisEll
                                                                  ));
         edge_states.push_back(edge_state);

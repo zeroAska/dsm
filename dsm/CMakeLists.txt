@@ -189,7 +189,6 @@ target_link_libraries(${LIBRARY_NAME}
         #${UnifiedCvo_LIBRARIES}
         UnifiedCvo::cvo_utils_lib
         UnifiedCvo::cvo_gpu_img_lib
-        UnifiedCvo::cvo_irls_lib
         UnifiedCvo::elas
         )
 target_compile_definitions(${LIBRARY_NAME} PUBLIC ${PCL_DEFINITIONS})   	

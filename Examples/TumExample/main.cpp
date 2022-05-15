@@ -83,7 +83,7 @@ namespace dsm
       cv::Mat image;
       double timestamp;
 
-      std::ofstream trajFile(trajFileName);
+      //std::ofstream trajFile(trajFileName);
       //trajFile << std::setprecision(6) << std::endl;
 
       const double fps = 0.1;//reader.fps();
@@ -216,17 +216,19 @@ namespace dsm
         //std::vector<Eigen::Matrix4f> poses;
         std::vector<double> timestamps;
         std::vector<int> ids;
-        DSM->getTrajectory(poses, timestamps, ids);
+        DSM->getFullTrajectory(poses, timestamps, ids);
 
         int l = 0;
+        std::ofstream trajFile(trajFileName);
+        trajFile.close();
         for (auto && accum_mat : poses) {
-
+          std::ofstream trajFile(trajFileName);
           Eigen::Quaternionf q(accum_mat.block<3,3>(0,0));
-          trajFile<<std::fixed << std::setprecision(6) << timestamps[l]<<" ";
+          trajFile<<std::fixed << std::setprecision(18) << timestamps[l]<<" ";
           trajFile<<accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 
           trajFile<<q.x()<<" "<<q.y()<<" "<<q.z()<<" "<<q.w()<<"\n";
           trajFile.flush();
-          
+          trajFile.close();
           DSM->printLog();          
           l++;
 
@@ -236,10 +238,8 @@ namespace dsm
       }
 
 
-      
-      
-      trajFile.close();
-      
+      sleep(2);
+      exit(0);
     }
 
   private:

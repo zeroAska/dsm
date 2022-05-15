@@ -884,13 +884,15 @@ namespace dsm
     std::cout<<"Covis Voxels number: "<<covisVoxels.size()<<", avg points per voxel: "<<avgPointsPerVoxel<<". ";
     std::list<const ActivePoint *> covisPoints;
     for (auto && voxel : covisVoxels) {
-      int counter = 0;
+      int counter_curr_voxel = 0;
       int sampleChance = voxel->voxPoints.size() / avgPointsPerVoxel;
       for (auto && p : voxel->voxPoints) {
         if ( (sampleChance < 1
-              || std::rand() % sampleChance == 0)
-             && frameIDs.find( p->reference()->frameID() ) == frameIDs.end() ) {
+              || counter_curr_voxel < avgPointsPerVoxel
+              || std::rand() % sampleChance == 0) &&
+             frameIDs.find( p->reference()->frameID() ) == frameIDs.end() ) {
           covisPoints.push_back(p);
+          counter_curr_voxel++;
         }
         
       }
