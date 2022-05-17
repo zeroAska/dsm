@@ -1,13 +1,13 @@
 debugPrintLog = true
-debugLogTracking = false
+debugLogTracking = true
 debugLogKeyframes = true
 debugLogPixelDetection = false
-debugLogCandidatesTracking = false
-debugLogCandidatesOpt = false
+debugLogCandidatesTracking = true
+debugLogCandidatesOpt = true
 debugLogDistanceMap = false
 debugLogActivePoints = true
 
-debugCandidates = true
+debugCandidates = false
 
 debugShowTrackResult = false
 debugShowTrackError = false
@@ -15,24 +15,24 @@ debugShowTrackWeights = false
 debugShowTrackLight = false
 debugShowTrackDistribution = false
 
-debugShowPointDetection = true
+debugShowPointDetection = false
 
-debugShowDistanceTransformBefore = true
-debugShowDistanceTransformAfter = true
+debugShowDistanceTransformBefore = false
+debugShowDistanceTransformAfter = false
 
-debugShowOptKeyframes = true
+debugShowOptKeyframes = false
 
-debugShowOptError = true
-debugShowOptWeight = true
-debugShowOptLight = true
-debugShowOptErrorDist = true
-debugShowOptErrorDistLast = true
+debugShowOptError = false
+debugShowOptWeight = false
+debugShowOptLight = false
+debugShowOptErrorDist = false
+debugShowOptErrorDistLast = false
 
 depthMapsDir = ./DepthMaps
-saveDepthMaps = true
+saveDepthMaps = false
 
 optErrorDistDir = ./ErrorDistribution
-saveOptErrorDist = true
+saveOptErrorDist = false
 
 blockUntilMapped = false
 singleThreaded = true
@@ -63,7 +63,7 @@ weightConstant = 2500
 trackingMaxLevel = 3
 
 pointDetectionLevels = 2
-numCandidates = 1500
+numCandidates = 10000
 numBlocksPerDimension = 20
 minGradAdd = 7
 
@@ -92,7 +92,7 @@ minBAIterations = 1
 maxBAIterations = 100
 optMaxLevel = 2				
 
-numActivePoints = 1500
+numActivePoints = 2000
 
 maxTemporalKeyframes = 7
 maxCovisibleKeyframes = 3
@@ -113,15 +113,16 @@ minNumTrackedFramesToCreateKF = 1
 showDepthMap = true
 showDepthMapLvl = 0
 
+candidatePointsSampling = 2
+
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.8
+trackingCosLimit = 0.55
 enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
-covisMapSize = 350
+covisMapSize = 3000
 voxelSize = 0.05
-inputDownsampleVoxelSize = 0.5
-covisEll = 0.3
+inputDownsampleVoxelSize = 3.5
+covisEll = 2.5
 
 covisUpdateFrames = 1
-covisMinPoints = 400
