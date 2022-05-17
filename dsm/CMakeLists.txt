@@ -148,6 +148,12 @@ set(SOURCE_FILES
 	${root}/Initializer/ModelSelector.cpp
 	${root}/Visualizer/IVisualizer.cpp	
 	)
+
+      set(VISUALIZER_SOURCE_FILES
+	#${root}/Visualizer/IVisualizer.h
+	${root}/Visualizer/IVisualizer.cpp	
+
+        )
 		
 # Organize the source and header files into groups
 source_group("Headers" FILES ${HEADER_FILES})
@@ -173,7 +179,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${CERES_INCLUDE_DIRS}	
 	)
 
-# Add the library
+      # Add the library
 add_library(${LIBRARY_NAME} SHARED  
 	${SOURCE_FILES} 
 	${HEADER_FILES} 

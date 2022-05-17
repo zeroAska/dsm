@@ -36,6 +36,9 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
 
+option(${PROJECT_NAME}_ENABLE_QT "ENABLE QT" OFF)
+
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 if(${WIN32})
@@ -70,5 +73,7 @@ find_package(UnifiedCvo REQUIRED )
 find_package(PCL REQUIRED)
 
 add_subdirectory(dsm)
-add_subdirectory(QtVisualizer)
+if (${PROJECT_NAME}_ENABLE_QT)
+  add_subdirectory(QtVisualizer)
+endif()
 add_subdirectory(Examples)

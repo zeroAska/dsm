@@ -126,7 +126,11 @@ namespace dsm
 
         //if (id == 5) break;
         
-        if (read_fails) this->shouldStop = true;
+        if (read_fails) {
+          std::cout<<"read fails. Now stop the main loop\n";
+          this->shouldStop = true;
+
+        }
         // TL: terminate at 10th frame
         // if (id == startFrameId + 10) this->shouldStop = true; 
         //cvo::RawImage source_raw(source_left));
@@ -211,6 +215,7 @@ namespace dsm
       if (DSM)
       {
 
+        
 
         std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
         //std::vector<Eigen::Matrix4f> poses;
@@ -221,8 +226,9 @@ namespace dsm
         int l = 0;
         std::ofstream trajFile(trajFileName);
         trajFile.close();
+        std::cout<<"Start write poses to file, pose number is "<<poses.size()<<std::endl;
         for (auto && accum_mat : poses) {
-          std::ofstream trajFile(trajFileName);
+          std::ofstream trajFile(trajFileName, std::ios_base::app);
           Eigen::Quaternionf q(accum_mat.block<3,3>(0,0));
           trajFile<<std::fixed << std::setprecision(18) << timestamps[l]<<" ";
           trajFile<<accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 

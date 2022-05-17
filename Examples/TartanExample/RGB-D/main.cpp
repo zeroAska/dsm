@@ -8,6 +8,7 @@
 #include "opencv2/imgproc.hpp"
 
 #include "QtVisualizer.h"
+
 #include "FullSystem/FullSystem.h"
 
 // used by cvo point cloud registration

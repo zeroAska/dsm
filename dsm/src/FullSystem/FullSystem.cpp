@@ -3017,6 +3017,9 @@ namespace dsm
     std::cout<<"just written CVO BA results to all frames\n";
     write_transformed_pc(cvo_frames, "temporal_after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
 
+    std::cout<<"covis map has size "<<covisMapCvo.num_points()<<", isUsingCovis is "<<isUsingCovis<<std::endl;
+
+
     /*
     if (isUsingCovis) {
     //if (false) {

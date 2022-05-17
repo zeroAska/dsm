@@ -118,7 +118,7 @@ trackingCosLimit = 0.8
 enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
-covisMapSize = 500
+covisMapSize = 350
 voxelSize = 0.05
 inputDownsampleVoxelSize = 0.5
 covisEll = 0.3
