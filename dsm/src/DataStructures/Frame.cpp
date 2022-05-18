@@ -360,13 +360,18 @@ namespace dsm
   }
 
   void Frame::dump_candidates_to_pcd(const std::string & fname) {
-    cvo::CvoPointCloud to_dump;
+	  if (candidates_.size() < 1) return;
+    cvo::CvoPointCloud to_dump(candidates_[0]->features().size() ,
+		    candidates_[0]->semantics().size()
+		    );
     candidatesToCvoPointCloud(to_dump);
     to_dump.write_to_color_pcd(fname);
   }
 
   void Frame::dump_active_points_to_pcd(const std::string & fname) {
-    cvo::CvoPointCloud to_dump;
+	  if (activePoints_.size() < 1) return;
+    cvo::CvoPointCloud to_dump(activePoints_[0]->features().size(), 
+		    activePoints_[0]->semantics().size());
     activePointsToCvoPointCloud(to_dump);
     to_dump.write_to_color_pcd(fname);
   }

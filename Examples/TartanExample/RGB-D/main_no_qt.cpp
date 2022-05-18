@@ -136,7 +136,7 @@ namespace dsm
           cv::cvtColor(color_img, gray_img, cv::COLOR_BGR2GRAY);
 
           // TL: terminate at 10th frame
-          if (id == startFrameId + 10) this->shouldStop = true; 
+          //if (id == startFrameId + 10) this->shouldStop = true; 
 
           if (DSM == nullptr)
           {
