@@ -27,6 +27,7 @@ cmake_minimum_required(VERSION 3.5)
 set(PROGRAM_NAME TumExample)
 
 add_executable(${PROGRAM_NAME} main.cpp)
+add_executable(${PROGRAM_NAME}_no_qt main_no_qt.cpp)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}
@@ -36,12 +37,11 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${DSM_LIB_INCLUDE_DIR}
         #${UnifiedCvo_INCLUDE_DIR} 
 	)
-#      if (${PROJECT_NAME}_ENABLE_QT)
- #       target_compile_definitions(${PROGRAM_NAME} -DQT_ENABLED)
-  target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} QtVisualizer dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tum UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
-#else()
-#  target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS}  dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tum UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
 
-#  endif()
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} QtVisualizer dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tum UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
 target_compile_definitions(${PROGRAM_NAME} PUBLIC ${PCL_DEFINITIONS})
 set_target_properties(${PROGRAM_NAME} PROPERTIES FOLDER "Examples")
+
+target_link_libraries(${PROGRAM_NAME}_no_qt ${OpenCV_LIBS} dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tum UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
+target_compile_definitions(${PROGRAM_NAME}_no_qt PUBLIC ${PCL_DEFINITIONS})
+set_target_properties(${PROGRAM_NAME}_no_qt PROPERTIES FOLDER "Examples")

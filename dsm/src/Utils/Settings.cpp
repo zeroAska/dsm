@@ -186,7 +186,8 @@ namespace dsm
                 this->maxInitIdepth = 0.02f;
                 this->covisMapSize = 2000;
                 this->voxelSize = 0.2;
-                this->inputDownsampleVoxelSize = 0.6;
+                this->inputEdgeDownsampleVoxelSize = 0.6;
+                this->inputSurfaceDownsampleVoxelSize = 0.05;
                 this->covisEll = 4.0;
 
                 this->covisUpdateFrames = 7;
@@ -377,10 +378,15 @@ namespace dsm
                   std::cout<<"voxelSize is "<<this->voxelSize<<std::endl;
                   return;
                 }
-                if (this->checkParameter("inputdownsamplevoxelsize", name, value, this->inputDownsampleVoxelSize)) {
-                  std::cout<<"inputDownsampleVoxelSize is "<<this->inputDownsampleVoxelSize<<std::endl;
+                if (this->checkParameter("inputedgedownsamplevoxelsize", name, value, this->inputEdgeDownsampleVoxelSize)) {
+                  std::cout<<"inputEdgeDownsampleVoxelSize is "<<this->inputEdgeDownsampleVoxelSize<<std::endl;
                   return;
                 }
+                if (this->checkParameter("inputsurfacedownsamplevoxelsize", name, value, this->inputSurfaceDownsampleVoxelSize)) {
+                  std::cout<<"inputSurfaceDownsampleVoxelSize is "<<this->inputSurfaceDownsampleVoxelSize<<std::endl;
+                  return;
+                }
+                
                 if (this->checkParameter("covisell", name, value, this->covisEll)) {
                   std::cout<<"covisEll is "<<this->covisEll<<std::endl;
                   return;

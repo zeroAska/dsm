@@ -84,7 +84,7 @@ minDistToActivate = 5
 maxCandidateUncertainty = 2
 minCandidateQuality = 2
 
-doOnlyTemporalOpt = false
+doOnlyTemporalOpt = true
 printSummary = true
 showFullReport = false
 minOptimizationGrad = 2
@@ -119,8 +119,9 @@ enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
 covisMapSize = 350
-voxelSize = 0.05
-inputDownsampleVoxelSize = 0.5
+voxelSize = 0.025
+inputSurfaceDownsampleVoxelSize = 0.2
+inputEdgeDownsampleVoxelSize = 0.04   
 covisEll = 0.3
 
 covisUpdateFrames = 1

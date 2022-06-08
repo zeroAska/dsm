@@ -1390,6 +1390,7 @@ namespace dsm
     
     std::cout << "Tracking: " << Utils::elapsedTime(t1, t2) << "\n";
     std::string msg = "Tracking: " + std::to_string(Utils::elapsedTime(t1, t2)) + "\t";
+    camTrackingTime.push_back(Utils::elapsedTime(t1, t2));
     auto& log = Log::getInstance();
     log.addNewLog(frame->frameID());
     log.addCurrentLog(frame->frameID(), msg);
@@ -2118,14 +2119,15 @@ namespace dsm
     
     std::unordered_set<int32_t> edge_indices;
 
-    float start_voxel_size = settings.inputDownsampleVoxelSize;
+    float edge_start_voxel_size = settings.inputEdgeDownsampleVoxelSize;
+    float surface_start_voxel_size = settings.inputSurfaceDownsampleVoxelSize;
     for (int trial_counter = 0; trial_counter < 5; trial_counter++ ) {
 
       std::cout<<"Current num is "<<num<<
-        "Voxel Filter size "<<start_voxel_size<<"\n";
+        "Voxel Filter size "<<edge_start_voxel_size<<"\n";
       
-      VoxelMap<SimplePoint> voxel_filter(start_voxel_size); // TL: change this to a yaml parameter
-      VoxelMap<SimplePoint> edge_voxel_filter(start_voxel_size / 7);
+      VoxelMap<SimplePoint> surface_voxel_filter(surface_start_voxel_size); // TL: change this to a yaml parameter
+      VoxelMap<SimplePoint> edge_voxel_filter(edge_start_voxel_size);
       // add all pixels to voxel filter
       std::vector<SimplePoint> temp_pt_vec;
       temp_pt_vec.reserve(height * width);
@@ -2155,7 +2157,7 @@ namespace dsm
           curr_xyz = (invK * curr_xyz).eval();
 
           temp_pt_vec.emplace_back(curr_xyz(0), curr_xyz(1), curr_xyz(2), idx);
-          voxel_filter.insert_point(&temp_pt_vec.back());
+          surface_voxel_filter.insert_point(&temp_pt_vec.back());
 
           //if (detected_edges.at<uint8_t>(row, col) > 0)
           if (selected_inds_map[idx] == 0) {
@@ -2167,7 +2169,7 @@ namespace dsm
 
     
       // Pick one point from every existing voxel
-      const std::vector<SimplePoint*> downsampled = voxel_filter.sample_points();
+      const std::vector<SimplePoint*> downsampled = surface_voxel_filter.sample_points();
       const std::vector<SimplePoint*> downsampled_edge = edge_voxel_filter.sample_points();
       //num = downsampled.size() + downsampled_edge.size();
       /*
@@ -2321,7 +2323,7 @@ namespace dsm
     auto& activePoints = frame->activePoints();
     activePoints.reserve(candidates.size());
 
-    std::string fname("voxelFilter/candidates_after_creation.pcd");
+    std::string fname("candidates_after_creation.pcd");
     frame->dump_candidates_to_pcd(fname);
     std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }

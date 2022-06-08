@@ -213,7 +213,8 @@ namespace dsm
 
           int covisMapSize;
           float voxelSize;
-          float inputDownsampleVoxelSize;
+          float inputEdgeDownsampleVoxelSize;
+          float inputSurfaceDownsampleVoxelSize;
           float covisEll;
 
           int covisUpdateFrames;

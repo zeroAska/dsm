@@ -6,12 +6,13 @@ for difficulty in Easy
 do
 #for i in westerndesert  #hospital abandonedfactory_night #endofworld neighborhood oldtown  
 #for i in  gascola soulcity abandonedfactory  seasidetown  seasonsforest seasonsforest_winter hospital endofworld neighborhood oldtown neighborhood  
-for i in  soulcity  seasidetown  hospital   
+for i in   hospital #seasidetown  soulcity
 	 do
 	 rm -rf tartan_${difficulty}_$i
 	mkdir -p tartan_${difficulty}_$i
 #gdb -ex run  --args \
-./build/bin/TartanRGBDExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/outdoor_settings.txt 0 test_${difficulty}_$i.txt > log_tartan_${difficulty}_${i}.txt
+#./build/bin/TartanRGBDExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/outdoor_settings.txt 0 test_${difficulty}_$i.txt #> log_tartan_${difficulty}_${i}.txt
+./build/bin/TartanRGBDExample_no_qt /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/no_qt_settings.txt 0 test_${difficulty}_$i.txt #> log_tartan_${difficulty}_${i}.txt
 mv *.pcd tartan_${difficulty}_$i/
 mv *_graph.txt tartan_${difficulty}_$i/
 mv test_${difficulty}_$i.txt tartan_${difficulty}_$i/
