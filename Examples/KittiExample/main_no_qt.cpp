@@ -112,7 +112,7 @@ namespace dsm
         cv::Mat source_left, source_right;
         //std::vector<float> source_dep;        
         std::cout<< " Read new image "<<id<<std::endl;
-        bool read_fails = reader.read_next_rgbd(source_left, source_right);
+        bool read_fails = reader.read_next_stereo(source_left, source_right);
 
         if (read_fails) {
           std::cout<<"Read fails\n";
@@ -139,7 +139,7 @@ namespace dsm
           cv::cvtColor(color_img, gray_img, cv::COLOR_BGR2GRAY);
 
           // TL: terminate at 10th frame
-          if (id == startFrameId + 10) this->shouldStop = true; 
+          //if (id == startFrameId + 10) this->shouldStop = true; 
 
           if (DSM == nullptr)
           {
@@ -190,7 +190,7 @@ namespace dsm
       if (DSM)
       {
 
-
+	std::cout<<"Write traj to file\n";
         std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> poses;
         // std::vector<Eigen::Matrix4f> poses;
         std::vector<double> timestamps;
@@ -217,7 +217,6 @@ namespace dsm
       }
       sleep(2);
       std::this_thread::yield();
-      //sleep(2);
       //exit(0);
     }
 
