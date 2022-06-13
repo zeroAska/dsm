@@ -2368,46 +2368,49 @@ namespace dsm
         
       cvo::Association association_mat;
       Eigen::Matrix3f kernel;
-      if (settings.enableDepthRegression)
-        kernel << 0.01, 0, 0,
-          0, 0.01, 0,
-          0,  0,   0.03;
-      else
+      if (settings.enableDepthRegression) {
+        kernel << settings.depthNormalEll, 0, 0,
+          0, settings.depthNormalEll, 0,
+          0,  0,   settings.depthDirEll;
+      } else {
         kernel << 1, 0, 0,
           0, 1, 0,
           0, 0, 1;
+
+      }
       cvo_align->compute_association_gpu(candidates_cvo,
                                          *candidates_curr,
                                          kfToFrameEigen,
                                          kernel,
                                          association_mat);
       int counter = 0;
+
+      if (settings.enableDepthRegression ) {
+
+        //for (int j=0; j < association_mat.outerSize(); ++j) {
       
-      for (int j = 0; j < candidates.size(); j++) {
-        kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
-        counter++;
-      }
+        for (int j = 0; j < association_mat.source_inliers.size(); j++) {
+          int kfPtIdx = association_mat.source_inliers[j];
+          //kf->candidatesHighQuaity()[kfPtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
+          kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
+          for (Eigen::SparseMatrix<float, Eigen::RowMajor>::InnerIterator it(association_mat.pairs,kfPtIdx); it; ++it) {
+            float weight = it.value();
+            int idx_target = it.col();   // col index (here it is equal to k)
+            Eigen::Vector3f XYZ = candidates_curr->at(idx_target); //frame->candidates()[idx_target]->xyz();
 
-      //for (int j=0; j < association_mat.outerSize(); ++j) {
-      /*   
-      for (int j = 0; j < association_mat.source_inliers.size(); j++) {
-        int kfPtIdx = association_mat.source_inliers[j];
-        //kf->candidatesHighQuaity()[kfPtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
-        kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
-        for (Eigen::SparseMatrix<float, Eigen::RowMajor>::InnerIterator it(association_mat.pairs,kfPtIdx); it; ++it) {
-          float weight = it.value();
-           int idx_target = it.col();   // col index (here it is equal to k)
-          Eigen::Vector3f XYZ = candidates_curr->positions()[idx_target]; //frame->candidates()[idx_target]->xyz();
-
-          float obsIdepth = 1/((K * (kfToFrame.inverse() * XYZ))(2));
-          //std::cout<<"matching "<<kfPtIdx<<" with "<<idx_target<<" with weight "<<weight<<" and idepth in kf "<<obsIdepth<<std::endl;          
-          kf->candidates()[kfPtIdx]->addIdepthObservation(obsIdepth,weight);
-        }
-        //}
-        if (kf->candidates()[kfPtIdx]->status() == CandidatePoint::PointStatus::OPTIMIZED)
-            //kf->candidatesHighQuaity()[j] == CandidatePoint::PointStatus::OPTIMIZED)
+            float obsIdepth = 1/((K * (kfToFrame.inverse() * XYZ))(2));
+            //std::cout<<"matching "<<kfPtIdx<<" with "<<idx_target<<" with weight "<<weight<<" and idepth in kf "<<obsIdepth<<std::endl;          
+            kf->candidates()[kfPtIdx]->addIdepthObservation(obsIdepth,weight);
+          }
           counter++;
-          }*/
+        }
+        
+      } else {
+        for (int j = 0; j < candidates.size(); j++) {
+          kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
+          counter++;
+        }
+      }
       std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n"<<std::flush;
 
       if (include_curr) {

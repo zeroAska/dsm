@@ -13,12 +13,12 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${DSM_LIB_INCLUDE_DIR}
         #${UnifiedCvo_INCLUDE_DIR} 
 	)
-#if (${PROJECT_NAME}_ENABLE_QT)
+if (${PROJECT_NAME}_ENABLE_QT)
 add_executable(${PROGRAM_NAME} main.cpp)        
 target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} QtVisualizer dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tartan UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
 target_compile_definitions(${PROGRAM_NAME} PUBLIC ${PCL_DEFINITIONS})
 set_target_properties(${PROGRAM_NAME} PROPERTIES FOLDER "Examples")
-
+endif()
 #else ()
 #  message("Compile without qt")
 add_executable(${PROGRAM_NAME}_no_qt main_no_qt.cpp)

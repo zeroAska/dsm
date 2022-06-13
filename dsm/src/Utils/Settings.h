@@ -205,6 +205,8 @@ namespace dsm
           float trackingCosLimit;
 
           bool enableDepthRegression;
+          float depthNormalEll;
+          float depthDirEll;
           
           int gapCovisibleToTemporal;
           int numPointsPerFrame;

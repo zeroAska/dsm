@@ -10,7 +10,7 @@ sigma: 0.1
 sp_thres: 0.003 #0.0006
 c: 7.0
 d: 7.0
-c_ell: 0.1 #0.025 #0.02
+c_ell: 0.025 #0.3 #0.1 #0.025 #0.02
 c_sigma: 1 
 s_ell: 0.1 #0.15 #0.04
 s_sigma: 1 #0.7
@@ -19,12 +19,12 @@ min_step: 0.000001
 max_step: 0.01
 eps: 0.00005
 eps_2: 0.000012
-nearest_neighbors_max: 256 #512
+nearest_neighbors_max: 512
 ell_decay_rate: 0.9 #0.95 #0.98
 ell_decay_rate_first_frame: 0.99
 ell_decay_start: 60 #300 #60
 ell_decay_start_first_frame: 600 #2000
-indicator_window_size: 10
+indicator_window_size: 30
 indicator_stable_threshold: 0.001
 is_ell_adaptive: 0
 is_dense_kernel: 0
@@ -38,11 +38,10 @@ is_using_geometric_type: 1
 # for irls solver
 multiframe_using_cpu: 0
 multiframe_max_iters: 1000
-multiframe_ell_init: 0.2
-multiframe_ell_min: 0.05
-multiframe_ell_decay_rate: 0.8
-multiframe_iterations_per_ell: 10
-multiframe_downsample_voxel_size: 0.5
+multiframe_ell_init: 0.08 #0.5
+multiframe_ell_min: 0.025
+multiframe_ell_decay_rate: 0.9
+multiframe_iterations_per_ell: 10 #15
+multiframe_downsample_voxel_size: 0.1 #3
 multiframe_iterations_per_solve: 20
-#multiframe_expected_points: 2000
-
+multiframe_min_nonzeros: 400

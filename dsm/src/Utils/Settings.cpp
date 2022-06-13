@@ -180,6 +180,8 @@ namespace dsm
                 this->iDepthUncertainty = 0.025f;
                 this->trackingCosLimit = 0.75f;
                 this->enableDepthRegression = true;
+                this->depthNormalEll = 0.02;
+                this->depthDirEll = 0.1;
                 this->gapCovisibleToTemporal = 10;
                 this->numPointsPerFrame = 2000;
                 this->candidatePointsSampling = 0; // 0: canny   1: FAST  2: DSO
@@ -358,7 +360,16 @@ namespace dsm
                 if (this->checkParameter("enabledepthregression", name, value, this->enableDepthRegression)) {
                   // std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
                   return; 
+                } 
+                if (this->checkParameter("depthnormalell", name, value, this->depthNormalEll)) {
+                  // std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
+                  return; 
                 }
+                if (this->checkParameter("depthdirell", name, value, this->depthDirEll)) {
+                  // std::cout<<"TrackingCosLimit is "<<this->trackingCosLimit<<std::endl;
+                  return; 
+                }
+               
                 if (this->checkParameter("numpointsperframe", name, value, this->numPointsPerFrame)) {
                   return;
                 }

@@ -297,22 +297,22 @@ namespace dsm
 
   float CandidatePoint::regressIdepth() {
     float weightSquaredNorm = 0;
-    float weightDotIdepth = 0;
+    float weightDotDepth = 0;
     //weightSquaredNorm += 1;
-    if (observedIdepths_.size() < 2)
-      return iDepth_;
+    //if (observedIdepths_.size() < 3)
+    //  return iDepth_;
     
     for (int i = 0; i < observedIdepths_.size(); i++) {
       float weight_i = cvoObservationWeights_[i];
-      float idepth_i = observedIdepths_[i];
+      float depth_i = 1/observedIdepths_[i];
       weightSquaredNorm += weight_i;
-      weightDotIdepth += weight_i * idepth_i;
+      weightDotDepth += weight_i * depth_i;
     }
     float meanWeight = weightSquaredNorm / observedIdepths_.size();
     weightSquaredNorm += meanWeight;
-    weightDotIdepth += iDepth_ * meanWeight;    
-    float regressed =  weightDotIdepth / weightSquaredNorm;
-    return regressed;
+    weightDotDepth += 1/iDepth_ * meanWeight;    
+    float regressed =  weightDotDepth / weightSquaredNorm;
+    return 1/regressed;
   }
 
   CandidatePoint::ObserveStatus CandidatePoint::observe(const std::shared_ptr<Frame>& other)
