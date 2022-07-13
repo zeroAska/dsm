@@ -36,7 +36,7 @@
 #include "Utils/Settings.h"
 #include "Utils/UtilFunctions.h"
 #include "cvo/CvoGPU.hpp"
-
+#include <cstdlib>
 #include <fstream>
 
 namespace dsm
@@ -117,7 +117,7 @@ namespace dsm
 
     // temporal window
     //this->selectTemporalWindowC(photometricBA);
-    this->selectTemporalWindowCvo();
+    this->selectTemporalWindowCvo(photometricBA);
 
     // covisibility window
     if (!settings.doOnlyTemporalOpt)
@@ -317,7 +317,7 @@ namespace dsm
     }
   }
 
-  void LMCW::selectTemporalWindowCvo()
+  void LMCW::selectTemporalWindowCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
   {
     // const configs
     const auto& settings = Settings::getInstance();
@@ -350,7 +350,7 @@ namespace dsm
       const AffineLight light = AffineLight::calcRelative(kf->affineLight(), lastKeyframe->affineLight());
 
       int numVisible = 0;
-
+      std::cout<<"selectTemporalWindowCvo: activePoints num is  "<<kf->activePoints().size()<<std::endl;
       for (const auto& point : kf->activePoints())
       {
         // project point to new image
@@ -367,17 +367,17 @@ namespace dsm
         point->setVisibility(lastKeyframeID, Visibility::VISIBLE);
 
         // create new observation to the newest keyframe
-        //std::unique_ptr<PhotometricResidual> obs =
-        //  std::make_unique<PhotometricResidual>(point, lastKeyframe, photometricBA);
+        std::unique_ptr<PhotometricResidual> obs =
+          std::make_unique<PhotometricResidual>(point, lastKeyframe, photometricBA);
 
-        //point->addObservation(lastKeyframe.get(), obs);
+        point->addObservation(lastKeyframe.get(), obs);
 
         // increase counters
         this->numActivePoints++;
         numVisible++;
       }
       numVisiblePoints.push_back(numVisible);
-      std::cout<<"Frame "<<kf->frameID()<<" has "<<numVisible<<" active points that are visible.\n";
+      std::cout<<"[selectTemporalFrameCvo] Frame "<<kf->frameID()<<" has "<<numVisible<<" active points that are visible \n";
 
       // keep the last numAlwaysKeepKeyframes keyframes + the new one
       if ((kf->keyframeID() <= lastKeyframeID - settings.numAlwaysKeepKeyframes) // too old
@@ -1340,7 +1340,191 @@ namespace dsm
       this->outputWrapper_->publishDistanceTransformAfter(distTransform);
     }
   }
-  void LMCW::activatePointsCvo()
+  
+  void LMCW::activatePointsCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA, std::vector<std::shared_ptr<Frame>> & frames,
+                               int start_frame_index)  const 
+  {
+    // TL: log points
+    // std::ofstream file;
+    // file.open("/home/tannerliu/dsm/points.txt", std::ios_base::app);
+    
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+
+    const Eigen::Matrix3f& K = calib.matrix3f(0);
+    const Eigen::Matrix3f& Kinv = calib.invMatrix3f(0);
+    const int width = (int)calib.width(0);
+    const int height = (int)calib.height(0);
+
+    Utils::Time t1 = std::chrono::steady_clock::now();
+    int numActiveKeyframes = (int) frames.size();
+
+    // activate the old keyframes' (excluding the lastest one) candidates
+    // whose status is 'OPTIMIZED'
+    // Q: why excluding the latest?
+    int numPointsCreated = 0;
+    auto lastKeyframe = frames.back();
+    const Sophus::SE3f worldToLast = lastKeyframe->camToWorld().inverse();
+    
+    
+    for (int i = start_frame_index; i < frames.size(); ++i)
+    {
+      std::cout<<"activePoint: frame ID "<<frames[i]->frameID()<<std::endl<<std::flush;
+      const std::shared_ptr<Frame>& owner = frames[i];
+      //std::shared_ptr<Frame> owner = this->activeKeyframes_[i];
+
+      // relative pose
+      const Sophus::SE3f ownerToLast = worldToLast * owner->camToWorld();	
+      const Eigen::Matrix3f KRKinv = K * ownerToLast.rotationMatrix() * Kinv;
+      const Eigen::Vector3f Kt = K * ownerToLast.translation();
+
+      auto& candidates = owner->candidates();
+      auto& activePoints = owner->activePoints();
+
+       int counter = 0;
+      for (auto& cand : candidates)
+      {
+        CandidatePoint::PointStatus status = cand->status();
+
+        // check status
+        if (status == CandidatePoint::OPTIMIZED )
+        {
+          // project into new keyframe
+          std::unique_ptr<ActivePoint> point;
+
+          if (settings.enableDepthRegression) {
+            float filteredIdepth = cand->regressIdepth();
+            std::cout<<"regressIdepth: num observations is "<<cand->observedIdepths().size()<<", depth before: "<<1/cand->iDepth()<<", after: "<<1/filteredIdepth<<std::endl;
+            
+            point.reset(new ActivePoint (lastKeyframe->keyframeID(), cand, filteredIdepth));
+          } else
+            point.reset(new ActivePoint (lastKeyframe->keyframeID(), cand));          
+          counter++;
+
+          // observations & visibility
+          for (const std::shared_ptr<Frame>& frame : frames)
+          {
+            if (frame == owner) continue;
+            Eigen::Vector2f pt2d;
+            const Sophus::SE3f covisToLast = worldToLast * frame->camToWorld();
+            const Eigen::Matrix3f R = covisToLast.rotationMatrix();
+            const Eigen::Vector3f t = covisToLast.translation();
+            Eigen::Matrix4f covisToLastEigen = Utils::SE3ToEigen(covisToLast);
+            if (!Utils::projectAndCheck(point->u(0), point->v(0), point->iDepth(),
+                                        K, width, height, R, t, pt2d)) {
+              point->setVisibility(frame->keyframeID() , Visibility::OOB);
+              continue;
+            }
+
+            //Visibility vis = cand->visibility(frame->activeID());
+
+            // set visibility
+            point->setVisibility(frame->keyframeID(), Visibility::VISIBLE);
+            //point->setVisibility(frame->keyframeID(), vis);
+
+            //if (vis == Visibility::VISIBLE)
+            //{
+              // create new observation
+            std::unique_ptr<PhotometricResidual> obs =
+              std::make_unique<PhotometricResidual>(point, frame, photometricBA);
+            
+            point->addObservation(frame.get(), obs);
+              //}
+          }
+          cand = nullptr;						// delete candidate after activation
+
+          //point->setCenterProjection(pointInFrame);
+
+          numPointsCreated++;
+          //this->numActivePoints++;
+
+          // update distance map
+          //this->distanceMap_->add(point, lastKeyframe);
+
+          // update covisibilityGraph_
+
+          // TL: testing
+          // std::cout <<"Writing point to file: " << pt << std::endl;
+          // Eigen::Matrix4f Tcw = point->reference()->camToWorld().matrix(); //camToWorld
+          // Eigen::Vector3f p_cam = point->xyz(); // pt in cam frame
+          // Eigen::Vector4f p_cam_4;
+          // p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+          // Eigen::Vector4f p_wld = Tcw * p_cam_4;
+          // if (point->currentID() == 1) {
+          //   voxelMap_->insert_point(point.get());
+          // }
+          // else if (point->currentID() == 2 || point->currentID() == 3) {
+          //   Voxel qVox;
+          //   if (voxelMap_->query_point(point.get(), qVox)) {
+          //     // TL: log points
+          //     file << p_wld(0) << ", " << p_wld(1) << ", " << p_wld(2) << ", " << point->currentID() << "\n";
+          //   }
+          // }
+          // std::cout << "Voxel Map size: " << voxelMap_->size() << std::endl;
+
+
+          // insert into list
+          
+          //if ( point->observations().size() &&  rand() % 500 == 0 ) {
+          if ( point->observations().size() &&  1/point->iDepth() < 30
+               //&&rand() % 500 == 0
+               ) {
+           activePoints.push_back(std::move(point));
+           //break;
+          }
+        }
+
+        //else if (status == CandidatePoint::OUTLIER)
+        // {
+        //  cand = nullptr;
+        // continue;
+        //}
+      }
+
+      // reorder candidates filling the gaps
+      for (int j = 0; j < candidates.size(); ++j)
+      {
+        if (candidates[j] == nullptr)
+        {
+          candidates[j] = std::move(candidates.back());
+          candidates.pop_back();
+          j--;						// go back again to check if last one was nullptr too
+        }
+        //std::cout<<j<<std::endl<<std::flush;
+      }
+      std::cout<<"Frame "<<owner->frameID()<<" just activated "<<counter<<" points.\n";
+      owner->dump_active_points_to_pcd(std::to_string(owner->frameID())+".pcd");
+    }
+
+
+    // this->voxelMap_->save_voxels_pcd("covisible_voxels.pcd");
+    //this->voxelMap_->save_points_pcd("covisible_points.pcd");
+
+    
+    Utils::Time t2 = std::chrono::steady_clock::now();
+
+    if (settings.debugPrintLog && settings.debugLogActivePoints)
+    {
+      const std::string msg = "Act. New: " + std::to_string(numPointsCreated) + "\t";
+      const std::string timeMsg = "covisib build time: " + std::to_string(Utils::elapsedTime(t1, t2)) + "\t";
+
+      auto& log = Log::getInstance();
+      log.addCurrentLog(lastKeyframe->frameID(), msg);
+      log.addCurrentLog(lastKeyframe->frameID(), timeMsg);
+    }
+
+    //if (settings.debugShowDistanceTransformAfter && this->outputWrapper_)
+    // {
+    //  cv::Mat distTransform = this->distanceMap_->drawDistanceTransform(true);
+    //  this->outputWrapper_->publishDistanceTransformAfter(distTransform);
+    //}
+
+    // TL: log points
+    // file << "======================================\n";
+    // file.close();
+  }
+
+  void LMCW::activatePointsCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
   {
     const auto& settings = Settings::getInstance();
     const auto& calib = GlobalCalibration::getInstance();
@@ -1386,7 +1570,7 @@ namespace dsm
 
           if (settings.enableDepthRegression) {
             float filteredIdepth = cand->regressIdepth();
-            std::cout<<"regressIdepth: num observations is "<<cand->observedIdepths().size()<<", before: "<<cand->iDepth()<<", after: "<<filteredIdepth<<std::endl;
+            std::cout<<"regressIdepth: num observations is "<<cand->observedIdepths().size()<<", depth before: "<<1/cand->iDepth()<<", after: "<<1/filteredIdepth<<std::endl;
             
             point.reset(new ActivePoint (lastKeyframe->keyframeID(), cand, filteredIdepth));
           } else
@@ -1412,15 +1596,16 @@ namespace dsm
 
             // set visibility
             point->setVisibility(frame->keyframeID(), Visibility::VISIBLE);
+            //point->setVisibility(frame->keyframeID(), vis);
 
             //if (vis == Visibility::VISIBLE)
-            {
+            //{
               // create new observation
-              //std::unique_ptr<PhotometricResidual> obs =
-              //  std::make_unique<PhotometricResidual>(point, frame, photometricBA);
+              std::unique_ptr<PhotometricResidual> obs =
+                std::make_unique<PhotometricResidual>(point, frame, photometricBA);
 
-              //point->addObservation(frame.get(), obs);
-            }
+              point->addObservation(frame.get(), obs);
+              //}
           }
           cand = nullptr;						// delete candidate after activation
 
@@ -1541,6 +1726,7 @@ namespace dsm
     // file << "======================================\n";
     // file.close();
   }
+  
 
 
   void LMCW::removeOutliers() const
@@ -1586,6 +1772,7 @@ namespace dsm
           i--;
         }
       }
+      std::cout<<"After outlier removal, # of active points are "<<activePoints.size()<<std::endl;
     }
   }
 

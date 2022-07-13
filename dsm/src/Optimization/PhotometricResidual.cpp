@@ -132,6 +132,15 @@ namespace dsm
 				return true;
 			}
 
+                        /*
+                        if (t.norm()) {
+                          Eigen::Matrix<float, 3, 4> TT;
+                          TT.block<3,3>(0,0) = R.cast<float>();
+                          TT.block<3,1>(0,3) = t.cast<float>();
+                          std::cout<<"PhotometricResidual: TT is "<<TT<<"\n";
+                          
+                        }
+                        */
 			// inverse depth jacobian
 			if (jacobians[2] != NULL)
 			{

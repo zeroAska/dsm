@@ -368,10 +368,11 @@ namespace dsm
     to_dump.write_to_color_pcd(fname);
   }
 
-  void Frame::dump_active_points_to_pcd(const std::string & fname) {
+  void Frame::dump_active_points_to_pcd(const std::string & fname){
+
 	  if (activePoints_.size() < 1) return;
     cvo::CvoPointCloud to_dump(activePoints_[0]->features().size(), 
-		    activePoints_[0]->semantics().size());
+                               activePoints_[0]->semantics().size());
     activePointsToCvoPointCloud(to_dump);
     to_dump.write_to_color_pcd(fname);
   }
@@ -487,6 +488,12 @@ namespace dsm
   const std::unique_ptr<FrameParameterBlock>& Frame::frameBlock() const
   {
     return this->frameBlock_;
+  }
+
+  void Frame::setFrameBlockPose(const Sophus::SE3f & pose ) {
+    Sophus::SE3d pose_d = pose.cast<double>();
+    this->frameBlock_->setPose(pose_d);
+    
   }
 
   void Frame::mergeOptimizationResult()

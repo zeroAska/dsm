@@ -169,10 +169,15 @@ namespace dsm
     }
     if (std::isnan(invDepth) == false) {
       status_ = PointStatus::INITIALIZED;
+      //status_ = PointStatus::TRACED;
+      // initialize geometric parameters to invalid values
+      //this->iDepth_ = invDepth; //0.f;
+      // this->iDepthSigma_ = settings.iDepthUncertainty; //std::numeric_limits<float>::max();
 
       // initialize geometric parameters to invalid values
       this->iDepth_ = invDepth; //0.f;
-      this->iDepthSigma_ = settings.iDepthUncertainty; //std::numeric_limits<float>::max();
+      this->iDepthSigma_ = std::numeric_limits<float>::max();
+      
     
     } else {
           // initialize geometric parameters to invalid values
@@ -347,7 +352,7 @@ namespace dsm
     const Eigen::Matrix3f KR = K * rot;
     const Eigen::Vector3f Kt = K * trans;
 
-    const Eigen::Vector3f KRray = KR*this->ray_;
+    const Eigen::Vector3f KRray = KR*this->ray_; // TODO
 
     // 1) epipolar geometry
     float epiLineLength;
@@ -458,7 +463,7 @@ namespace dsm
       px += epiLineDir;
     }
 
-    // 4) Check if many bad pixels
+    // 4) Check if many bad pixels whose energy increases
     if (bestMatchNumBad / Pattern::size() > settings.maxPixelOutlier)
     {
       return this->setBadObservation();
@@ -513,9 +518,11 @@ namespace dsm
     const float baseline = (bestMatch - pxInf).norm();
     //std::cout<<"tracking baseline: "<<baseline<<std::endl;
 
-    if (baseline > this->matchBaseline_ && this->iDepthSigma_ < iDepthSigmaHypo)
+    if (baseline > this->matchBaseline_
+      //&& this->iDepthSigma_ < iDepthSigmaHypo
+        )
     {
-      std::cout<<"bestMatch depth from "<<1/this->iDepth_<<" to "<<1/bestMatchIDepth<<", uncertainty from "<<this->iDepthSigma_<<" to "<<iDepthSigmaHypo<<std::endl;
+      //std::cout<<"bestMatch depth from "<<1/this->iDepth_<<" to "<<1/bestMatchIDepth<<", uncertainty from "<<this->iDepthSigma_<<" to "<<iDepthSigmaHypo<<std::endl;
       this->iDepth_ = bestMatchIDepth;
       this->iDepthSigma_ = iDepthSigmaHypo;
       this->matchUncertainty_ = disparitySigma;
@@ -691,6 +698,7 @@ namespace dsm
     // check that there are good values for optimization H != 0
     if (fabs(H) < 1e-03f)
     {
+      std::cout<<"small H\n";              
       this->status_ = PointStatus::TRACED;
       return;
     }
@@ -726,6 +734,7 @@ namespace dsm
       if (fabs(H) < 1e-03f)
       {
         this->status_ = PointStatus::TRACED;
+        std::cout<<"small H\n";        
         return;
       }
 
@@ -758,12 +767,13 @@ namespace dsm
     // check if inverse depth has real values
     if (!std::isfinite(currentIDepth))
     {
+      std::cout<<"outlier\n";
       this->status_ = PointStatus::OUTLIER;
       return;
     }
 
     // store new values
-    std::cout<<"Update candidate depth from "<<1/this->iDepth_<<" to "<<currentIDepth<<std::endl;
+    std::cout<<"Update candidate depth from "<<1/this->iDepth_<<" to "<<1/currentIDepth<<std::endl;
     this->iDepth_ = currentIDepth;
     this->status_ = PointStatus::OPTIMIZED;
   }

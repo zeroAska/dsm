@@ -345,7 +345,7 @@ namespace dsm
 		if (this->checkParameter("minnumtrackedframestocreatekf", name, value, this->minNumTrackedFramesToCreateKF)) return;
 		if (this->checkParameter("showdepthmap", name, value, this->showDepthMap)) return;
 		if (this->checkParameter("showdepthmaplvl", name, value, this->showDepthMapLvl)) return;
-                if (this->checkParameter("fixFramePoses", name, value, this->fixFramePoses)) return;
+                if (this->checkParameter("fixframeposes", name, value, this->fixFramePoses)) return;
                 if (this->checkParameter("idepthuncertainty", name, value, this->iDepthUncertainty)) {
                   std::cout<<"iDepthUncertainty is "<<this->iDepthUncertainty<<std::endl;
                   return; 

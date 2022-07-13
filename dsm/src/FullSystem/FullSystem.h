@@ -126,7 +126,7 @@ namespace dsm
 
     void printLog() const;
 
-    private:
+    //private:
 
     // initialize from video sequence
     bool initialize_lmcw(const std::shared_ptr<Frame>& frame);
@@ -143,11 +143,17 @@ namespace dsm
     void waitUntilMappingFinished();
 
     // candidates management
-    void createCandidatesPlanar(const std::shared_ptr<Frame>& frame);
-    void createCandidatesVoxel(const std::shared_ptr<Frame>& frame);
-    void trackCandidates(const std::shared_ptr<Frame>& frame);
-    void trackCandidatesCvo(const std::shared_ptr<Frame> frame, bool include_curr=false);
-    void refineCandidates();
+    void createCandidates(const std::shared_ptr<Frame>& frame);
+    void createCandidatesWithInitDepth(const std::shared_ptr<Frame>& frame);    
+    void trackCandidates(const std::shared_ptr<Frame>& frame,
+                         const std::vector<std::shared_ptr<Frame>> & activeKeyframes);
+    void trackCandidatesCvo(const std::shared_ptr<Frame> frame,
+                            bool updateState=true,
+                            bool include_curr=false
+                           );
+    void refineCandidates(const std::vector<std::shared_ptr<Frame>>& activeKeyframes,
+                          const std::vector<std::shared_ptr<Frame>>& temporalKeyframes);
+    
 
     // Optimization
     void createKeyframeAndOptimize(const std::shared_ptr<Frame>& frame);
@@ -180,6 +186,10 @@ namespace dsm
     void drawOptLight();
     void drawOptErrorDist();
 
+    // for debugging usage
+    const LMCW * get_lmcw() const {return lmcw.get();}
+    std::unique_ptr<CeresPhotometricBA> ceresOptimizer;				// photometric bundle adjustment
+    
     private:
 
     // control states
@@ -243,7 +253,7 @@ namespace dsm
     std::unique_ptr<LMCW> lmcw;
 
     // ceres optimizer
-    std::unique_ptr<CeresPhotometricBA> ceresOptimizer;				// photometric bundle adjustment
+    //std::unique_ptr<CeresPhotometricBA> ceresOptimizer;				// photometric bundle adjustment
 
     // statistics
     std::vector<float> camTrackingTime;

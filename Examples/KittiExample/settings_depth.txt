@@ -2,7 +2,7 @@ debugPrintLog = false
 debugLogTracking = true
 debugLogKeyframes = true
 debugLogPixelDetection = false
-debugLogCandidatesTracking = true
+debugLogCandidatesTracking = false
 debugLogCandidatesOpt = true
 debugLogDistanceMap = false
 debugLogActivePoints = true
@@ -36,7 +36,7 @@ saveOptErrorDist = true
 
 blockUntilMapped = false
 singleThreaded = true
-mappingThreads = 24
+mappingThreads = 6
 
 minimizeMemory = false
 
@@ -86,11 +86,11 @@ minCandidateQuality = 2
 
 doOnlyTemporalOpt = true
 printSummary = true
-showFullReport = false
+showFullReport = true
 minOptimizationGrad = 2
 minBAIterations = 1
 maxBAIterations = 100
-optMaxLevel = 2				
+optMaxLevel = 2			
 
 numActivePoints = 1500
 
@@ -114,9 +114,11 @@ showDepthMap = true
 showDepthMapLvl = 0
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.2
-enableDepthRegression = true
+trackingCosLimit = 0.08
+enableDepthRegression = false
+
 gapCovisibleToTemporal = 10
+
 numPointsPerFrame = 1000
 candidatePointsSampling = 0
 
@@ -128,8 +130,8 @@ covisEll = 2.5
 
 covisUpdateFrames = 1
 
-depthNormalEll = 0.1
-depthDirEll = 0.1
+depthNormalEll = 0.01
+depthDirEll = 0.2
 
 fixFramePoses = true
 

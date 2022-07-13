@@ -71,7 +71,8 @@ namespace dsm
 
     // activates new points from the window
     void activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
-    void activatePointsCvo();
+    void activatePointsCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
+    void activatePointsCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA, std::vector<std::shared_ptr<Frame>> & frames, int start_frame_index)  const ;   
 
     // remove outlier points after PBA
     void removeOutliers() const;
@@ -87,6 +88,7 @@ namespace dsm
 
     // update the covisbility graph after BA
     void updateVoxelMapCovisGraph();
+
 
     // all active keyframes
     inline const std::vector<std::shared_ptr<Frame>>& activeWindow() const { return this->activeKeyframes_; }
@@ -127,7 +129,7 @@ namespace dsm
 
     // selects the temporal window part
     void selectTemporalWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
-    void selectTemporalWindowCvo();
+    void selectTemporalWindowCvo(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
     // selects the covisible window part
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
@@ -137,7 +139,8 @@ namespace dsm
     // voxelMap based covisbility selection
     std::list<std::pair<CovisibilityNode *, CovisibilityNode *>>  selectCovisibleWindowCvo();
     void selectCovisibleWindowCvo2();
- 
+
+
   private:
 		
     // active window

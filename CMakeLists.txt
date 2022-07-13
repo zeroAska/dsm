@@ -78,6 +78,8 @@ set(    CUDA_SEPERABLE_COMPILATION ON)
 
 find_package(UnifiedCvo REQUIRED )
 find_package(PCL REQUIRED)
+find_package(OpenCV REQUIRED)
+
 
 add_subdirectory(dsm)
 if (${PROJECT_NAME}_ENABLE_QT)

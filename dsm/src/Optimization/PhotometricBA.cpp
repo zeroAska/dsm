@@ -87,6 +87,7 @@ namespace dsm
 		this->options.solverOptions.callbacks.push_back(this->iterCallback.get());
 
 		this->stats = std::make_unique<PhotometricBAStats>(settings.optMaxLevel + 1);
+
 	}
 
 	CeresPhotometricBA::~CeresPhotometricBA()
@@ -209,10 +210,17 @@ namespace dsm
 				// add point
 				problem.addParameterBlock(point->pointBlock().get());
 				ordering->AddElementToGroup(point->pointBlock()->getParameters(), PointParameterBlock::Group);
+                                //if (point->geometricType()(0) < 0.4)
+                                ///  problem.setParameterBlockConstant(point->pointBlock().get());
+                                
+
+                                //std::cout<<"point has observation number "<<point->observations().size()<<"\n";
 
 				// add residuals
+                                //std::cout<<"num observatons is "<<point->observations().size()<<"\n";
 				for (const auto& obs : point->observations())
 				{
+                                  
 					problem.addParameterBlock(obs.first->frameBlock().get());
 					ordering->AddElementToGroup(obs.first->frameBlock()->getParameters(), FrameParameterBlock::Group);
 

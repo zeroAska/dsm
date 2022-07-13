@@ -135,5 +135,8 @@ namespace dsm
 		std::vector<PhotometricResidual*> activeObservations;
 
 		std::unordered_set<Frame*> fixedKeyframes;
+	        
+		// depth only optimization?
+		bool depthOnly;
 	};
 }

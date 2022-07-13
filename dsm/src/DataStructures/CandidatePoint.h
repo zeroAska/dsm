@@ -63,8 +63,9 @@ namespace dsm
 
     // GOOD: succesfuly matched
     // BAD: error too big, outlier
-    // OOB: the point went out of image boundary
-    // SKIPPED: estimation good enough or need to skip
+    // OOB: the point at iDepthMin_ or iDepthMax went out of image boundary
+    // BAD_EPILINE: iDepthMax negative or the point at iDepthMax_ out of image boundary
+    // SKIPPED: epipolar line search range too small, iDepthMax-iDepthMin is very small
     // BAD_CONDITIONED: geometry is not appropriate enough to estimate a good inverse depth
     enum ObserveStatus { GOOD = 0, BAD_ERROR = 1, BAD_EPILINE = 2, OOB = 3, SKIPPED = 4, BAD_CONDITIONED = 5 };
 
@@ -88,6 +89,9 @@ namespace dsm
 
     // inverse depth in reference frame coordinates
     float iDepth() const;
+    // for debugging
+    void setiDepth(float idepth)  {iDepth_ = idepth;};
+    void setiDepthSigma(float idepthSigma)  {iDepthSigma_ = idepthSigma;};
 
     // point status flag
     PointStatus status() const;
@@ -119,6 +123,7 @@ namespace dsm
     void addIdepthObservation(float newObsIdepth, float newWeight);
     std::vector<float> & observedIdepths() {return observedIdepths_;}
     float regressIdepth();
+    int observedIdepthSize() const {return observedIdepths_.size();}
     
     
   private:

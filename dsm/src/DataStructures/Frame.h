@@ -179,6 +179,7 @@ namespace dsm
 
 		// get optimization parameter block
 		const std::unique_ptr<FrameParameterBlock>& frameBlock() const;
+                void setFrameBlockPose(const Sophus::SE3f & pose );                
 
                 // access cvo points
                 pcl::PointCloud<cvo::CvoPoint>::Ptr getTrackingPoints() {return trackingPoints_;}
@@ -267,6 +268,35 @@ namespace dsm
 
 
   class FrameStereo : public Frame {
+  public:
+    FrameStereo(int id,
+                double timestamp,
+                unsigned char * image,
+                std::shared_ptr<cvo::ImageStereo> color_img,
+                pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd
+                
+                );
+    
+    
+  private:
+    // image pyramids
+    std::unique_ptr<ImagePyramid<float>> images_right_;
+    
+    // gradient pyramids - skip the border of 1 pixel
+    std::unique_ptr<GradientPyramid<float>> gradients_right_;
+
+    Sophus::SE3f thisToLeftPose_;				// coarse tracking result
+    
+    // candidate points
+    std::vector<std::unique_ptr<CandidatePoint>> candidates_right_;
+    // candidates to become active points
+    
+    
+    // active points
+    std::vector<std::unique_ptr<ActivePoint>> activePoints_right_;					// active points in current window
+    
+    // ceres optimization parameters
+    std::unique_ptr<FrameParameterBlock> frameBlock_right_;
     
   };
 
