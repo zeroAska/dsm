@@ -184,7 +184,7 @@ namespace dsm
                 this->depthDirEll = 0.1;
                 this->gapCovisibleToTemporal = 10;
                 this->numPointsPerFrame = 2000;
-                this->candidatePointsSampling = 0; // 0: canny   1: FAST  2: DSO
+                this->candidatePointsSampling = 0; // 0: voxel 1: canny   2: FAST  3: DSO 
                 this->maxInitIdepth = 0.02f;
                 this->covisMapSize = 2000;
                 this->voxelSize = 0.2;

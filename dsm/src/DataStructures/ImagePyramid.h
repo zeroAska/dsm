@@ -25,12 +25,10 @@
 
 #include <vector>
 #include <mutex>
-
 #include "Memory/BufferPool.h"
 #include "Utils/GlobalCalibration.h"
 #include "Utils/Kernel.h"
 #include "dsm/BuildFlags.h"
-
 namespace dsm
 {
 	template<typename T>

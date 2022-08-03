@@ -143,8 +143,8 @@ namespace dsm
     void waitUntilMappingFinished();
 
     // candidates management
-    void createCandidates(const std::shared_ptr<Frame>& frame);
-    void createCandidates2(const std::shared_ptr<Frame>& frame);
+    void createCandidatesPlanar(const std::shared_ptr<Frame>& frame);
+    void createCandidatesVoxel(const std::shared_ptr<Frame>& frame);
     void trackCandidates(const std::shared_ptr<Frame>& frame);
     void trackCandidatesCvo(const std::shared_ptr<Frame> frame, bool include_curr=false);
     void refineCandidates();

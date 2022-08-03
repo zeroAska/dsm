@@ -22,7 +22,7 @@
 # 
 
 # flag to set see instructions
-option(ENABLE_SSE "Use Intel SSE instrunctions" ON)
+option(ENABLE_SSE "Use Intel SSE instrunctions" OFF)
 
 # create configuration file
 configure_file(	${CMAKE_CURRENT_LIST_DIR}/BuildFlags.h.in 

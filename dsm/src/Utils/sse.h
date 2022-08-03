@@ -34,6 +34,7 @@ namespace dsm
 {
 
 #if defined(ENABLE_SSE)
+#include <pmmintrin.h>
 
 #include <xmmintrin.h>
 #include <emmintrin.h>

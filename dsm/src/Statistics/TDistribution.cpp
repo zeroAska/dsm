@@ -28,7 +28,6 @@
 #include "Utils/Settings.h"
 #include "Utils/UtilFunctions.h"
 #include "Utils/sse.h"
-
 #include "dsm/BuildFlags.h"
 
 #include <iostream>

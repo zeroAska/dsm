@@ -407,6 +407,8 @@ namespace dsm
 
     const auto& allKeyframes = this->lmcw->allKeyframes();
 
+    const auto & settings = Settings::getInstance();
+
     if (allKeyframes.empty())
     {
       // insert frame as first keyframe. Just set the reference frame, not actually tracking
@@ -415,7 +417,10 @@ namespace dsm
       this->lmcw->insertNewKeyframe(frame);
 
       // create candidates
-      this->createCandidates2(frame);
+      if (settings.candidatePointsSampling == 0)
+        this->createCandidatesVoxel(frame);
+      else
+        this->createCandidatesPlanar(frame);
       // this->createCandidates(frame);
       this->lastTrackedFrame = frame;
       
@@ -1320,8 +1325,11 @@ namespace dsm
 
     // Track
     // relative pose to reference keyframe
-    std::cout<<"Cvo trying to align frame "<<lastTrackedFrame->frameID()<<" and frame "<<frame->frameID()<<std::endl;
-    pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd = frame->getTrackingPoints();
+    auto last_tracked_frame_pcd = this->lastTrackedFrame->getTrackingPoints();
+    pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd = frame->getTrackingPoints();    
+    std::cout<<"Cvo trying to align frame "<<lastTrackedFrame->frameID()<<" with "<<last_tracked_frame_pcd->size()
+             <<" and frame "<<frame->frameID()<<" with "<<new_frame_pcd->size()<<" points"
+             <<std::endl;
     Eigen::Matrix4f trackingPoseResult;
     double trackingTime;
     int cvoTrackingResult = cvo_align->align(*(this->lastTrackedFrame->getTrackingPoints()),
@@ -1978,7 +1986,7 @@ namespace dsm
 
   
 
-  void FullSystem::createCandidates(const std::shared_ptr<Frame>& frame)
+  void FullSystem::createCandidatesPlanar(const std::shared_ptr<Frame>& frame)
   {
     const auto& calib = GlobalCalibration::getInstance();
     const auto & intrinsic = calib.matrix3f(0);
@@ -2089,7 +2097,7 @@ namespace dsm
     std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }
 
- void FullSystem::createCandidates2(const std::shared_ptr<Frame>& frame)
+ void FullSystem::createCandidatesVoxel(const std::shared_ptr<Frame>& frame)
   {
     const auto& calib = GlobalCalibration::getInstance();
     const auto & intrinsic = calib.matrix3f(0);
@@ -3149,7 +3157,10 @@ namespace dsm
     Utils::Time t1 = std::chrono::steady_clock::now();
 
     // initialize candidates
-    this->createCandidates2(frame);    
+    if (settings.candidatePointsSampling == 0)
+      this->createCandidatesVoxel(frame);
+    else
+      this->createCandidatesPlanar(frame);
     // this->trackCandidatesCvo(frame, true);
     this->trackCandidatesCvo(frame);
     

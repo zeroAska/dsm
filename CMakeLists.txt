@@ -36,8 +36,8 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
 
-option(${PROJECT_NAME}_ENABLE_QT "ENABLE QT" OFF)
-
+option(${PROJECT_NAME}_ENABLE_QT "ENABLE QT" ON)
+message("enable qt is ${${PROJECT_NAME}_ENABLE_QT}")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -50,10 +50,17 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-  #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SSE_FLAGS} -O2 -pthread -march=native")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SSE_FLAGS} -O2 -pthread -march=native")
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+endif()
+
+remove_definitions(${ENABLE_SSE})
+message("SSE flags are: ${SSE_FLAGS}")
+if (${ENABLE_SSE})
+	message("ENABLE SSE defined")
 endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
