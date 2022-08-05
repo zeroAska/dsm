@@ -57,7 +57,7 @@ namespace dsm
     friend class ActivePoint;
 
     // control flag
-    enum PointStatus { UNINITIALIZED = 0, TRACED = 1, OPTIMIZED = 2, OUTLIER = 3 };
+    enum PointStatus { UNINITIALIZED, INITIALIZED, TRACED, OPTIMIZED, OUTLIER };
     //
     enum GeometryType { EDGE = 0, SURFACE = 1};
 

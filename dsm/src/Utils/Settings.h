@@ -184,7 +184,7 @@ namespace dsm
 
 		// Outlier removal
 		int minNumKFToConsiderNew;				// minimum number of keyframes to consider an active point as a new (temporal)
-		int minNumGoodObservations;				// minimum number of observation to consider an active point as inlier
+		int minNumGoodObservations;				// minimum number of observation to consider an active point as inlier or minimum number of observation to mark a candidate status to optimized from traced
 
 		// Keyframe Selection criteria
 		float newKFDistWeight;						// weight of the camera translation relative to scene depth (parallax)
@@ -215,7 +215,7 @@ namespace dsm
 
           int covisMapSize;
           float voxelSize;
-          float inputEdgeDownsampleVoxelSize;
+          float inputEdgeDownsampleVoxelSize; // candidate point downsaple
           float inputSurfaceDownsampleVoxelSize;
           float covisEll;
 

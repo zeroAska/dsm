@@ -48,6 +48,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
 #include "pcl/io/pcd_io.h"
+#include <opencv2/imgproc.hpp>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <Eigen/Sparse>
@@ -2395,20 +2396,20 @@ namespace dsm
 
       if (settings.enableDepthRegression ) {
 
-        //for (int j=0; j < association_mat.outerSize(); ++j) {
-      
         for (int j = 0; j < association_mat.source_inliers.size(); j++) {
           int kfPtIdx = association_mat.source_inliers[j];
-          //kf->candidatesHighQuaity()[kfPtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
-          kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
           for (Eigen::SparseMatrix<float, Eigen::RowMajor>::InnerIterator it(association_mat.pairs,kfPtIdx); it; ++it) {
             float weight = it.value();
             int idx_target = it.col();   // col index (here it is equal to k)
             Eigen::Vector3f XYZ = candidates_curr->at(idx_target); //frame->candidates()[idx_target]->xyz();
 
             float obsIdepth = 1/((K * (kfToFrame.inverse() * XYZ))(2));
-            //std::cout<<"matching "<<kfPtIdx<<" with "<<idx_target<<" with weight "<<weight<<" and idepth in kf "<<obsIdepth<<std::endl;          
             kf->candidates()[kfPtIdx]->addIdepthObservation(obsIdepth,weight);
+            if  (kf->candidates()[kfPtIdx]->observedIdepths().size() > settings.minNumGoodObservations )  {
+              kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
+            } else {
+              kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::TRACED);
+            }
           }
           counter++;
         }
@@ -2433,12 +2434,6 @@ namespace dsm
           //  counter++;
         }
         std::cout<<"Frame "<<frame->frameID()<<" has "<<counter<<" traced points\n";
-      } else {
-        
-      }
-
-      if (settings.debugCandidates) {
-        // std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n";
       }
       /*
         for (const auto& cand : candidates)
@@ -3535,6 +3530,7 @@ namespace dsm
 
       // active points
       // use all active points
+      int visibleCounter = 0;
       const auto& activePoints = activeKeyframes[i]->activePoints();
       for (const auto& point : activePoints)
       {
@@ -3557,12 +3553,17 @@ namespace dsm
 					
           // draw in last keyframe
           cv::rectangle(images[numActiveKeyframes - 1], cv::Rect((int)pt2d[0] - rectPad, (int)pt2d[1] - rectPad, rectSize, rectSize), cv::Scalar(rgb[2], rgb[1], rgb[0]), 2);
+          visibleCounter++;
         }
         else
         {
           cv::rectangle(images[i], cv::Rect((int)u - rectPad, (int)v - rectPad, rectSize, rectSize), cv::Scalar(0, 0, 0), 2);
         }		
       }
+      std::string imageVisibilityLabel = "Num of visible pts is "+ std::to_string(visibleCounter);
+      
+      cv::putText(images[i], imageVisibilityLabel, cv::Point(10, images[i].rows - 40)
+                  , cv::FONT_HERSHEY_DUPLEX,1.0, CV_RGB(118, 185, 0),2);
     }
 
     // show images

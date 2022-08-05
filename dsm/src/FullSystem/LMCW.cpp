@@ -337,6 +337,7 @@ namespace dsm
     int numFlaggedToDrop = 0;
 
     // prepare points for new active keyframes
+    std::vector<int> numVisiblePoints(this->activeKeyframes_.size()-1);
     for (const std::shared_ptr<Frame>& kf : this->activeKeyframes_)
     {
       if (kf == lastKeyframe) continue;
@@ -375,24 +376,38 @@ namespace dsm
         this->numActivePoints++;
         numVisible++;
       }
+      numVisiblePoints.push_back(numVisible);
       std::cout<<"Frame "<<kf->frameID()<<" has "<<numVisible<<" active points that are visible.\n";
 
       // keep the last numAlwaysKeepKeyframes keyframes + the new one
-      if ((kf->keyframeID() <= lastKeyframeID - settings.numAlwaysKeepKeyframes) &&
-          (this->activeKeyframes_.size() - numFlaggedToDrop) >= settings.maxTemporalKeyframes)
-      {
+      if ((kf->keyframeID() <= lastKeyframeID - settings.numAlwaysKeepKeyframes) // too old
+          && (this->activeKeyframes_.size() - numFlaggedToDrop) >= settings.maxTemporalKeyframes) {
         const float numVisibleFloat = (float)numVisible;
         const float ratio = numVisibleFloat / kf->activePoints().size();
 
         // drop keyframes with low covisible points
-        if (ratio < settings.minPointCovisible || fabs(light.alpha()) > settings.maxLightCovisible)
-        {
+        //if (          //|| fabs(light.alpha()) > settings.maxLightCovisible // not considered in cvo framework)
+        if (ratio < settings.minPointCovisible) {
           kf->setFlaggedToDrop(true);
           numFlaggedToDrop++;
+          std::cout<<"marked frame "<<kf->frameID()<<" to be dropped because of number of visible activePoints "<<numVisibleFloat<< " is smalller than threshold "<<kf->activePoints().size() * settings.minPointCovisible<<"\n";                
         }
       }
     }
-
+    /*
+    std::vector<int> kfInds(this->activeKeyframes_.size());
+    for (int i = 0; i < kfInds.size(); i++) kfInds[i] = i;
+    std::sort(kfInds.begin(), kfInds.end(), [&](int i,int j){return numVisiblePoints[i]<numVisiblePoints[j];});
+    if ((this->activeKeyframes_.size() - numFlaggedToDrop) > settings.maxTemporalKeyframes) {
+      if (this->activeKeyframes_[kfInds[0]]->flaggedToDrop () == false) {
+          this->activeKeyframes_[kfInds[0]]->setFlaggedToDrop(true);
+          numFlaggedToDrop++;
+          // std::cout<<"marked frame "<<this->activeKeyframes_[kfInds[0]]->frameID()<<" to be dropped because of number of visible activePoints "<<numVisiblePoints[this->activeKeyframes_[kfInds[0]]]<< " is smalller than threshold "<<this->activeKeyframes_[kfInds[0]]->activePoints().size() * settings.minPointCovisible<<"\n";                
+        
+      }
+      }*/
+      
+      
     // if still a lot of keyframes, drop one based on distance
     if ((this->activeKeyframes_.size() - numFlaggedToDrop) > settings.maxTemporalKeyframes)
     {
@@ -404,9 +419,9 @@ namespace dsm
       const int maxKeyframeID = (int)this->activeKeyframes_.size() - settings.maxTemporalKeyframes;
       for (int i = 0; i < maxKeyframeID; ++i)
       {
-        this->activeKeyframes_[i]->setFlaggedToDrop(true);
-        numFlaggedToDrop++;
-        /*
+        //this->activeKeyframes_[i]->setFlaggedToDrop(true);
+        //numFlaggedToDrop++;
+        
         const Sophus::SE3f pose_i = this->activeKeyframes_[i]->camToWorld().inverse();
 
         // distance to other keyframes
@@ -429,14 +444,15 @@ namespace dsm
           maxScore = score;
           idx = i;
         }
-        */
-      }
 
-      //if (idx >= 0)
-      // {
-      //  this->activeKeyframes_[idx]->setFlaggedToDrop(true);
-      //  numFlaggedToDrop++;
-      //}
+      }
+      std::cout<<"marked frame "<<this->activeKeyframes_[idx]->frameID()<<" to be dropped because of distance to the latest keyframe\n ";      
+
+      if (idx >= 0)
+      {
+        this->activeKeyframes_[idx]->setFlaggedToDrop(true);
+        numFlaggedToDrop++;
+      }
     }
 
     if (settings.debugPrintLog && settings.debugLogActivePoints)
@@ -1216,10 +1232,10 @@ namespace dsm
 
     for (int i = this->temporalWindowIndex; i < numActiveKeyframes - 1; ++i)
     {
-      std::cout<<"activePoint: new iteration "<<i<<std::endl<<std::flush;
-      const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
-      //std::shared_ptr<Frame> owner = this->activeKeyframes_[i];
 
+      const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
+      std::cout<<"activePoint: new iteration "<<i<<std::endl<<std::flush;
+      
       // relative pose
       const Sophus::SE3f ownerToLast = worldToLast * owner->camToWorld();	
       const Eigen::Matrix3f KRKinv = K * ownerToLast.rotationMatrix() * Kinv;
@@ -1233,6 +1249,7 @@ namespace dsm
         CandidatePoint::PointStatus status = cand->status();
 
         // check status
+        // only activate candidates whose depth are optimized via cvo regression or optimize()
         if (status == CandidatePoint::OPTIMIZED )
         {
           // project into new keyframe
@@ -1325,10 +1342,6 @@ namespace dsm
   }
   void LMCW::activatePointsCvo()
   {
-    // TL: log points
-    // std::ofstream file;
-    // file.open("/home/tannerliu/dsm/points.txt", std::ios_base::app);
-    
     const auto& settings = Settings::getInstance();
     const auto& calib = GlobalCalibration::getInstance();
 
@@ -1342,7 +1355,7 @@ namespace dsm
 
     // activate the old keyframes' (excluding the lastest one) candidates
     // whose status is 'OPTIMIZED'
-    // Q: why excluding the latest?
+    // Q: why excluding the latest? A: because the latest frame does not have OPTIMIZED status points yet
     int numPointsCreated = 0;
     auto lastKeyframe = this->activeKeyframes_.back();
     const Sophus::SE3f worldToLast = lastKeyframe->camToWorld().inverse();
@@ -1351,7 +1364,6 @@ namespace dsm
     {
       std::cout<<"activePoint: frame ID "<<activeKeyframes_[i]->frameID()<<std::endl<<std::flush;
       const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
-      //std::shared_ptr<Frame> owner = this->activeKeyframes_[i];
 
       // relative pose
       const Sophus::SE3f ownerToLast = worldToLast * owner->camToWorld();	

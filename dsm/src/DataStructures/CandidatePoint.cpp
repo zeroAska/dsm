@@ -168,7 +168,8 @@ namespace dsm
       semantics_ = Eigen::Map<const Eigen::VectorXf>((rawImage.semantic_image().data()+ (v * w + u)*rawImage.num_classes()), rawImage.num_classes() );
     }
     if (std::isnan(invDepth) == false) {
-      status_ = PointStatus::TRACED;
+      status_ = PointStatus::INITIALIZED;
+
       // initialize geometric parameters to invalid values
       this->iDepth_ = invDepth; //0.f;
       this->iDepthSigma_ = settings.iDepthUncertainty; //std::numeric_limits<float>::max();
@@ -358,12 +359,6 @@ namespace dsm
       if (epiLineStatus == ObserveStatus::BAD_EPILINE)
       {
         this->status_ = PointStatus::OUTLIER;
-
-        if (this->status_ == PointStatus::UNINITIALIZED)
-        {
-          // if this happens, check iDepthMax value when UNINITIALIZED
-          std::cout << "Bad epipolar geometry during initialization... This should not happen!\n";
-        }
       }
       return this->lastObservation_ = epiLineStatus;
     }
@@ -528,6 +523,7 @@ namespace dsm
 
       // store always the worst quality
       if (this->status_ == PointStatus::UNINITIALIZED ||
+          this->status_ == PointStatus::INITIALIZED ||
           this->status_ == PointStatus::TRACED ||
           newQuality < this->matchQuality_)
       {
@@ -535,7 +531,7 @@ namespace dsm
       }
     }
 
-    //this->status_ = PointStatus::TRACED;
+    this->status_ = PointStatus::TRACED;
     return this->lastObservation_ = ObserveStatus::GOOD;
   }
 

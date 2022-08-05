@@ -7,7 +7,7 @@ debugLogCandidatesOpt = true
 debugLogDistanceMap = false
 debugLogActivePoints = true
 
-debugCandidates =  false
+debugCandidates = true
 
 debugShowTrackResult = false
 debugShowTrackError = false
@@ -15,28 +15,28 @@ debugShowTrackWeights = false
 debugShowTrackLight = false
 debugShowTrackDistribution = false
 
-debugShowPointDetection = false
+debugShowPointDetection = true
 
-debugShowDistanceTransformBefore = false
-debugShowDistanceTransformAfter = false
+debugShowDistanceTransformBefore = true
+debugShowDistanceTransformAfter = true
 
-debugShowOptKeyframes = false
+debugShowOptKeyframes = true
 
-debugShowOptError = false
-debugShowOptWeight = false
-debugShowOptLight = false
-debugShowOptErrorDist = false
-debugShowOptErrorDistLast = false
+debugShowOptError = true
+debugShowOptWeight = true
+debugShowOptLight = true
+debugShowOptErrorDist = true
+debugShowOptErrorDistLast = true
 
 depthMapsDir = ./DepthMaps
-saveDepthMaps = false
+saveDepthMaps = true
 
 optErrorDistDir = ./ErrorDistribution
-saveOptErrorDist = false
+saveOptErrorDist = true
 
 blockUntilMapped = false
 singleThreaded = true
-mappingThreads = 24
+mappingThreads = 6
 
 minimizeMemory = false
 
@@ -96,7 +96,7 @@ numActivePoints = 2000
 
 maxTemporalKeyframes = 7
 maxCovisibleKeyframes = 3
-numAlwaysKeepKeyframes = 3
+numAlwaysKeepKeyframes = 2
 
 minPointCovisible = 0.05
 maxLightCovisible = 0.7
@@ -114,17 +114,19 @@ showDepthMap = true
 showDepthMapLvl = 0
 
 
-
 iDepthUncertainty = 0.1
 trackingCosLimit = 0.85
-enableDepthRegression = false
+enableDepthRegression = true
+depthNormalEll = 0.0001
+depthDirEll = 0.01
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000
-voxelSize = 0.05
+voxelSize = 0.01
 candidatePointsSampling = 0
-inputSurfaceDownsampleVoxelSize = 0.4
-inputEdgeDownsampleVoxelSize = 0.05   
+inputSurfaceDownsampleVoxelSize = 0.02
+inputEdgeDownsampleVoxelSize = 0.01 
 covisEll = 2.5
 
 covisUpdateFrames = 1
+candidatePointsSampling = 0
