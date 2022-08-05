@@ -63,7 +63,7 @@ weightConstant = 2500
 trackingMaxLevel = 3
 
 pointDetectionLevels = 2
-numCandidates = 2500
+numCandidates = 10000
 numBlocksPerDimension = 20
 minGradAdd = 7
 
@@ -92,7 +92,7 @@ minBAIterations = 1
 maxBAIterations = 100
 optMaxLevel = 2				
 
-numActivePoints = 1500
+numActivePoints = 2000
 
 maxTemporalKeyframes = 5
 maxCovisibleKeyframes = 3
@@ -113,19 +113,21 @@ minNumTrackedFramesToCreateKF = 1
 showDepthMap = true
 showDepthMapLvl = 0
 
-iDepthUncertainty = 0.1
-trackingCosLimit = 0.2
-enableDepthRegression = true
 
+
+iDepthUncertainty = 0.1
+trackingCosLimit = 0.85
+enableDepthRegression = true
+depthNormalEll = 0.0001
+depthDirEll = 0.1
 gapCovisibleToTemporal = 10
 
-numPointsPerFrame = 1000
-candidatePointsSampling = 0
 covisMapSize = 3000
-voxelSize = 0.2
+voxelSize = 0.05
 candidatePointsSampling = 0
-inputSurfaceDownsampleVoxelSize = 2.5
-inputEdgeDownsampleVoxelSize = 0.5
+inputSurfaceDownsampleVoxelSize = 0.05
+inputEdgeDownsampleVoxelSize = 0.02 
 covisEll = 2.5
-depthNormalEll = 0.01
-depthDirEll = 0.2
+
+covisUpdateFrames = 1
+candidatePointsSampling = 0
