@@ -171,6 +171,7 @@ namespace dsm {
 
     };
 
+  /*
     template <>
     VoxelCoord VoxelMap<ActivePoint>::point_to_voxel_center(const ActivePoint* pt) const;
 
@@ -182,6 +183,6 @@ namespace dsm {
 
     template <>
     VoxelCoord VoxelMap<SimplePoint>::point_to_voxel_center(const SimplePoint* pt) const;
-
+  */
 
 }

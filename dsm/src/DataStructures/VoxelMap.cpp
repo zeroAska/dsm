@@ -7,12 +7,6 @@
 // #include <pcl/io/pcd_io.h>
 
 namespace dsm {
-  template class Voxel<ActivePoint>;
-  template class VoxelMap<ActivePoint>;
-
-  template class Voxel<SimplePoint>;
-  template class VoxelMap<SimplePoint>;
-
   template <typename PointType>
   VoxelMap<PointType>::VoxelMap(float voxelSize) : voxelSize_(voxelSize) {
     // std::cout << "Assigned voxelSize_" << voxelSize << std::endl;
@@ -387,4 +381,12 @@ namespace dsm {
     pcl::io::savePCDFile(filename, pc);
     std::cout << "Wrote voxel centers to " << filename << std::endl;
   }
+
+  template class Voxel<ActivePoint>;
+  template class VoxelMap<ActivePoint>;
+
+  template class Voxel<SimplePoint>;
+  template class VoxelMap<SimplePoint>;
+
+  
 }
