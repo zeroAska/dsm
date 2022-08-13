@@ -124,7 +124,7 @@ gapCovisibleToTemporal = 10
 covisMapSize = 3000
 voxelSize = 0.02
 candidatePointsSampling = 0
-inputSurfaceDownsampleVoxelSize = 0.04
+inputSurfaceDownsampleVoxelSize = 0.03
 inputEdgeDownsampleVoxelSize = 0.01 
 covisEll = 2.5
 
