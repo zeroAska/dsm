@@ -2377,16 +2377,12 @@ namespace dsm
         
       cvo::Association association_mat;
       Eigen::Matrix3f kernel;
-      if (settings.enableDepthRegression) {
+      //if (settings.enableDepthRegression) {
         kernel << settings.depthNormalEll, 0, 0,
           0, settings.depthNormalEll, 0,
           0,  0,   settings.depthDirEll;
-      } else {
-        kernel << 1, 0, 0,
-          0, 1, 0,
-          0, 0, 1;
-
-      }
+        //} else {
+        //}
       cvo_align->compute_association_gpu(candidates_cvo,
                                          *candidates_curr,
                                          kfToFrameEigen,
@@ -2903,8 +2899,6 @@ namespace dsm
     //cvo::CvoPointCloud covisMapCvo;
     //activePointsToCvoPointCloud(covisMap, covisMapCvo);
     int temporalStartIndex = 0;
-    bool isUsingCovis = covisMapCvo.num_points() > settings.covisMinPoints &&  !settings.doOnlyTemporalOpt;
-    std::cout<<"covisMapCvo.num_points is "<<covisMapCvo.num_points()<<", setting covis min points is "<<settings.covisMinPoints<<"\n";
     
     if (activeKeyframes.size() < 4) return;
     std::vector<cvo::CvoPointCloud> cvo_pcs;
@@ -2931,11 +2925,16 @@ namespace dsm
       
       const_flags_in_BA[i] = false;
       //if (!isUsingCovis && i == 0)
-      if ( i == 0)
+      if ( i < settings.cvoIRLSConstFrames)
         const_flags_in_BA[i] = true;
     }
     
     //if (temporalStartIndex == 0)
+    std::cout<<"const flags are\n";
+    for (int j = 0; j < const_flags_in_BA.size(); j++){
+      std::cout<<const_flags_in_BA[j]<<" ";
+    }
+    std::cout<<std::endl;
 
 
 
@@ -2973,6 +2972,12 @@ namespace dsm
     }
 
 
+    int minNumPoints = std::accumulate(cvo_frames.begin(), cvo_frames.end(), cvo_frames[0]->points->size(),
+                                       [&](size_t minPointsAccum, auto pt2) {
+                                         return (minPointsAccum < pt2->points->size() )? minPointsAccum : pt2->points->size();
+                                       });
+    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints &&  !settings.doOnlyTemporalOpt;
+    std::cout<<"covisMapCvo.num_points is "<<covisMapCvo.num_points()<<", minNumPoints is "<<minNumPoints<<"\n";
     if (isUsingCovis ) {
     //if (false) {
       std::cout<<"Now adding the covisMap into the end of the sliding window. covisMap has initially "<<covisMapCvo.num_points()<<std::endl;
@@ -3060,6 +3065,10 @@ namespace dsm
   
   void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                                  const std::list<std::pair<CovisibilityNode *, CovisibilityNode*>> & edgesCovisibleToTemporal) {
+
+    const auto& settings = Settings::getInstance();
+    
+    
     if (activeKeyframes.size() < 4) return;
     std::vector<cvo::CvoPointCloud> cvo_pcs;
     std::vector<cvo::CvoFrame::Ptr> cvo_frames;
@@ -3076,11 +3085,16 @@ namespace dsm
       cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data()));
       cvo_frames.push_back(cvo_ptr);
 
-      const_flags_in_BA[i] = (i <= temporalStartIndex);
+      const_flags_in_BA[i] = (i <= temporalStartIndex + settings.cvoIRLSConstFrames -1);
+
     }
     //if (temporalStartIndex == 0)
 
-
+    std::cout<<"const flags are\n";
+    for (int j = 0; j < const_flags_in_BA.size(); j++){
+      std::cout<<const_flags_in_BA[j]<<" ";
+    }
+    std::cout<<std::endl;
 
     // read edges to construct graph
     // TODO: edges will be constructed from the covisibility graph later

@@ -84,7 +84,7 @@ minDistToActivate = 5
 maxCandidateUncertainty = 2
 minCandidateQuality = 2
 
-doOnlyTemporalOpt = true
+doOnlyTemporalOpt = false
 printSummary = true
 showFullReport = false
 minOptimizationGrad = 2
@@ -94,7 +94,7 @@ optMaxLevel = 2
 
 numActivePoints = 2000
 
-maxTemporalKeyframes = 5
+maxTemporalKeyframes = 7
 maxCovisibleKeyframes = 3
 numAlwaysKeepKeyframes = 2
 
@@ -116,17 +116,18 @@ showDepthMapLvl = 0
 
 iDepthUncertainty = 0.1
 trackingCosLimit = 0.87
-enableDepthRegression = true
-depthNormalEll = 0.0001
-depthDirEll = 0.01
+enableDepthRegression = false
+depthNormalEll = 0.000025
+depthDirEll = 0.0004
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000
 voxelSize = 0.02
 candidatePointsSampling = 0
-inputSurfaceDownsampleVoxelSize = 0.03
-inputEdgeDownsampleVoxelSize = 0.01 
-covisEll = 2.5
+inputSurfaceDownsampleVoxelSize = 0.2
+inputEdgeDownsampleVoxelSize = 0.02
+covisEll = 0.1
+cvoIRLSConstFrames = 3
 
 covisUpdateFrames = 1
 

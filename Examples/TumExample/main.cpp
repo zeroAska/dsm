@@ -243,8 +243,9 @@ namespace dsm
         
       }
 
-
-      sleep(2);
+      std::cout<<"Press Enter to Continue...\n";
+      std::cin.ignore();
+      //sleep(2);
       exit(0);
     }
 

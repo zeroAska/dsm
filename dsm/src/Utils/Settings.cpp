@@ -194,6 +194,7 @@ namespace dsm
 
                 this->covisUpdateFrames = 7;
                 this->covisMinPoints = 1000;
+                this->cvoIRLSConstFrames = 1;                
                 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -410,6 +411,12 @@ namespace dsm
                   std::cout<<"covisMinPoints is "<<this->covisMinPoints<<std::endl;
                   return;
                 }
+
+                if (this->checkParameter("cvoirlsconstframes", name, value, this->cvoIRLSConstFrames)) {
+                  std::cout<<"cvoIRLSConstFrames is "<<this->cvoIRLSConstFrames<<std::endl;
+                  return;
+                }
+                
                 
 
 		// not found

@@ -222,6 +222,8 @@ namespace dsm
           int covisUpdateFrames;
           int covisMinPoints;
 
+          int cvoIRLSConstFrames;
+
 		// Secure Division
 		static const float DIVISION_EPS;
 
