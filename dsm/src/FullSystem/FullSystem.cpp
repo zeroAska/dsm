@@ -2390,7 +2390,7 @@ namespace dsm
                                          association_mat);
       int counter = 0;
 
-      if (settings.enableDepthRegression ) {
+      //if (settings.enableDepthRegression ) {
 
         for (int j = 0; j < association_mat.source_inliers.size(); j++) {
           int kfPtIdx = association_mat.source_inliers[j];
@@ -2401,7 +2401,7 @@ namespace dsm
 
             float obsIdepth = 1/((K * (kfToFrame.inverse() * XYZ))(2));
             kf->candidates()[kfPtIdx]->addIdepthObservation(obsIdepth,weight);
-            if  (kf->candidates()[kfPtIdx]->observedIdepths().size() > settings.minNumGoodObservations )  {
+            if  (kf->candidates()[kfPtIdx]->observedIdepths().size() >= settings.minNumGoodObservations )  {
               kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);
             } else {
               kf->candidates()[kfPtIdx]->setStatus( CandidatePoint::PointStatus::TRACED);
@@ -2410,12 +2410,12 @@ namespace dsm
           counter++;
         }
         
-      } else {
-        for (int j = 0; j < candidates.size(); j++) {
-          kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
-          counter++;
-        }
-      }
+        //} else {
+        // for (int j = 0; j < candidates.size(); j++) {
+        //  kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
+        //  counter++;
+        //}
+        //}
       std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n"<<std::flush;
 
       if (include_curr) {
@@ -2971,6 +2971,12 @@ namespace dsm
       }
     }
 
+    dumpFramesToPcd (std::to_string(activeKeyframes[0]->frameID())+"_graph.txt",
+                     activeKeyframes,
+                     cvo_frames,
+                     edges_inds);
+    write_transformed_pc(cvo_frames, "before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
+
 
     int minNumPoints = std::accumulate(cvo_frames.begin(), cvo_frames.end(), cvo_frames[0]->points->size(),
                                        [&](size_t minPointsAccum, auto pt2) {
@@ -3007,11 +3013,6 @@ namespace dsm
       const_flags_in_BA.push_back(true);
     }
 
-    dumpFramesToPcd (std::to_string(activeKeyframes[0]->frameID())+"_graph.txt",
-                     activeKeyframes,
-                     cvo_frames,
-                     edges_inds);
-    write_transformed_pc(cvo_frames, "before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
     if(isUsingCovis && covisMapCvo.num_points() ) 
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
     

@@ -94,9 +94,9 @@ optMaxLevel = 2
 
 numActivePoints = 2000
 
-maxTemporalKeyframes = 7
+maxTemporalKeyframes = 4
 maxCovisibleKeyframes = 3
-numAlwaysKeepKeyframes = 2
+numAlwaysKeepKeyframes = 1
 
 minPointCovisible = 0.2
 maxLightCovisible = 0.7
@@ -115,19 +115,20 @@ showDepthMapLvl = 0
 
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.87
+trackingCosLimit = 0.82
 enableDepthRegression = false
-depthNormalEll = 0.000025
-depthDirEll = 0.0004
+depthNormalEll = 0.001
+depthDirEll = 0.0025
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000
-voxelSize = 0.02
+voxelSize = 0.05
 candidatePointsSampling = 0
-inputSurfaceDownsampleVoxelSize = 0.2
-inputEdgeDownsampleVoxelSize = 0.02
+inputSurfaceDownsampleVoxelSize = 0.1
+inputEdgeDownsampleVoxelSize = 0.01
 covisEll = 0.1
-cvoIRLSConstFrames = 3
+
+cvoIRLSConstFrames = 1
 
 covisUpdateFrames = 1
 
