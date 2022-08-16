@@ -221,7 +221,7 @@ namespace dsm
 
           int covisUpdateFrames;
           int covisMinPoints;
-
+          //int covisMapSampleMethod; // 0: random; 1: Gaussian
           int cvoIRLSConstFrames;
 
 		// Secure Division
