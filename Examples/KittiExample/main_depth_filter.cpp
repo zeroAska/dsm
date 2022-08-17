@@ -220,7 +220,7 @@ void static_depth_stereo(std::vector<int> frame_inds,
 
 
 
-    DSM->createCandidatesWithInitDepth(trackingNewFrame);
+    DSM->createCandidatesVoxel(trackingNewFrame);
     //DSM->createCandidates(trackingNewFrame);
 
     if (i)  {

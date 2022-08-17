@@ -116,7 +116,7 @@ showDepthMapLvl = 0
 
 iDepthUncertainty = 0.1
 trackingCosLimit = 0.82
-enableDepthRegression = true
+enableDepthRegression = false
 depthNormalEll = 0.001
 depthDirEll = 0.01
 gapCovisibleToTemporal = 10
@@ -128,7 +128,7 @@ inputSurfaceDownsampleVoxelSize = 0.15
 inputEdgeDownsampleVoxelSize = 0.02
 covisEll = 0.1
 
-cvoIRLSConstFrames = 1
+cvoIRLSConstFrames = 0
 
 covisUpdateFrames = 1
 

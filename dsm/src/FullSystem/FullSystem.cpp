@@ -2069,7 +2069,7 @@ namespace dsm
           std::unique_ptr<CandidatePoint> new_candidate(new CandidatePoint((float)col, (float)row, selected_inds_map[idx] , frame, idepth, CandidatePoint::GeometryType::EDGE));
           new_candidate->setStatus(CandidatePoint::PointStatus::TRACED);
 
-          new_candidate->setiDepthSigma(0.1);
+          new_candidate->setiDepthSigma(settings.iDepthUncertainty);
           
           //candidates.emplace_back(std::move(new_candidate));
           //if (rand() % 100 == 0)
@@ -2103,11 +2103,7 @@ namespace dsm
     std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << "us" << std::endl;
   }
 
-<<<<<<< HEAD
  void FullSystem::createCandidatesVoxel(const std::shared_ptr<Frame>& frame)
-=======
- void FullSystem::createCandidatesWithInitDepth(const std::shared_ptr<Frame>& frame)
->>>>>>> 24cb86b (add code for depth test)
   {
     const auto& calib = GlobalCalibration::getInstance();
     const auto & intrinsic = calib.matrix3f(0);
@@ -2407,10 +2403,6 @@ namespace dsm
 
         for (int j = 0; j < association_mat.source_inliers.size(); j++) {
           int kfPtIdx = association_mat.source_inliers[j];
-<<<<<<< HEAD
-=======
-          //kf->candidatesHighQuaity()[kfPtIdx] = CandidatePoint::PointStatus::OPTIMIZED;
->>>>>>> 24cb86b (add code for depth test)
           for (Eigen::SparseMatrix<float, Eigen::RowMajor>::InnerIterator it(association_mat.pairs,kfPtIdx); it; ++it) {
             float weight = it.value();
             int idx_target = it.col();   // col index (here it is equal to k)
@@ -2430,22 +2422,14 @@ namespace dsm
           counter++;
         }
         
-<<<<<<< HEAD
+
         //} else {
         // for (int j = 0; j < candidates.size(); j++) {
         //  kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
         //  counter++;
         //}
         //}
-=======
-      } else {
-        for (int j = 0; j < candidates.size(); j++) {
-          if (updateState)
-            kf->candidates()[j]->setStatus( CandidatePoint::PointStatus::OPTIMIZED);                    
-          counter++;
-        }
-      }
->>>>>>> 24cb86b (add code for depth test)
+
       std::cout<<"Frame "<<kf->frameID()<<" has "<<counter<<" traced points\n"<<std::flush;
 
       if (include_curr) {
@@ -2989,22 +2973,8 @@ namespace dsm
       cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrameGPU(&cvo_pcs[i], kf_to_world.data()));
       cvo_frames.push_back(cvo_ptr);
 
-      //const_flags_in_BA[i] = (i <= temporalStartIndex);
-      
-      const_flags_in_BA[i] = false;
-      //if (!isUsingCovis && i == 0)
-      if ( i < settings.cvoIRLSConstFrames)
-        const_flags_in_BA[i] = true;
     }
     
-    //if (temporalStartIndex == 0)
-    std::cout<<"const flags are\n";
-    for (int j = 0; j < const_flags_in_BA.size(); j++){
-      std::cout<<const_flags_in_BA[j]<<" ";
-    }
-    std::cout<<std::endl;
-
-
 
     // read edges to construct graph
     // TODO: edges will be constructed from the covisibility graph later
@@ -3052,8 +3022,17 @@ namespace dsm
                                        });
     bool isUsingCovis = covisMapCvo.num_points() > minNumPoints &&  !settings.doOnlyTemporalOpt;
     std::cout<<"covisMapCvo.num_points is "<<covisMapCvo.num_points()<<", minNumPoints is "<<minNumPoints<<"\n";
+    std::cout<<"const flags are\n";
+    for (int j = 0; j < const_flags_in_BA.size(); j++){
+      if (isUsingCovis)
+        const_flags_in_BA[j] = false;
+      else
+        const_flags_in_BA[j] = ( j >= temporalStartIndex + settings.cvoIRLSConstFrames ) ? false : true;
+      std::cout<<const_flags_in_BA[j]<<" ";
+    }
+    std::cout<<std::endl;
+    
     if (isUsingCovis ) {
-    //if (false) {
       std::cout<<"Now adding the covisMap into the end of the sliding window. covisMap has initially "<<covisMapCvo.num_points()<<std::endl;
       auto kf = activeKeyframes[0];
       Eigen::Matrix<double, 3,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>().block<3,4>(0,0);
@@ -3061,7 +3040,6 @@ namespace dsm
 
       for (int i = 0; i < cvo_frames.size(); i++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_ptr, cvo_frames[i]);
-        //edges.push_back(p);
         
         const cvo::CvoParams & params = cvo_align->get_params();
         const cvo::CvoParams * params_gpu = cvo_align->get_params_gpu();
@@ -3237,17 +3215,13 @@ namespace dsm
     Utils::Time t1 = std::chrono::steady_clock::now();
 
     // initialize candidates
-<<<<<<< HEAD
     if (settings.candidatePointsSampling == 0)
       this->createCandidatesVoxel(frame);
     else
       this->createCandidatesPlanar(frame);
-=======
-    this->createCandidatesWithInitDepth(frame);    
->>>>>>> 24cb86b (add code for depth test)
-    // this->trackCandidatesCvo(frame, true);
+
     this->trackCandidatesCvo(frame, false);
-    this->trackCandidates(frame, this->lmcw->activeWindow());
+    //this->trackCandidates(frame, this->lmcw->activeWindow());
     
     
     // insert new keyframe
@@ -3268,8 +3242,8 @@ namespace dsm
 
     // refine candidates from the temporal window
     Utils::Time t_refine_init = std::chrono::steady_clock::now();
-    this->refineCandidates(this->lmcw->activeWindow(),
-                           this->lmcw->temporalWindow());
+    //this->refineCandidates(this->lmcw->activeWindow(),
+    //                       this->lmcw->temporalWindow());
     Utils::Time t_refine_end = std::chrono::steady_clock::now();
     std::cout << "Refine Candidates: " << Utils::elapsedTime(t_refine_init, t_refine_end) << std::endl;
 

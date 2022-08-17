@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 #include <memory>
-
+#include <filesystem>
 #include "glog/logging.h"
 #include "opencv2/imgproc.hpp"
 #include "FullSystem/FullSystem.h"
@@ -23,6 +23,7 @@
 #include <pcl/point_cloud.h>
 // Use the best GPU available for rendering (visualization)
 
+namespace fs = std::filesystem;
 
 void writeImageWithPts(std::vector<std::shared_ptr<dsm::Frame>> &frames,
                        const Eigen::Matrix3f  & K,
@@ -185,6 +186,10 @@ void static_depth_stereo(std::vector<int> frame_inds,
                          std::string& cvoConfigFile
                          ) {
 
+  std::string exp_folder = "depth_test_result";
+  fs::path exp_folder_dir(exp_folder);
+  fs::create_directories(exp_folder_dir);
+  
 
   // create DSM
   std::unique_ptr<dsm::FullSystem> DSM;
@@ -232,9 +237,9 @@ void static_depth_stereo(std::vector<int> frame_inds,
 
 
     //DSM->createCandidatesWithInitDepth(trackingNewFrame);
-    DSM->createCandidates(trackingNewFrame);
+    DSM->createCandidatesPlanar(trackingNewFrame);
     
-    trackingNewFrame->dump_candidates_to_pcd(std::to_string(i)+"before_tracking.pcd");
+    trackingNewFrame->dump_candidates_to_pcd(exp_folder + "/" + std::to_string(i)+"before_tracking.pcd");
     Eigen::Matrix4f pose_eigen = poses[i].matrix();
     cvo::CvoPointCloud pc_candidate;
     trackingNewFrame->candidatesToCvoPointCloud(pc_candidate);
@@ -249,7 +254,7 @@ void static_depth_stereo(std::vector<int> frame_inds,
     }
     DSM->trackCandidates(trackingNewFrame,
                          frames);
-    trackingNewFrame->dump_candidates_to_pcd(std::to_string(i)+".pcd");
+    trackingNewFrame->dump_candidates_to_pcd(exp_folder + "/" + std::to_string(i)+".pcd");
     
     frames.push_back(trackingNewFrame);
     trackingNewFrame->evolveToKeyframe();
@@ -269,7 +274,7 @@ void static_depth_stereo(std::vector<int> frame_inds,
   const Eigen::Matrix3f& K = calib.matrix3f(0);
   
   //activate all point clouds
-  std::string fname = "before_tracking.pcd";
+  std::string fname = exp_folder + "/before_tracking.pcd";
   pcl::PointCloud<pcl::PointXYZRGB> pcs_all;
   for (int i = 0; i < frame_inds.size(); i++) {
     pcl::PointCloud<pcl::PointXYZRGB> pc;
@@ -280,9 +285,9 @@ void static_depth_stereo(std::vector<int> frame_inds,
 
   
   //frames.pop_back();
-  fname = "before_refinement.pcd";
+  fname = exp_folder  +  "/before_refinement.pcd";
   writeFramePc(frames, fname, true);
-  std::string preStr="before_";
+  std::string preStr=exp_folder + "/before_";
   writeImageWithPts(frames,
                     K,
                     preStr
@@ -293,16 +298,16 @@ void static_depth_stereo(std::vector<int> frame_inds,
   DSM->get_lmcw()->activatePointsCvo(DSM->ceresOptimizer, frames, 0);  
   //DSM->lmcw->selectTemporalFrameCvo(DSM->ceresOptimizer);
    
-  fname = "after_refinement.pcd";
+  fname = exp_folder +  "/after_refinement.pcd";
   writeFramePc(frames, fname, true);
    
   
   DSM->ceresOptimizer->solve(frames);
-  fname = "after_BA.pcd";
+  fname = exp_folder +  "/after_BA.pcd";
   writeFramePc(frames, fname, false);
-  frames[1]->dump_active_points_to_pcd("2.after.pcd");
+  frames[1]->dump_active_points_to_pcd(exp_folder + "/2.after.pcd");
 
-  preStr="after_";
+  preStr=exp_folder + "/after_";
   writeImageWithPts(frames,
                     K,
                     preStr
