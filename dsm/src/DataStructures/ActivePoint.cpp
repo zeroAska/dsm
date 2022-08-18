@@ -39,7 +39,7 @@ namespace dsm
   
   
   ActivePoint::ActivePoint(int32_t creationID, const std::unique_ptr<CandidatePoint>& candidate) :
-    currentID_(creationID)
+    currentID_(creationID), status_(ISOLATED)
   {
     const auto& calib = GlobalCalibration::getInstance();
     const auto& settings = Settings::getInstance();
@@ -281,6 +281,14 @@ namespace dsm
   {
     this->voxel_ = voxelIn;
   }
+
+  ActivePoint::Status ActivePoint::status() const {
+    return this->status_;
+  }
+  void ActivePoint::setStatus(ActivePoint::Status stat) {
+    this->status_ = stat;
+  }
+
 
   template <typename PointPtr>
   void ActivePoint::activePointsToCvoPointCloud(const std::vector<PointPtr> & activePoints_,

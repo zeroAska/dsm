@@ -94,7 +94,7 @@ optMaxLevel = 2
 
 numActivePoints = 2000
 
-maxTemporalKeyframes = 4
+maxTemporalKeyframes = 6
 maxCovisibleKeyframes = 3
 numAlwaysKeepKeyframes = 1
 
@@ -122,13 +122,13 @@ depthDirEll = 0.0025
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000
-voxelSize = 0.05
+voxelSize = 0.02
 candidatePointsSampling = 0
 inputSurfaceDownsampleVoxelSize = 0.1
 inputEdgeDownsampleVoxelSize = 0.01
-covisEll = 0.1
+covisEll = 0.075
 
-cvoIRLSConstFrames = 1
+cvoIRLSConstFrames = 0
 
 covisUpdateFrames = 1
 

@@ -224,6 +224,8 @@ namespace dsm
           //int covisMapSampleMethod; // 0: random; 1: Gaussian
           int cvoIRLSConstFrames;
 
+          int insertPointToMapAfterBA;
+
 		// Secure Division
 		static const float DIVISION_EPS;
 

@@ -48,6 +48,7 @@ namespace cvo {
   class Calibration;
   class CvoFrame;
   class CvoPointCloud;
+  class Association;
 }
 
 namespace dsm
@@ -160,13 +161,21 @@ namespace dsm
                        const std::list<std::pair<CovisibilityNode *, CovisibilityNode*>> & edgesCovisibleToTemporal);
     void cvoMultiAlign(
                        const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
-                       const cvo::CvoPointCloud & covisMapCvo);
-                                 
+                       const cvo::CvoPointCloud & covisMapCvo
+                       );
+    void obtain_inliers(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
+                        const std::vector<std::shared_ptr<cvo::CvoFrame>> & cvo_frames);
+    void updateActivePointsInliers(const std::list<std::pair<Frame::Ptr, Frame::Ptr>> & edge_frame_ids,
+                                   const std::list<std::shared_ptr<cvo::Association>> & associations);    
     
     void dumpFramesToPcd (const std::string & graphDefFileName,
                           const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                           const std::vector<std::shared_ptr<cvo::CvoFrame>> & cvo_frames,
                           const std::list<std::pair<int, int>> & edges) const;
+    void dumpFramesToPcd (const std::string & graphDefFileName,
+                          const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
+                          const std::vector<std::shared_ptr<cvo::CvoFrame>> & cvo_frames,
+                          std::list<std::pair<Frame::Ptr, Frame::Ptr>> edges_frame_ptrs) const;
     
 
     // visualization

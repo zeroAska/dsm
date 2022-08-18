@@ -2759,10 +2759,37 @@ namespace dsm
         outfile<<cvo_frames[i]->pose_vec[j]<<" ";
     }
 
+    outfile.close();   
+  }
+
+  void FullSystem::dumpFramesToPcd (const std::string & graphDefFileName,
+                                    const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
+                                    const std::vector<cvo::CvoFrame::Ptr> & cvo_frames,
+                                    std::list<std::pair<Frame::Ptr, Frame::Ptr>> edges_frame_ptrs    
+                                    ) const {
+    std::ofstream outfile(graphDefFileName);
+
+    outfile << cvo_frames.size()<<" "<<edges_frame_ptrs.size()<<std::endl;
+    for (int i = 0; i < cvo_frames.size(); i++) {
+      int frameID = activeKeyframes[i]->frameID();
+      outfile<<frameID<<" ";
+    }
+    outfile<<std::endl;
+    for (auto && edgePair: edges_frame_ptrs) {
+      outfile << edgePair.first->frameID()<<" "<<edgePair.second->frameID()<<std::endl;
+    }
+
+    for (int i = 0; i < cvo_frames.size(); i++) {
+      outfile<<"\n";
+      for (int j = 0; j < 12; j++)
+        outfile<<cvo_frames[i]->pose_vec[j]<<" ";
+    }
+
     outfile.close();
     
    
   }
+  
 
   static
   void write_transformed_pc(std::vector<cvo::CvoFrame::Ptr> & frames, const std::string & fname
@@ -2890,9 +2917,42 @@ namespace dsm
     //
   }
 
+  void FullSystem::updateActivePointsInliers(const std::list<std::pair<Frame::Ptr, Frame::Ptr>> & edge_frame_ids,
+                                             const std::list<std::shared_ptr<cvo::Association>> & associations    
+                                             ) {
+    auto assoc_iter = associations.begin();
+    auto edge_frame_iter = edge_frame_ids.begin();
+    while (assoc_iter != associations.end() &&
+           edge_frame_iter != edge_frame_ids.end()) {
+
+      std::vector<std::unique_ptr<ActivePoint>> & f1_pts = edge_frame_iter->first->activePoints();
+      std::vector<std::unique_ptr<ActivePoint>> & f2_pts = edge_frame_iter->second->activePoints();
+
+      cvo::Association::Ptr assoc_ptr = *assoc_iter;
+
+      auto batch_set_active_status = [&](const std::vector<int> & inliers_ids,
+                                         std::vector<std::unique_ptr<ActivePoint>> & pts) {
+        #pragma omp parallel for
+        for (int i = 0; i < inliers_ids.size(); i++) {
+          int pt_id = inliers_ids[i];
+          ActivePoint::Status curr_status = pts.at(pt_id)->status();
+          if (curr_status != ActivePoint::Status::MAPPED
+            && curr_status != ActivePoint::Status::SURROUNDED)
+            pts.at(pt_id)->setStatus(ActivePoint::Status::SURROUNDED);
+        }
+      };
+      batch_set_active_status(assoc_ptr->source_inliers, f1_pts);
+      batch_set_active_status(assoc_ptr->target_inliers, f2_pts);
+
+      assoc_iter++;
+      edge_frame_iter++;
+    }
+
+  }
+  
+
   void FullSystem::cvoMultiAlign(const std::vector<std::shared_ptr<Frame>> & activeKeyframes,
                                  const cvo::CvoPointCloud & covisMapCvo
-                                 
                                  ) {
     const auto& settings = Settings::getInstance();
     
@@ -2922,27 +2982,16 @@ namespace dsm
       cvo_frames.push_back(cvo_ptr);
 
       //const_flags_in_BA[i] = (i <= temporalStartIndex);
-      
-      const_flags_in_BA[i] = false;
-      //if (!isUsingCovis && i == 0)
-      if ( i < settings.cvoIRLSConstFrames)
-        const_flags_in_BA[i] = true;
     }
     
     //if (temporalStartIndex == 0)
-    std::cout<<"const flags are\n";
-    for (int j = 0; j < const_flags_in_BA.size(); j++){
-      std::cout<<const_flags_in_BA[j]<<" ";
-    }
-    std::cout<<std::endl;
-
 
 
     // read edges to construct graph
     // TODO: edges will be constructed from the covisibility graph later
     std::list<std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr>> edges;
     std::list<cvo::BinaryState::Ptr> edge_states;
-    std::list<std::pair<int, int>> edges_inds;    
+    std::list<std::pair<Frame::Ptr, Frame::Ptr>> edges_frame_ptrs;    
     for (int i = temporalStartIndex; i < cvo_frames.size(); i++) {
       //int max_ind = std::min(i+4, (int)cvo_frames.size());
       int max_ind = (int)cvo_frames.size();
@@ -2952,8 +3001,8 @@ namespace dsm
       for (int j = i+1; j < max_ind; j++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_frames[i], cvo_frames[j]);
         edges.push_back(p);
-        edges_inds.push_back(std::make_pair(activeKeyframes[i]->frameID(),
-                                            activeKeyframes[j]->frameID()));
+        edges_frame_ptrs.push_back(std::make_pair(activeKeyframes[i],
+                                                  activeKeyframes[j]));
 
         const cvo::CvoParams & params = cvo_align->get_params();
         const cvo::CvoParams * params_gpu = cvo_align->get_params_gpu();
@@ -2974,15 +3023,24 @@ namespace dsm
     dumpFramesToPcd (std::to_string(activeKeyframes[0]->frameID())+"_graph.txt",
                      activeKeyframes,
                      cvo_frames,
-                     edges_inds);
+                     edges_frame_ptrs);
     write_transformed_pc(cvo_frames, "before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
-
 
     int minNumPoints = std::accumulate(cvo_frames.begin(), cvo_frames.end(), cvo_frames[0]->points->size(),
                                        [&](size_t minPointsAccum, auto pt2) {
                                          return (minPointsAccum < pt2->points->size() )? minPointsAccum : pt2->points->size();
                                        });
     bool isUsingCovis = covisMapCvo.num_points() > minNumPoints &&  !settings.doOnlyTemporalOpt;
+    std::cout<<"const flags are\n";
+    for (int j = 0; j < const_flags_in_BA.size(); j++){
+      const_flags_in_BA[j] = false;
+      if ( j < settings.cvoIRLSConstFrames)
+        const_flags_in_BA[j] = true;
+      std::cout<<const_flags_in_BA[j]<<" ";
+    }
+    if (!isUsingCovis)
+      const_flags_in_BA[0] = true;
+    std::cout<<std::endl;
     std::cout<<"covisMapCvo.num_points is "<<covisMapCvo.num_points()<<", minNumPoints is "<<minNumPoints<<"\n";
     if (isUsingCovis ) {
     //if (false) {
@@ -3016,8 +3074,9 @@ namespace dsm
     if(isUsingCovis && covisMapCvo.num_points() ) 
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
     
-    double time = 0;    
-    cvo_align->align(cvo_frames, const_flags_in_BA,  edge_states, &time);
+    double time = 0;
+    std::list<std::shared_ptr<cvo::Association>> associations;        
+    cvo_align->align(cvo_frames, const_flags_in_BA,  edge_states, &time, &associations);
     std::cout<<"cvo BA time is "<<time<<", for "<<cvo_frames.size()<<" frames\n";
 
     for (int i = 0; i < activeKeyframes.size()-1; i++) {
@@ -3056,10 +3115,16 @@ namespace dsm
 
     }
     */
+
+    updateActivePointsInliers(edges_frame_ptrs, associations);
+
+    
     Frame::Ptr lastKf = activeKeyframes.back();
     Frame::Ptr secondLastKf = activeKeyframes[activeKeyframes.size()-2];
     Sophus::SE3f lastKfToWorld = secondLastKf->camToWorld() * lastKf->thisToParentPose();
     lastKf->setCamToWorld(lastKfToWorld);
+
+    
     
   }
     

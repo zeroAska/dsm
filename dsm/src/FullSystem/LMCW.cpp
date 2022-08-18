@@ -1463,11 +1463,13 @@ namespace dsm
             }
           }
 
-
-          // insert to voxel map
-          voxelMap_->insert_point(point.get());
-          point->setVoxel(voxelMap_->query_point(point.get()));
-
+          
+          // insert to voxel map TODO: change insertion after BA
+          if (!settings.insertPointToMapAfterBA) {
+            voxelMap_->insert_point(point.get());
+            point->setStatus(ActivePoint::Status::MAPPED);
+            point->setVoxel(voxelMap_->query_point(point.get()));
+          }
           // TL: testing
           // std::cout <<"Writing point to file: " << pt << std::endl;
           // Eigen::Matrix4f Tcw = point->reference()->camToWorld().matrix(); //camToWorld
@@ -1672,18 +1674,34 @@ namespace dsm
 
   void LMCW::updateVoxelMapCovisGraph()
   {
+
+    auto & settings = Settings::getInstance();
+    
     const int numActiveKeyframes = (int)this->activeKeyframes_.size();
+    int total_added_to_map = 0;
     for (int i = this->temporalWindowIndex; i < numActiveKeyframes - 1; i++)
     {
       // for each temporal frame, update its activePoints location
-      const std::shared_ptr<Frame>& owner = this->activeKeyframes_[i];
+      const std::shared_ptr<Frame> owner = this->activeKeyframes_[i];
       std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
       CovisibilityNode* curFrameNode = owner->graphNode;
       for (int j = 0; j < activePoints.size(); j++)
       {
-        std::unique_ptr<ActivePoint>& actPt = activePoints[j];
+        ActivePoint * actPt = activePoints[j].get();
+
+        if (actPt->status() == ActivePoint::Status::ISOLATED) continue;
+        if (settings.insertPointToMapAfterBA
+            && actPt->status() == ActivePoint::Status::SURROUNDED) {
+          this->voxelMap_->insert_point(actPt);
+          actPt->setStatus(ActivePoint::Status::MAPPED);
+          actPt->setVoxel(this->voxelMap_->query_point(actPt));
+          total_added_to_map ++;
+          continue;
+        } 
+        
+        
         // if voxel didn't change, no action required
-        const Voxel<ActivePoint>* newVoxel = voxelMap_->query_point(actPt.get());
+        const Voxel<ActivePoint>* newVoxel = voxelMap_->query_point(actPt);
         if (newVoxel == actPt->voxel()) continue;
 
         // for each Active Point in the old voxel, decrease the edge weight
@@ -1702,12 +1720,12 @@ namespace dsm
         }
 
         // delete this point from old voxel
-        this->voxelMap_->delete_point_BA(actPt.get(), actPt->voxel());
+        this->voxelMap_->delete_point_BA(actPt, actPt->voxel());
         // insert this point to new voxel
-        this->voxelMap_->insert_point(actPt.get());
+        this->voxelMap_->insert_point(actPt);
 
         // for each Active point in the new voxel, increase the edge weight
-        std::vector<ActivePoint*> newPoints = this->voxelMap_->query_point(actPt.get())->voxPoints;
+        std::vector<ActivePoint*> newPoints = this->voxelMap_->query_point(actPt)->voxPoints;
         for (ActivePoint* newPt : newPoints)
         {
           CovisibilityNode* covisFrameNode = newPt->reference()->graphNode;
@@ -1719,9 +1737,10 @@ namespace dsm
         }
 
         // update the activepoint with its adjusted voxel
-        actPt->setVoxel(this->voxelMap_->query_point(actPt.get()));
+        actPt->setVoxel(this->voxelMap_->query_point(actPt));
       }
     }
+    std::cout<<"Total Added to map is "<<total_added_to_map<<std::endl;
   }
 
 }

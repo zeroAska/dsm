@@ -58,6 +58,10 @@ namespace dsm
 	public:
 		EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
+                enum Status {
+                  ISOLATED, SURROUNDED, MAPPED
+                };
+
 		// The constructor will move all the required information
 		// The candidate point must be deleted after ActivePoint constructor
 		ActivePoint(int32_t creationID, const std::unique_ptr<CandidatePoint>& candidate);
@@ -88,6 +92,8 @@ namespace dsm
 		// inverse depth in reference frame coordinates
 		float iDepth() const;	
 		void setIDepth(float value);
+
+                
 
 		// visibility
 		Visibility visibility(int keyframeID) const;
@@ -120,6 +126,10 @@ namespace dsm
 		// observations maximum parallax
 		float parallax() const;
 		void setParallax(float p);
+
+                // status:
+                Status status() const;
+                void setStatus(Status stat);
 
 
                 Eigen::Vector3f xyz() const;
@@ -165,6 +175,8 @@ namespace dsm
 
 		// visibility of the point in each keyframe (historical)
 		std::vector<Visibility> visibility_;
+
+                Status status_;
 
 		// ceres optimization data
 		std::unique_ptr<PointParameterBlock> pointBlock_;

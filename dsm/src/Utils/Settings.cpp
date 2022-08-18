@@ -194,7 +194,8 @@ namespace dsm
 
                 this->covisUpdateFrames = 7;
                 this->covisMinPoints = 1000;
-                this->cvoIRLSConstFrames = 1;                
+                this->cvoIRLSConstFrames = 1;
+                this->insertPointToMapAfterBA = 1;                
                 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -414,6 +415,10 @@ namespace dsm
 
                 if (this->checkParameter("cvoirlsconstframes", name, value, this->cvoIRLSConstFrames)) {
                   std::cout<<"cvoIRLSConstFrames is "<<this->cvoIRLSConstFrames<<std::endl;
+                  return;
+                }
+                if (this->checkParameter("insertpointtomapafterba", name, value, this->insertPointToMapAfterBA)) {
+                  std::cout<<"insertPointToMapAfterBA is "<<this->insertPointToMapAfterBA<<std::endl;
                   return;
                 }
                 
