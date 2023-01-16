@@ -105,7 +105,6 @@ namespace dsm
           image.release();
 
           //visualizer.reset();
-
           //reader.set_start_index(id);
         }
 
