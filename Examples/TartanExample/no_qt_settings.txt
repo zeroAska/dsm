@@ -84,7 +84,7 @@ minDistToActivate = 5
 maxCandidateUncertainty = 2
 minCandidateQuality = 2
 
-doOnlyTemporalOpt = false
+doOnlyTemporalOpt = true
 printSummary = true
 showFullReport = false
 minOptimizationGrad = 2
@@ -94,7 +94,7 @@ optMaxLevel = 2
 
 numActivePoints = 2000
 
-maxTemporalKeyframes = 7
+maxTemporalKeyframes = 5
 maxCovisibleKeyframes = 3
 numAlwaysKeepKeyframes = 3
 

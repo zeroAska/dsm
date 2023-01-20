@@ -84,7 +84,7 @@ minDistToActivate = 5
 maxCandidateUncertainty = 2
 minCandidateQuality = 2
 
-doOnlyTemporalOpt = false
+doOnlyTemporalOpt = true
 printSummary = true
 showFullReport = false
 minOptimizationGrad = 2
