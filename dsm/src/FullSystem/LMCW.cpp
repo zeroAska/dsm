@@ -882,6 +882,49 @@ namespace dsm
     return edgesCovisibleToTemporal;
   }
 
+  void LMCW::selectBkiCovisMap(const semantic_bki::SemanticBKIOctoMap & map,
+                               cvo::CvoPointCloud & covisMapCvo) const {
+    assert(this->temporalWindowIndex == 0);
+
+    Utils::Time t1 = std::chrono::steady_clock::now();
+    
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+    const Eigen::Matrix3f& K = calib.matrix3f(0);
+    const int w = calib.width(0);
+    const int h = calib.height(0);
+    
+    const int firstKeyframeID = this->activeKeyframes_.front()->keyframeID();
+
+    std::unordered_set<const Voxel<ActivePoint> *> covisVoxels;
+    std::unordered_set<int> frameIDs;
+    int numFeatures = 0, numSemantics=0;
+    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
+      frameIDs.insert(activeKeyframes_[i]->frameID());
+      const std::vector<std::unique_ptr<ActivePoint>> & activePoints = activeKeyframes_[i]->activePoints();
+      // find best covisible frame for each temporal frame
+      for (int j = 0; j < activePoints.size(); j++) {
+        ActivePoint * p = activePoints[j].get();
+        /***************
+         * for debugging
+         ***************/
+        //bool debug_insert = voxelMap_->insert_point(p);
+        //if (debug_insert)
+        //  std::cout<<"raycast: the point is already inserted before\n";
+        //else
+        //  std::cout<<"raycast: the point has just been inserted\n";
+        /***************
+         * for debugging
+         ***************/
+        
+        const Voxel<ActivePoint> * p_voxel = voxelMap_->query_point_raycasting(p);
+        if (p_voxel && covisVoxels.find(p_voxel) == covisVoxels.end())
+          covisVoxels.insert(p_voxel);
+      }
+    }
+    
+  }  
+
   void LMCW::selectSampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo) {
     assert(this->temporalWindowIndex == 0);
 

@@ -137,7 +137,7 @@ namespace dsm
                 const Eigen::VectorXf & features() const  {return features_;}
                 const Eigen::VectorXf & semantics() const {return semantics_;}
                 const Eigen::VectorXf & geometricType() const {return geometric_type_;}
-
+                
                 const Voxel<ActivePoint>* voxel() const;
                 void setVoxel(const Voxel<ActivePoint>* voxelIn);
 

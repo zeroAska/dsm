@@ -8,6 +8,7 @@ namespace semantic_bki {
 
     /// Default static values
     int Semantics::num_class = 2;
+  int Semantics::num_features = 5;
     float Semantics::sf2 = 1.0f;
     float Semantics::ell = 1.0f;
     float Semantics::prior = 0.5f;
@@ -47,7 +48,7 @@ namespace semantic_bki {
       float sum = 0;
       for (int i = 1; i < ms.size(); ++i)  // exclude free points
         sum += ms[i];
-      for (int i = 0; i < 5; ++i)
+      for (int i = 0; i < Semantics::num_features; ++i)
         features[i] = this->fs[i] / sum;
     }
 
@@ -61,7 +62,7 @@ namespace semantic_bki {
       get_probs(probs);
 
       // update features
-      for (int i = 0; i < 5; ++i) {
+      for (int i = 0; i < Semantics::num_features; ++i) {
         fs[i] += fbars[i];
       }
 

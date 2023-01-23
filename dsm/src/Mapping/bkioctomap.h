@@ -50,11 +50,12 @@ namespace semantic_bki {
          * @param max_var maximum variance in Occupancy (default 1000)
          * @param max_known_var maximum variance for Occuapncy to be classified as KNOWN State (default 0.02)
          * @param free_thresh free threshold for Occupancy probability (default 0.3)
-         * @param occupied_thresh occupied threshold for Occupancy probability (default 0.7)
+        * @param occupied_thresh occupied threshold for Occupancy probability (default 0.7)
          */
         SemanticBKIOctoMap(float resolution,
                 unsigned short block_depth,
                 int num_class,
+                           int num_features,
                 float sf2=1.0,
                 float ell=1.0,
                 float prior=0.0,
@@ -405,7 +406,9 @@ namespace semantic_bki {
 
   void map_to_pc(  semantic_bki::SemanticBKIOctoMap & map,
                    cvo::CvoPointCloud & pc,
-                   int num_class);
+                   int num_features,
+                   int num_class,
+                   int num_geometric_types);
 
   
 

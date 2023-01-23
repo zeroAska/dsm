@@ -24,7 +24,7 @@ namespace semantic_bki {
         /*
          * @brief Constructors and destructor.
          */
-        Semantics() : fs(std::vector<float>(5, 0)), ms(std::vector<float>(num_class, prior)), state(State::UNKNOWN) { classified = false; }
+      Semantics() : fs(std::vector<float>(Semantics::num_features, 0)), ms(std::vector<float>(num_class, prior)), state(State::UNKNOWN) { classified = false; }
 
         Semantics(const Semantics &other) : fs(other.fs), ms(other.ms), state(other.state), semantics(other.semantics) { }
 
@@ -69,6 +69,7 @@ namespace semantic_bki {
         State state;
         int semantics;
         static int num_class;      // number of classes
+      static int num_features;
         
         static float sf2;
         static float ell;   // length-scale
