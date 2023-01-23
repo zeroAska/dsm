@@ -117,8 +117,8 @@ showDepthMapLvl = 0
 iDepthUncertainty = 0.1
 trackingCosLimit = 0.82
 enableDepthRegression = false
-depthNormalEll = 0.001
-depthDirEll = 0.0025
+depthNormalEll = 0.0025
+depthDirEll = 0.04
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000

@@ -53,6 +53,7 @@
 #include <pcl/point_cloud.h>
 #include <Eigen/Sparse>
 #include <fstream>
+#include <string>
 #include <time.h>
 #include "cvo/CvoGPU.hpp"
 #include "cvo/CvoParams.hpp"
@@ -3640,7 +3641,7 @@ namespace dsm
           cv::rectangle(images[i], cv::Rect((int)u - rectPad, (int)v - rectPad, rectSize, rectSize), cv::Scalar(0, 0, 0), 2);
         }		
       }
-      std::string imageVisibilityLabel = "Num of visible pts is "+ std::to_string(visibleCounter);
+      std::string imageVisibilityLabel = "Num of visible pts is "+ std::to_string(visibleCounter)  + " out of "+ std::to_string(activePoints.size());
       
       cv::putText(images[i], imageVisibilityLabel, cv::Point(10, images[i].rows - 40)
                   , cv::FONT_HERSHEY_DUPLEX,1.0, CV_RGB(118, 185, 0),2);

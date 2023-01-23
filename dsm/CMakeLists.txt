@@ -36,7 +36,7 @@ include(CompilerFlags)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
-find_package(UnifiedCvo REQUIRED)
+#find_package(UnifiedCvo REQUIRED)
 #message("cvo include dir is ${UnifiedCvo_INCLUDE_DIRS}, cvo libs are ${UnifiedCvo_LIBRARIES}")
 #find_package(Sophus REQUIRED) 
 

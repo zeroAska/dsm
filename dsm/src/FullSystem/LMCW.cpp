@@ -884,16 +884,12 @@ namespace dsm
          ***************/
         
         const Voxel<ActivePoint> * p_voxel = voxelMap_->query_point_raycasting(p);
-        //
-
-        //const Voxel *  p_voxel = voxelMap_->query_point(p);
         if (p_voxel && covisVoxels.find(p_voxel) == covisVoxels.end())
           covisVoxels.insert(p_voxel);
       }
     }
 
     if (covisVoxels.size() == 0) {
-      std::cout<<"Zero covis voxels.\n";
       return;
     }
     int avgPointsPerVoxel = settings.covisMapSize / covisVoxels.size() + 1;
@@ -903,10 +899,11 @@ namespace dsm
       int counter_curr_voxel = 0;
       int sampleChance = voxel->voxPoints.size() / avgPointsPerVoxel;
       for (auto && p : voxel->voxPoints) {
-        if ( (sampleChance < 1
-              || counter_curr_voxel < avgPointsPerVoxel
-              || std::rand() % sampleChance == 0) &&
-             frameIDs.find( p->reference()->frameID() ) == frameIDs.end() ) {
+        if ( (sampleChance < 1 ||
+              counter_curr_voxel < avgPointsPerVoxel
+              || std::rand() % sampleChance == 0)
+             // && frameIDs.find( p->reference()->frameID() ) == frameIDs.end()
+             ) {
           covisPoints.push_back(p);
           counter_curr_voxel++;
         }
@@ -914,7 +911,7 @@ namespace dsm
       }
     }
     std::cout<<"Actual sampled map size is "<<covisPoints.size()<<std::endl;
-    if (covisPoints.size() < 100) return;
+
     covisMapCvo.reserve(covisPoints.size(),
                         (*covisPoints.begin())->features().size(),
                         (*covisPoints.begin())->semantics().size());
