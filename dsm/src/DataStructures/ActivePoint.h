@@ -133,6 +133,7 @@ namespace dsm
 
 
                 Eigen::Vector3f xyz() const;
+                Eigen::Vector3f getVector3fMap() const {return this->xyz(); }
                 const Eigen::VectorXf & features() const  {return features_;}
                 const Eigen::VectorXf & semantics() const {return semantics_;}
                 const Eigen::VectorXf & geometricType() const {return geometric_type_;}

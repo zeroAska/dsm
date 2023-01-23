@@ -31,7 +31,10 @@
 namespace cvo {
   class CvoGPU;
   class CvoPointCloud;
-}
+  } // namespace cvo
+namespace semantic_bki {
+  class SemanticBKIOctoMap;
+}  
 
 namespace dsm
 {
@@ -67,6 +70,7 @@ namespace dsm
     void selectWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
 
     // removes keyframes from active window
+    void addExpiringTemporalActivePointsToBkiMap(semantic_bki::SemanticBKIOctoMap & map);
     void dropFlaggedKeyframes();
 
     // activates new points from the window
@@ -86,7 +90,8 @@ namespace dsm
     void insertTemporalVoxelPoints();
 
     // update the covisbility graph after BA
-    void updateVoxelMapCovisGraph();
+    void updateVoxelMapCovisGraph(semantic_bki::SemanticBKIOctoMap & map);
+
 
     // all active keyframes
     inline const std::vector<std::shared_ptr<Frame>>& activeWindow() const { return this->activeKeyframes_; }
@@ -163,6 +168,7 @@ namespace dsm
 
     // voxel map
     std::unique_ptr<VoxelMap<ActivePoint>> voxelMap_;
+
 
     // visualizer
     IVisualizer* const outputWrapper_;

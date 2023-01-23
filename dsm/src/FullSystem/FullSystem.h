@@ -33,6 +33,7 @@
 #include "DataStructures/Frame.h"
 
 #include <deque>
+#include <memory>
 #include <vector>
 #include <mutex>
 #include <shared_mutex>
@@ -250,6 +251,10 @@ namespace dsm
 
     // Optimization window
     std::unique_ptr<LMCW> lmcw;
+
+
+    /// semantic global map
+    std::unique_ptr<semantic_bki::SemanticBKIOctoMap> map;
 
     // ceres optimizer
     std::unique_ptr<CeresPhotometricBA> ceresOptimizer;				// photometric bundle adjustment
