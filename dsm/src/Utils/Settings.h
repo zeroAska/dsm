@@ -226,11 +226,28 @@ namespace dsm
 
           int insertPointToMapAfterBA;
 
-		// Secure Division
-		static const float DIVISION_EPS;
 
-		// Pi number
-		static const float PI;
+          //// bki map params
+          int bkiMapOn;
+          float bkiMapResolution;
+          unsigned short bkiMapBlockDepth;
+          int bkiMapNumClass;
+          float bkiMapSf2;
+          float bkiMapEll;
+          float bkiMapPrior;
+          float bkiMapVarThresh;
+          float bkiMapFreeThresh;
+          float bkiMapOccupiedThresh;
+          double bkiMapFreeResolution;
+          double bkiMapDsResolution;
+          double bkiMapMaxRange;
+          
+
+          // Secure Division
+          static const float DIVISION_EPS;
+          
+          // Pi number
+          static const float PI;
 
 	private:
 

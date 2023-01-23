@@ -84,7 +84,7 @@ minDistToActivate = 5
 maxCandidateUncertainty = 2
 minCandidateQuality = 2
 
-doOnlyTemporalOpt = false
+doOnlyTemporalOpt = true
 printSummary = true
 showFullReport = false
 minOptimizationGrad = 2
@@ -94,7 +94,7 @@ optMaxLevel = 2
 
 numActivePoints = 2000
 
-maxTemporalKeyframes = 6
+maxTemporalKeyframes = 4
 maxCovisibleKeyframes = 3
 numAlwaysKeepKeyframes = 1
 
@@ -117,8 +117,8 @@ showDepthMapLvl = 0
 iDepthUncertainty = 0.1
 trackingCosLimit = 0.82
 enableDepthRegression = false
-depthNormalEll = 0.0025
-depthDirEll = 0.04
+depthNormalEll = 0.0004
+depthDirEll = 0.001
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000

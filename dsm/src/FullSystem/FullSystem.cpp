@@ -48,6 +48,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
 #include "pcl/io/pcd_io.h"
+#include <memory>
 #include <opencv2/imgproc.hpp>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -219,7 +220,7 @@ namespace dsm
   FullSystem::FullSystem(int w, int h, const cvo::Calibration &calib, 
                          const std::string &cvoParamsFile,
                          const std::string &settingsFile,
-                         IVisualizer *outputWrapper) : FullSystem(w, h, calib.intrinsic(), settingsFile, outputWrapper) {
+                         IVisualizer *outputWrapper) : FullSystem(w, h, calib.intrinsic(), settingsFile, outputWrapper){
 
     std::cout<<"FullSystem Cvo constructor..\n";
     this->cvo_align.reset(new cvo::CvoGPU(cvoParamsFile));
@@ -233,7 +234,17 @@ namespace dsm
 
     auto& settings = Settings::getInstance();
     this->lmcw = std::make_unique<LMCW>(w, h, cvo_align.get(), outputWrapper, settings.voxelSize);
+    this->map = std::make_unique<semantic_bki::SemanticBKIOctoMap>(settings.bkiMapResolution,
+                                                                   settings.bkiMapBlockDepth,
+                                                                   settings.bkiMapNumClass,
+                                                                   settings. bkiMapSf2,
+                                                                   settings. bkiMapEll,
+                                                                   settings. bkiMapPrior,
+                                                                   settings. bkiMapVarThresh,
+                                                                   settings. bkiMapFreeThresh,
+                                                                   settings. bkiMapOccupiedThresh);
   }
+
   
 
   bool FullSystem::isInitialized() const
@@ -3310,9 +3321,7 @@ namespace dsm
       // }
       ///////////////////////////////////////////////////////////////////
 
-
-      this->lmcw->updateVoxelMapCovisGraph();
-
+      this->lmcw->updateVoxelMapCovisGraph(map);
 
       // updateCovis Debug use
       // save voxel map to pcd

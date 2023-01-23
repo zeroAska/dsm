@@ -14,7 +14,7 @@
 #include "FullSystem/FullSystem.h"
 
 // used by cvo point cloud registration
-#include "dataset_handler/KittiHandler.hpp"
+#include "dataset_handler/TartanAirHandler.hpp"
 #include "utils/RawImage.hpp"
 #include "utils/ImageStereo.hpp"
 #include "utils/Calibration.hpp"
@@ -42,7 +42,7 @@ namespace dsm
     inline KittiProcessorNoQT() { this->shouldStop = false; }
     inline ~KittiProcessorNoQT() { this->join(); }
 
-    inline void run(cvo::KittiHandler& reader, std::string& settingsFile,
+    inline void run(cvo::TartanAirHandler& reader, std::string& settingsFile,
                     std::string& cvoConfigFile, cvo::Calibration& cvo_calib, int startFrameId,
                     std::string& trajFileName
                     )
@@ -71,7 +71,7 @@ namespace dsm
     }
 
   private:
-    inline void doRun(cvo::KittiHandler& reader,
+    inline void doRun(cvo::TartanAirHandler& reader,
                       std::string& settingsFile,
                       std::string& cvoConfigFile,
                       cvo::Calibration& cvo_calib,
@@ -111,7 +111,7 @@ namespace dsm
         cv::Mat source_left, source_right;
         //std::vector<float> source_dep;        
         std::cout<< " Read new image "<<id<<std::endl;
-        bool read_fails = reader.read_next_rgbd(source_left, source_right);
+        bool read_fails = reader.read_next_stereo(source_left, source_right);
 
         if (read_fails) {
           std::cout<<"Read fails\n";
@@ -138,7 +138,7 @@ namespace dsm
           cv::cvtColor(color_img, gray_img, cv::COLOR_BGR2GRAY);
 
           // TL: terminate at 10th frame
-          if (id == startFrameId + 10) this->shouldStop = true; 
+          //if (id == startFrameId +5) this->shouldStop = true; 
 
           if (DSM == nullptr)
           {
@@ -199,12 +199,10 @@ namespace dsm
         int l = 0;
         for (auto && accum_mat : poses) {
           std::ofstream trajFile(trajFileName, std::ios::app);
-          trajFile << accum_mat(0,0)<<" "<<accum_mat(0,1)<<" "<<accum_mat(0,2)<<" "<<accum_mat(0,3)<<" "
-                       <<accum_mat(1,0)<<" " <<accum_mat(1,1)<<" "<<accum_mat(1,2)<<" "<<accum_mat(1,3)<<" "
-                       <<accum_mat(2,0)<<" " <<accum_mat(2,1)<<" "<<accum_mat(2,2)<<" "<<accum_mat(2,3);
-          trajFile<<"\n";
-          trajFile<<std::flush;
-          
+          Eigen::Quaternionf q(accum_mat.block<3,3>(0,0));
+          trajFile<<std::fixed << std::setprecision(18) << std::scientific << accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 
+          trajFile<<q.x()<<" "<<q.y()<<" "<<q.z()<<" "<<q.w()<<"\n";
+          trajFile.flush();
           trajFile.close();          
           DSM->printLog();          
           l++;
@@ -212,9 +210,8 @@ namespace dsm
         }
         std::cout<<"Wrote "<<l<<"lines of poses to the file\n";
         
-        
       }
-      sleep(2);
+      //sleep(2);
       std::this_thread::yield();
       //sleep(2);
       //exit(0);
@@ -262,10 +259,10 @@ int main(int argc, char *argv[])
   std::cout << "\n";
 
   // read sequence
-  cvo::KittiHandler kitti(imageFolder, 0);
+  cvo::TartanAirHandler tartan(imageFolder);
 
 
-  std::string cvo_calib_file = imageFolder + "/cvo_calib.txt"; 
+  std::string cvo_calib_file = imageFolder + "/cvo_calib_stereo.txt"; 
   cvo::Calibration calib(cvo_calib_file, cvo::Calibration::STEREO);
 
   // add image size to the visualizer
@@ -273,7 +270,7 @@ int main(int argc, char *argv[])
 
   // run processing in a second thread
   dsm::KittiProcessorNoQT processor;
-  processor.run(kitti,  settingsFile, cvoConfigFile, calib, startFrameId, trajFileName);
+  processor.run(tartan,  settingsFile, cvoConfigFile, calib, startFrameId, trajFileName);
 
   // run main window
   // it will block the main thread until closed

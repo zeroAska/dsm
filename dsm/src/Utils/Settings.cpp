@@ -195,7 +195,23 @@ namespace dsm
                 this->covisUpdateFrames = 7;
                 this->covisMinPoints = 1000;
                 this->cvoIRLSConstFrames = 1;
-                this->insertPointToMapAfterBA = 1;                
+                this->insertPointToMapAfterBA = 1;
+
+                bkiOn = 0;
+                bkiMapResolution = 0.1f;
+                bkiMapBlockDepth = 4;
+                bkiMapNumClass = 3;
+                bkiMapSf2 = 1.0;
+                bkiMapEll = 1.0;
+                bkiMapPrior = 1.0;
+                bkiMapVarThresh = 1.0;
+                bkiMapFreeThresh = 0.3;
+                bkiMapOccupiedThresh = 0.7;
+                bkiMapFreeResolution = 0.02;
+                bkiMapDsResolution = -1;
+                bkiMapMaxRange -1;
+                
+                
                 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -421,9 +437,47 @@ namespace dsm
                   std::cout<<"insertPointToMapAfterBA is "<<this->insertPointToMapAfterBA<<std::endl;
                   return;
                 }
-                
-                
 
+                if (this->checkParameter("bkimapresolution", name, value, this->bkiMapResolution)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapblockdepth", name, value, this->bkiMapBlockDepth)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapnumclass", name, value, this->bkiMapNumClass)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapsf2", name, value, this->bkiMapSf2)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapell", name, value, this->bkiMapEll)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapprior", name, value, this->bkiMapPrior)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapvarthresh", name, value, this->bkiMapVarThresh)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapfreethresh", name, value, this->bkiMapFreeThresh)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapoccupiedthresh", name, value, this->bkiMapOccupiedThresh)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapon", name, value, this->bkiMapOn)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapfreeresolution", name, value, this->bkiMapFreeResolution)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapdsresolution", name, value, this->bkiMapDsResolution)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapmaxrange", name, value, this->bkiMapMaxRange)) {
+                  return;
+                }
+ 
 		// not found
 		std::cout << "Could not parse argument: " << argument << std::endl;
 	}

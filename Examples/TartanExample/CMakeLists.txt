@@ -26,5 +26,5 @@ cmake_minimum_required(VERSION 3.5)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_subdirectory(RGB-D)
-#add_subdirectory(Stereo)
+add_subdirectory(Stereo)
 #add_subdirectory(Semantic)
