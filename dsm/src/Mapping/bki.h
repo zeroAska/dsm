@@ -173,7 +173,7 @@ namespace semantic_bki {
     T sf2;    // signal variance
     T ell;    // length-scale
     int nc;   // number of classes
-    int nc;     // number of features
+    int nf;     // number of features
 
     MatrixXType x;   // temporary storage of training data
     MatrixYType y;   // temporary storage of training labels

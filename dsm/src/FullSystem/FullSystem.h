@@ -27,6 +27,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/StdVector>
+#include "LMCW.h"
 #include "sophus/se3.hpp"
 
 #include "opencv2/core.hpp"
@@ -50,7 +51,10 @@ namespace cvo {
   class CvoFrame;
   class CvoPointCloud;
   class Association;
-}
+  } // namespace cvo
+namespace semantic_bki {
+  class SemanticBKIOctoMap;
+}  
 
 namespace dsm
 {

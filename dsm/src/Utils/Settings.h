@@ -238,9 +238,9 @@ namespace dsm
           float bkiMapVarThresh;
           float bkiMapFreeThresh;
           float bkiMapOccupiedThresh;
-          double bkiMapFreeResolution;
-          double bkiMapDsResolution;
-          double bkiMapMaxRange;
+          float bkiMapFreeResolution;
+          float bkiMapDsResolution;
+          float bkiMapMaxRange;
           
 
           // Secure Division

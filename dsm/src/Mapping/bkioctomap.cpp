@@ -3,8 +3,9 @@
 #include <pcl/filters/voxel_grid.h>
 
 #include "bkioctree_node.h"
-#include "mapping/bkioctomap.h"
-#include "mapping/bki.h"
+#include "bkioctomap.h"
+#include "bki.h"
+#include "DataStructures/ActivePoint.h"
 #include "utils/CvoPointCloud.hpp"
 using std::vector;
 
@@ -370,9 +371,12 @@ namespace semantic_bki {
         block_x.push_back(it->first.z());
         block_y.push_back(it->second[0]);  // label
         // copy features
-        auto iter = it->second.begin();
-        iter++;
-        std::copy(iter, it->second.end(), block_f);
+        block_f.resize(it->second.size()-1);
+        for (int j = 0; j < block_f.size(); j++)
+          block_f[j] = it->second[j+1];
+        //auto iter = it->second.begin();
+        //iter++;
+        //std::copy(iter, it->second.end(), block_f);
       }
           
 
@@ -533,9 +537,13 @@ namespace semantic_bki {
         block_x.push_back(it->first.z());
         block_y.push_back(it->second[0]);  // label
         // copy features
-        auto iter = it->second.begin();
-        iter++;
-        std::copy(iter, it->second.end(), block_f);
+        block_f.resize(it->second.size()-1);
+        for (int j = 0; j < block_f.size(); j++)
+          block_f[j] = it->second[j+1];
+        
+        //auto iter = it->second.begin();
+        //iter++;
+        //std::copy(iter, it->second.end(), block_f);
         
       }
           
@@ -653,7 +661,7 @@ namespace semantic_bki {
       if (cloud->num_classes()) {
         int pix_label = 0;              
         cloud->label_at(i).maxCoeff(&pix_label);
-        properties.emplace_back(pix_label)+1;              
+        properties.emplace_back(pix_label+1);              
       }
       if (cloud->num_features()){
         for (int j = 0; j < cloud->num_features(); ++j)
@@ -661,7 +669,7 @@ namespace semantic_bki {
       }
       if (cloud->num_geometric_types()) {
         int pix_label = 0;              
-        cloud->geometric_type_at(i).maxCoeff(&pix_label);
+        cloud->geometry_type_at(i).maxCoeff(&pix_label);
         properties.emplace_back(pix_label);              
       }
       xy.emplace_back(p, properties);
@@ -704,11 +712,11 @@ namespace semantic_bki {
       if (cloud[i]->semantics().size()) {
         int pix_label = 0;              
         cloud[i]->semantics().maxCoeff(&pix_label);
-        properties.emplace_back(pix_label)+1;              
+        properties.emplace_back(pix_label+1);              
       }
       if (cloud[i]->features().size()){
         for (int j = 0; j < cloud[i]->features().size(); ++j)
-          properties.emplace_back(cloud[i]->feature()(j));
+          properties.emplace_back(cloud[i]->features()(j));
       }
       if (cloud[i]->geometricType().size()) {
         int pix_label = 0;              
@@ -728,10 +736,7 @@ namespace semantic_bki {
 
     point3f p(origin.x(), origin.y(), origin.z());
     std::vector<float> properties;
-    if (cloud->num_classes()) 
-      properties.resize(cloud->num_features()+1, 0);
-    else
-      properties.resize(cloud->num_features(), 0);
+    properties.resize(property_dim, 0);
     xy.emplace_back(p, properties);
   }
   
@@ -995,5 +1000,16 @@ namespace semantic_bki {
     }
     std::cout<<"Export "<<ind<<" points from the bki map\n";
   }
+
+  template 
+  void SemanticBKIOctoMap::insert_pointcloud_csm<dsm::ActivePoint const>(const std::vector<dsm::ActivePoint const *> & cloud, const point3f &origin, float ds_resolution,
+                                                                   float free_res,
+                                                                   float max_range);
+
+  template
+  void SemanticBKIOctoMap::get_training_data<dsm::ActivePoint const>(const std::vector<dsm::ActivePoint const*> & cloud, const point3f &origin, float ds_resolution,
+                               float free_resolution, float max_range, GPPointCloud &xy) const;      
+
+
   
 }

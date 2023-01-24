@@ -108,6 +108,15 @@ set(HEADER_FILES
 	${root}/Initializer/MonoInitializer.h
 	${root}/Initializer/ModelSelector.h
 	${root}/Visualizer/IVisualizer.h
+        ${root}/Mapping/bki.h
+        ${root}/Mapping/bkiblock.h
+        ${root}/Mapping/bkioctomap.h
+        ${root}/Mapping/bkioctree.h
+        ${root}/Mapping/bkioctree_node.h
+        ${root}/Mapping/markerarray_pub.h
+        ${root}/Mapping/point3f.h
+        ${root}/Mapping/rtree.h
+
 	) 
 	
 set(SOURCE_FILES 
@@ -146,7 +155,12 @@ set(SOURCE_FILES
 	${root}/FullSystem/DSMLib.cpp
 	${root}/Initializer/MonoInitializer.cpp
 	${root}/Initializer/ModelSelector.cpp
-	${root}/Visualizer/IVisualizer.cpp	
+	${root}/Visualizer/IVisualizer.cpp
+        ${root}/Mapping/bkiblock.cpp
+        ${root}/Mapping/bkioctomap.cpp
+        ${root}/Mapping/bkioctree.cpp
+        ${root}/Mapping/bkioctree_node.cpp
+        ${root}/Mapping/point3f.cpp
 	)
 
       set(VISUALIZER_SOURCE_FILES

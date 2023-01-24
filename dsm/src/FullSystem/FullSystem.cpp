@@ -43,6 +43,7 @@
 #include "Optimization/PhotometricBA.h"
 #include "Optimization/PhotometricResidual.h"
 #include "Visualizer/IVisualizer.h"
+#include "Mapping/bkioctomap.h"
 #include "cvo/Association.hpp"
 #include "utils/StaticStereo.hpp"
 #include "opencv2/highgui.hpp"
@@ -3321,7 +3322,7 @@ namespace dsm
       // }
       ///////////////////////////////////////////////////////////////////
 
-      this->lmcw->updateVoxelMapCovisGraph(map);
+      this->lmcw->updateVoxelMapCovisGraph();
 
       // updateCovis Debug use
       // save voxel map to pcd

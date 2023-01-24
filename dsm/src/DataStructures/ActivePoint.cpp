@@ -20,7 +20,7 @@
  * You should have received a copy of the GNU General Public License
  * along with DSM. If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include "utils/CvoPointCloud.hpp"
 #include "ActivePoint.h"
 #include "CandidatePoint.h"
 #include "Frame.h"
@@ -29,7 +29,7 @@
 #include "Utils/Interpolation.h"
 #include "Optimization/PointParameterBlock.h"
 #include "Optimization/PhotometricResidual.h"
-#include "utils/CvoPointCloud.hpp"
+
 namespace dsm
 {
   ActivePoint::ActivePoint(int32_t creationID, const std::unique_ptr<CandidatePoint>& candidate, float filteredIdepth) :

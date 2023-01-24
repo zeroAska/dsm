@@ -90,7 +90,7 @@ namespace dsm
     void insertTemporalVoxelPoints();
 
     // update the covisbility graph after BA
-    void updateVoxelMapCovisGraph(semantic_bki::SemanticBKIOctoMap & map);
+    void updateVoxelMapCovisGraph();
 
 
     // all active keyframes

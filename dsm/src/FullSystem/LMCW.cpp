@@ -35,8 +35,11 @@
 #include "Utils/Projection.h"
 #include "Utils/Settings.h"
 #include "Utils/UtilFunctions.h"
+#include "Mapping/point3f.h"
+#include "Mapping/bkioctomap.h"
+#include "Mapping/bki.h"
 #include "cvo/CvoGPU.hpp"
-
+#include "utils/CvoPointCloud.hpp"
 #include <fstream>
 #include <memory>
 
@@ -182,15 +185,15 @@ namespace dsm
         int num_added_pts = 0;
         auto & active_pts  = f->activePoints(); 
         for (int j = 0; j < active_pts.size(); j++) {
-          if (f->activePoints[j]->status() == ActivePoint::Status::MAPPED) {
+          if (f->activePoints()[j]->status() == ActivePoint::Status::MAPPED) {
             num_added_pts++;
             active_points.push_back(active_pts[j].get());
           }
         }
         semantic_bki::point3f origin;
-        origin.x() = f->camToWorld().x();
-        origin.y() = f->camToWorld().y();
-        origin.z() = f->camToWorld().z();
+        origin.x() = f->camToWorld().translation()(0);
+        origin.y() = f->camToWorld().translation()(1);
+        origin.z() = f->camToWorld().translation()(2);
 
         map.insert_pointcloud_csm(active_points, origin, settings.bkiMapDsResolution,
                                   settings.bkiMapFreeResolution, settings.bkiMapMaxRange);
@@ -1745,11 +1748,12 @@ namespace dsm
     }
   }
 
+
   void LMCW::updateVoxelMapCovisGraph()
   {
 
     auto & settings = Settings::getInstance();
-    newly_added_activePts.clear();
+    //newly_added_activePts.clear();
     const int numActiveKeyframes = (int)this->activeKeyframes_.size();
     int total_added_to_map = 0;
     for (int i = this->temporalWindowIndex; i < numActiveKeyframes - 1; i++)
@@ -1769,7 +1773,7 @@ namespace dsm
           actPt->setStatus(ActivePoint::Status::MAPPED);
           actPt->setVoxel(this->voxelMap_->query_point(actPt));
           total_added_to_map ++;
-          newly_added_activePts.push_back(actPt);
+          //newly_added_activePts.push_back(actPt);
           continue;
         } 
         
@@ -1816,5 +1820,6 @@ namespace dsm
     }
     std::cout<<"Total Added to map is "<<total_added_to_map<<std::endl;
   }
+
 
 }

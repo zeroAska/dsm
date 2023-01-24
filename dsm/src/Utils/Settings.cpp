@@ -197,7 +197,7 @@ namespace dsm
                 this->cvoIRLSConstFrames = 1;
                 this->insertPointToMapAfterBA = 1;
 
-                bkiOn = 0;
+                bkiMapOn = 0;
                 bkiMapResolution = 0.1f;
                 bkiMapBlockDepth = 4;
                 bkiMapNumClass = 3;
@@ -441,7 +441,11 @@ namespace dsm
                 if (this->checkParameter("bkimapresolution", name, value, this->bkiMapResolution)) {
                   return;
                 }
-                if (this->checkParameter("bkimapblockdepth", name, value, this->bkiMapBlockDepth)) {
+                int bki_block_depth=0;
+                if (this->checkParameter("bkimapblockdepth", name, value, bki_block_depth)) {
+                  if (bki_block_depth > 0) {
+                    bkiMapBlockDepth = static_cast<unsigned short>(bki_block_depth);
+                  }
                   return;
                 }
                 if (this->checkParameter("bkimapnumclass", name, value, this->bkiMapNumClass)) {

@@ -1,4 +1,4 @@
-#include "mapping/point3f.h"
+#include "point3f.h"
 #include <cassert>
 #include <math.h>
 #include <string.h>

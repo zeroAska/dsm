@@ -565,8 +565,8 @@ namespace Eigen
   typedef Eigen::Matrix<double, 3, 1> Vec3d;
   typedef Eigen::Matrix<double, 2, 1> Vec2d;
 
-  template <typename Type, unsigned int Size>
-  using Vector = Eigen::Matrix<Type, Size, 1>;
+  //template <typename Type, unsigned int Size>
+  //using Vector = Eigen::Matrix<Type, Size, 1>;
     
 
 }
