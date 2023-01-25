@@ -62,12 +62,6 @@ int main(int argc, char *argv[]) {
   // list all files in current directory.
   //You could put any file path in here, e.g. "/home/me/mwah" to list that directory
   std::cout<<argc<<std::endl;
-  int num_class= 1;
-  string n_class_str;
-  //if (argc > 5) {
-  //  n_class_str = argv[5];
-  //num_class = //stoi(n_class_str);
-  //}
 
   cvo::TumHandler tum(argv[1]);
   int total_iters = tum.get_total_number();
@@ -79,6 +73,7 @@ int main(int argc, char *argv[]) {
   int start_frame = stoi(argv[3]);
   int num_frames = stoi(argv[4]);
   std::string odom_file(argv[5]);
+  int num_class = std::stoi(argv[6]);   
   
   vector<string> files;
   std::cout<<" cycle through the directory\n";
@@ -91,13 +86,13 @@ int main(int argc, char *argv[]) {
   // Set parameters
   int block_depth = 1;
   double sf2 = 1.0;
-  double ell = 1.0;
+  double ell = 0.075;
   float prior = 0.0f;
   float var_thresh = 1.0f;
-  double free_thresh = 0.5;
-  double occupied_thresh = 0.8;
-  double resolution = 0.05;
-  double free_resolution = 1;
+  double free_thresh = 0.85;
+  double occupied_thresh = 0.95;
+  double resolution = 0.02;
+  double free_resolution = 0.02;
   double ds_resolution = -1;
   double max_range = -1;
 
@@ -110,7 +105,7 @@ int main(int argc, char *argv[]) {
   // Build map
   //std::vector<cvo::CvoPointCloud> pc_vec(files.size());
   semantic_bki::SemanticBKIOctoMap map_csm(resolution, block_depth, num_class + 1, 5+1, sf2, ell, prior, var_thresh, free_thresh, occupied_thresh);
-  cvo::CvoPointCloud pc_full(5,0);
+  cvo::CvoPointCloud pc_full(5,num_class);
   int i = 0;
   for (; i+start_frame <= last_frame; i++) {
     
@@ -128,12 +123,24 @@ int main(int argc, char *argv[]) {
                                                                            calib
                                                                            //,cvo::CvoPointCloud::CANNY_EDGES
                                                                            ));
-    
+
+
+    cvo::CvoPointCloud pc_with_semantics(pc_original->num_features(), num_class);
+    pc_with_semantics.reserve(pc_original->size(), pc_original->num_features(), num_class);
+    for (int k = 0; k < pc_original->size(); k++) {
+      Eigen::VectorXf label(num_class);
+      if (num_class)
+        label = Eigen::VectorXf::Zero(num_class);
+      Eigen::VectorXf geometric_type(2);
+      geometric_type << 1, 0;
+      pc_with_semantics.add_point(k, pc_original->at(k), pc_original->feature_at(k),
+                                  label, geometric_type);
+    }
     
     // transform point cloud
     Eigen::Matrix4f transform = poses[i].cast<float>();
-    cvo::CvoPointCloud transformed_pc(5,0);
-    cvo::CvoPointCloud::transform(transform, *pc_original, transformed_pc);
+    cvo::CvoPointCloud transformed_pc(5,num_class);
+    cvo::CvoPointCloud::transform(transform,pc_with_semantics, transformed_pc);
     pc_full += transformed_pc;
 
     semantic_bki::point3f origin;
@@ -143,12 +150,15 @@ int main(int argc, char *argv[]) {
 
     // insert point cloud
     map_csm.insert_pointcloud_csm(&transformed_pc, origin, ds_resolution, free_resolution, max_range);
+    transformed_pc.write_to_color_pcd(std::to_string(i+start_frame)+".pcd");
+    tum.next_frame_index();
+    
   }
   
   // Map to CVOPointCloud
   //cvo::CvoPointCloud cloud_out(&map_csm, num_class);
-  cvo::CvoPointCloud pc_map(5,0);
-  semantic_bki::map_to_pc(map_csm, pc_map, 5, 0, 2);
+  cvo::CvoPointCloud pc_map(5,num_class);
+  semantic_bki::map_to_pc(map_csm, pc_map, 5, num_class, 2);
   //pc_vec[0].write_to_color_pcd(output_dir + "/" + "input_color.pcd");
   //pc_vec[0].write_to_label_pcd(output_dir + "/" + "input_semantics.pcd");
   pc_map.write_to_color_pcd("map.pcd");

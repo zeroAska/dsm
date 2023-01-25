@@ -686,7 +686,7 @@ namespace semantic_bki {
       beam_sample(p, origin, frees_n, free_resolution);
       for (auto p = frees_n.begin(); p != frees_n.end(); ++p) {
         std::vector<float> properties_free(properties.size(), 0);
-        xy.emplace_back(*p, properties);
+        xy.emplace_back(*p, properties_free);
       }
     }
 
@@ -737,8 +737,8 @@ namespace semantic_bki {
       PointCloud frees_n;
       beam_sample(p, origin, frees_n, free_resolution);
       for (auto p = frees_n.begin(); p != frees_n.end(); ++p) {
-        std::vector<float> properties(property_dim, 0);
-        xy.emplace_back(*p, properties);
+        std::vector<float> properties_free(property_dim, 0);
+        xy.emplace_back(*p, properties_free);
       }
     }
 
@@ -993,7 +993,7 @@ namespace semantic_bki {
         //labels.push_back(label);
         Eigen::VectorXf label(num_class), geometric_type(num_geometric_types);
         if (num_class) {
-          std::vector<float> probs;
+          std::vector<float> probs(num_class);
           it.get_node().get_occupied_probs(probs);
           label = Eigen::VectorXf::Map(probs.data(), num_class);
         }
