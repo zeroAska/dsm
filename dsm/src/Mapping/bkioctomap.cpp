@@ -87,6 +87,7 @@ namespace semantic_bki {
   SemanticBKIOctoMap::SemanticBKIOctoMap() : SemanticBKIOctoMap(0.1f, // resolution
                                                                 4, // block_depth
                                                                 3,  // num_class
+                                                                5,
                                                                 1.0, // sf2
                                                                 1.0, // ell
                                                                 1.0f, // prior
@@ -371,16 +372,16 @@ namespace semantic_bki {
         block_x.push_back(it->first.z());
         block_y.push_back(it->second[0]);  // label
         // copy features
-        block_f.resize(it->second.size()-1);
-        for (int j = 0; j < block_f.size(); j++)
-          block_f[j] = it->second[j+1];
+        //block_f.resize(it->second.size()-1);
+        for (int j = 0; j < it->second.size()-1; j++)
+          block_f.push_back( it->second[j+1]);
         //auto iter = it->second.begin();
         //iter++;
         //std::copy(iter, it->second.end(), block_f);
       }
           
 
-      SemanticBKI3f *bgk = new SemanticBKI3f(SemanticOcTreeNode::num_class, SemanticOcTreeNode::sf2, SemanticOcTreeNode::ell);
+      SemanticBKI3f *bgk = new SemanticBKI3f(SemanticOcTreeNode::num_class, SemanticOcTreeNode::num_features, SemanticOcTreeNode::sf2, SemanticOcTreeNode::ell);
       bgk->train(block_x, block_y, block_f);
 #ifdef OPENMP
 #pragma omp critical
@@ -537,9 +538,12 @@ namespace semantic_bki {
         block_x.push_back(it->first.z());
         block_y.push_back(it->second[0]);  // label
         // copy features
-        block_f.resize(it->second.size()-1);
-        for (int j = 0; j < block_f.size(); j++)
-          block_f[j] = it->second[j+1];
+        for (int j = 0; j < it->second.size()-1; j++)
+          block_f.push_back( it->second[j+1]);
+        
+        //block_f.resize(it->second.size()-1);
+        //for (int j = 0; j < block_f.size(); j++)
+        //  block_f[j] = it->second[j+1];
         
         //auto iter = it->second.begin();
         //iter++;
@@ -548,7 +552,7 @@ namespace semantic_bki {
       }
           
 
-      SemanticBKI3f *bgk = new SemanticBKI3f(SemanticOcTreeNode::num_class, SemanticOcTreeNode::sf2, SemanticOcTreeNode::ell);
+      SemanticBKI3f *bgk = new SemanticBKI3f(SemanticOcTreeNode::num_class, SemanticOcTreeNode::num_features, SemanticOcTreeNode::sf2, SemanticOcTreeNode::ell);
       bgk->train(block_x, block_y, block_f);
 #ifdef OPENMP
 #pragma omp critical
@@ -662,6 +666,8 @@ namespace semantic_bki {
         int pix_label = 0;              
         cloud->label_at(i).maxCoeff(&pix_label);
         properties.emplace_back(pix_label+1);              
+      } else {
+        properties.emplace_back(1);                      
       }
       if (cloud->num_features()){
         for (int j = 0; j < cloud->num_features(); ++j)
@@ -713,6 +719,8 @@ namespace semantic_bki {
         int pix_label = 0;              
         cloud[i]->semantics().maxCoeff(&pix_label);
         properties.emplace_back(pix_label+1);              
+      } else {
+        properties.emplace_back(1);                              
       }
       if (cloud[i]->features().size()){
         for (int j = 0; j < cloud[i]->features().size(); ++j)
@@ -729,7 +737,7 @@ namespace semantic_bki {
       PointCloud frees_n;
       beam_sample(p, origin, frees_n, free_resolution);
       for (auto p = frees_n.begin(); p != frees_n.end(); ++p) {
-        std::vector<float> properties(6, 0);
+        std::vector<float> properties(property_dim, 0);
         xy.emplace_back(*p, properties);
       }
     }

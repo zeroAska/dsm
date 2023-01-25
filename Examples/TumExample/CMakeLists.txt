@@ -45,3 +45,8 @@ add_executable(${PROGRAM_NAME}_no_qt main_no_qt.cpp)
 target_link_libraries(${PROGRAM_NAME}_no_qt ${OpenCV_LIBS} dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tum UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
 target_compile_definitions(${PROGRAM_NAME}_no_qt PUBLIC ${PCL_DEFINITIONS})
 set_target_properties(${PROGRAM_NAME}_no_qt PROPERTIES FOLDER "Examples")
+
+add_executable(${PROGRAM_NAME}_local_mapping main_local_mapping.cpp)
+target_link_libraries(${PROGRAM_NAME}_local_mapping ${OpenCV_LIBS} dsm UnifiedCvo::cvo_gpu_img_lib UnifiedCvo::tum UnifiedCvo::cvo_utils_lib UnifiedCvo::elas boost_system )
+target_compile_definitions(${PROGRAM_NAME}_local_mapping PUBLIC ${PCL_DEFINITIONS})
+set_target_properties(${PROGRAM_NAME}_local_mapping PROPERTIES FOLDER "Examples")

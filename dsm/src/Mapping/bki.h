@@ -29,6 +29,7 @@ namespace semantic_bki {
      */
     void train(const std::vector<T> &x, const std::vector<T> &y, const std::vector<T> &f) {
       assert(x.size() % dim == 0 && (int) (x.size() / dim) == y.size());
+      assert(f.size() / nf == y.size() );
       MatrixXType _x = Eigen::Map<const MatrixXType>(x.data(), x.size() / dim, dim);
       MatrixYType _y = Eigen::Map<const MatrixYType>(y.data(), y.size(), 1);
       MatrixKType _f = Eigen::Map<const MatrixKType>(f.data(), f.size() / nf, nf);
