@@ -31,6 +31,7 @@
 namespace cvo {
   class CvoGPU;
   class CvoPointCloud;
+  class BinaryState;
   } // namespace cvo
 namespace semantic_bki {
   class SemanticBKIOctoMap;
@@ -72,6 +73,7 @@ namespace dsm
     // removes keyframes from active window
     void addExpiringTemporalActivePointsToBkiMap(semantic_bki::SemanticBKIOctoMap & map);
     void dropFlaggedKeyframes();
+    void insertFlaggedKeyframesToMap();
 
     // activates new points from the window
     void activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
@@ -138,8 +140,11 @@ namespace dsm
     void selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
     void selectCovisibleMap(cvo::CvoPointCloud & covisMapOutput);
     void selectSampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo);
+    void selectRaySampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo);
+    
     void selectBkiCovisMap(const semantic_bki::SemanticBKIOctoMap & map,
                            cvo::CvoPointCloud & covisMapCvo) const;
+    //void updateNonzerosLastBA(const std::list<cvo::BinaryState::Ptr> & edge_states);
 
     // voxelMap based covisbility selection
     std::list<std::pair<CovisibilityNode *, CovisibilityNode *>>  selectCovisibleWindowCvo();

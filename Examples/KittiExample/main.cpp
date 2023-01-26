@@ -280,7 +280,7 @@ int main(int argc, char *argv[])
   std::cout << "\n";
 
   // read sequence
-  cvo::KittiHandler kitti(imageFolder, 0);
+  cvo::KittiHandler kitti(imageFolder, cvo::KittiHandler::DataType::STEREO);
 
   std::string cvo_calib_file = imageFolder + "/cvo_calib.txt"; 
   cvo::Calibration calib(cvo_calib_file);

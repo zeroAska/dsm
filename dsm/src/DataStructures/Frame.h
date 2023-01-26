@@ -156,8 +156,10 @@ namespace dsm
 		const AffineLight& affineLight();
 
 		// flag to remove from active window
-		void setFlaggedToDrop(bool flag);
+		void setFlaggedToDrop(bool flag); // only set to false in LMCW::selectTemporalWindow()
 		bool flaggedToDrop() const;
+                void setNonzerosLastBA(unsigned int num) {total_nonzeros_last_BA = num; }
+                unsigned int getNonzerosLastBA()const {return total_nonzeros_last_BA;}
 
 		// photometric error distribution
 		void setErrorDistribution(const std::shared_ptr<IDistribution>& dist);
@@ -244,6 +246,7 @@ namespace dsm
 
 		// flag to remove from window
 		bool flaggedToDrop_;
+                unsigned int total_nonzeros_last_BA;
 
 		// error distribution in this frame
 		std::shared_ptr<IDistribution> errorDistribution_;

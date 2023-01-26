@@ -1009,6 +1009,60 @@ namespace semantic_bki {
     std::cout<<"Export "<<ind<<" points from the bki map\n";
   }
 
+  void uncertainty_map_to_pc(semantic_bki::SemanticBKIOctoMap & map,
+                             cvo::CvoPointCloud & pc,
+                             int num_features,
+                             int num_class,
+                             int num_geometric_types){
+
+    int num_pts = 0;
+    for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
+      if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
+        num_pts++;
+      }
+    }
+    std::cout<<"Number of occupied points is "<<num_pts<<"\n";
+    //num_classes_ = num_classes;
+    std::vector<std::vector<float>> features;
+    std::vector<std::vector<float>> labels;
+    pc.reserve(num_pts, num_features, num_class);
+    int ind = 0;
+    for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
+      if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
+        // position
+        semantic_bki::point3f p = it.get_loc();
+        Eigen::Vector3f xyz;
+        xyz << p.x(), p.y(), p.z();
+        //positions_.push_back(xyz);
+        // features
+        std::vector<float> feature_vec(num_features+1);
+        it.get_node().get_features(feature_vec);
+        Eigen::VectorXf feature = Eigen::Map<Eigen::VectorXf>(feature_vec.data(), num_features);
+      
+        //features.push_back(feature);
+        // labels
+        //std::vector<float> label(num_classes_, 0);
+        //it.get_node().get_occupied_probs(label);
+        //labels.push_back(label);
+        Eigen::VectorXf label(num_class), geometric_type(num_geometric_types);
+        if (num_class) {
+          std::vector<float> probs(num_class);
+          it.get_node().get_vars(probs);
+          label = Eigen::VectorXf::Map(probs.data(), num_class);
+        }
+        if (num_geometric_types) {
+          float geometric_type_label = feature_vec[num_features];
+          geometric_type << 1.0 - geometric_type_label , geometric_type_label;
+        }
+        pc.add_point(ind, xyz, feature,label, geometric_type );
+        ind++;      
+      }
+
+    }
+    std::cout<<"Export "<<ind<<" points from the bki map\n";
+  }
+  
+
   template 
   void SemanticBKIOctoMap::insert_pointcloud_csm<dsm::ActivePoint const>(const std::vector<dsm::ActivePoint const *> & cloud, const point3f &origin, float ds_resolution,
                                                                    float free_res,

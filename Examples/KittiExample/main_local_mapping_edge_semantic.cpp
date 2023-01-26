@@ -14,7 +14,7 @@
 #include "utils/Calibration.hpp"
 #include "utils/ImageRGBD.hpp"
 #include "utils/ImageStereo.hpp"
-#include "dataset_handler/TartanAirHandler.hpp"
+#include "dataset_handler/KittiHandler.hpp"
 #include "dataset_handler/PoseLoader.hpp"
 
 using namespace std;
@@ -42,55 +42,17 @@ void write_to_geotype_pcd(const cvo::CvoPointCloud & pc,
   std::cout << "Finished write to label pcd" << std::endl; 
 }
 
-
-void map_to_pc(  semantic_bki::SemanticBKIOctoMap & map,
-                 cvo::CvoPointCloud & pc){
-
-  int num_pts = 0;
-  for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
-    if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
-      num_pts++;
-    }
-  }
-    //num_classes_ = num_classes;
-  std::vector<std::vector<float>> features;
-  std::vector<std::vector<float>> labels;
-  pc.reserve(num_pts, 5, 0);
-  int ind = 0;
-  for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
-    if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
-      // position
-      semantic_bki::point3f p = it.get_loc();
-      Eigen::Vector3f xyz;
-      xyz << p.x(), p.y(), p.z();
-      //positions_.push_back(xyz);
-      // features
-      std::vector<float> feature_vec(5, 0);
-      it.get_node().get_features(feature_vec);
-      Eigen::VectorXf feature = Eigen::Map<Eigen::VectorXf>(feature_vec.data(), 5);
-      
-      //features.push_back(feature);
-      // labels
-      //std::vector<float> label(num_classes_, 0);
-      //it.get_node().get_occupied_probs(label);
-      //labels.push_back(label);
-      Eigen::VectorXf label, geometric_type;
-      pc.add_point(ind, xyz, feature,label, geometric_type );
-    }
-  }
-}
-
 int main(int argc, char *argv[]) {
   // list all files in current directory.
   //You could put any file path in here, e.g. "/home/me/mwah" to list that directory
   std::cout<<argc<<std::endl;
 
-  cvo::TartanAirHandler tartan(argv[1]);
-  int total_iters = tartan.get_total_number();
+  cvo::KittiHandler kitti(argv[1], cvo::KittiHandler::DataType::STEREO);
+  int total_iters = kitti.get_total_number();
 
   string cvo_param_file(argv[2]);
   string calib_file;
-  calib_file = string(argv[1] ) +"/cvo_calib_stereo.txt"; 
+  calib_file = string(argv[1] ) +"/cvo_calib.txt"; 
   //std::string output_dir(argv[3]);
   int start_frame = stoi(argv[3]);
   int num_frames = stoi(argv[4]);
@@ -101,27 +63,27 @@ int main(int argc, char *argv[]) {
   std::cout<<" cycle through the directory\n";
   int total_num = 0;
   int last_frame = std::min(start_frame+num_frames-1, total_iters-1);
-  tartan.set_start_index(start_frame);
+  kitti.set_start_index(start_frame);
   cvo::Calibration  calib(calib_file, cvo::Calibration::STEREO);
 
   // Mapping
   // Set parameters
   int block_depth = 1;
   double sf2 = 1.0;
-  double ell = 1.0;
+  double ell = 2.0;
   float prior = 0.0f;
   float var_thresh = 1.0f;
-  double free_thresh = 0.9;
-  double occupied_thresh = 0.98;
+  double free_thresh = 0.4;
+  double occupied_thresh = 0.9;
   double resolution = 0.2;
-  double free_resolution = 0.2;
-  double ds_resolution = -1;
+  double free_resolution = 1;
+  double ds_resolution =0.1;
   double max_range = -1;
 
   // Read camera poses
   std::vector<Eigen::Matrix4d,
               Eigen::aligned_allocator<Eigen::Matrix4d>> poses;
-  cvo::read_pose_file_tartan_format(odom_file, start_frame, last_frame, poses);
+  cvo::read_pose_file_kitti_format(odom_file, start_frame, last_frame, poses);
   std::cout<<"Just read "<<poses.size()<<" poses\n";;
   
   // Build map
@@ -135,7 +97,7 @@ int main(int argc, char *argv[]) {
     //pc_vec[i].read_cvo_pointcloud_from_file(f);
     cv::Mat source_left, source_right;
     std::vector<float> semantics;
-    tartan.read_next_stereo(source_left, source_right, num_class, semantics);
+    kitti.read_next_stereo(source_left, source_right, num_class, semantics);
 
     std::shared_ptr<cvo::ImageStereo> source_stereo(new cvo::ImageStereo(source_left, source_right, num_class, semantics));
     std::shared_ptr<cvo::CvoPointCloud> pc_with_semantics(new cvo::CvoPointCloud(*source_stereo,
@@ -172,7 +134,7 @@ int main(int argc, char *argv[]) {
     // insert point cloud
     map_csm.insert_pointcloud_csm(&transformed_pc, origin, ds_resolution, free_resolution, max_range);
     transformed_pc.write_to_color_pcd(std::to_string(i+start_frame)+".pcd");
-    tartan.next_frame_index();
+    kitti.next_frame_index();
     
   }
   

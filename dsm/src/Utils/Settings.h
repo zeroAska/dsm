@@ -179,7 +179,7 @@ namespace dsm
 		int maxCovisibleKeyframes;				// maximum number of covisible active keyframes in the opt window
 		int numAlwaysKeepKeyframes;				// number of temporal keyframes to always keep in the optimization window + the new one
 
-		float minPointCovisible;				// minimum ratio of visible points to consider a keyframe as covisible
+		float minPointCovisible;				// minimum ratio of visible points to consider a keyframe in the window. Otherwise drop it
 		float maxLightCovisible;				// maximum light change to consider a keyframe covisible
 
 		// Outlier removal
@@ -224,7 +224,7 @@ namespace dsm
           //int covisMapSampleMethod; // 0: random; 1: Gaussian
           int cvoIRLSConstFrames;
 
-          int insertPointToMapAfterBA;
+          int insertPointToMapAfterBA; // 0: insert in activePoint();  1: insert after BA;   2: insert after removing from window
 
 
           //// bki map params

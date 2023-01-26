@@ -410,6 +410,12 @@ namespace semantic_bki {
                    int num_class,
                    int num_geometric_types);
 
+  void uncertainty_map_to_pc(  semantic_bki::SemanticBKIOctoMap & map,
+                               cvo::CvoPointCloud & pc,
+                               int num_features,
+                               int num_class,
+                               int num_geometric_types);
+  
   
 
 }

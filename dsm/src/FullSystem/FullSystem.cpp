@@ -2973,7 +2973,8 @@ namespace dsm
     //activePointsToCvoPointCloud(covisMap, covisMapCvo);
     int temporalStartIndex = 0;
     
-    if (activeKeyframes.size() < 4) return;
+    //if (activeKeyframes.size() < 4) return;
+    
     std::vector<cvo::CvoPointCloud> cvo_pcs;
     std::vector<cvo::CvoFrame::Ptr> cvo_frames;
     cvo_pcs.resize(activeKeyframes.size()-1); // only temporal 
@@ -2984,11 +2985,6 @@ namespace dsm
       std::cout<<kf->frameID()<<", ";
       
       kf->activePointsToCvoPointCloud(cvo_pcs[i]);
-      //if (isUsingCovis && i == 0) {
-      //  std::cout<<"Now adding the covisMap into the first frame. Frame frame has initially "<<cvo_pcs[i].num_points()<<std::endl;
-      //  cvo_pcs[i] = cvo_pcs[i] + covisMapCvo;
-      //  std::cout<<"After adding the covisMap, the first frame has "<<cvo_pcs[i].num_points()<<std::endl;
-      //}
       assert(kf->activePoints().size() != 0);
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
       cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrameGPU(&cvo_pcs[i], kf_to_world.data()));
@@ -3105,29 +3101,6 @@ namespace dsm
 
     std::cout<<"covis map has size "<<covisMapCvo.num_points()<<", isUsingCovis is "<<isUsingCovis<<std::endl;
 
-
-    /*
-    if (isUsingCovis) {
-    //if (false) {
-      cvo::CvoPointCloud tmpWindow(covisMapCvo.num_features(), covisMapCvo.num_classes());
-      Eigen::Matrix4f pose_tmp_first = Eigen::Matrix4f::Identity();
-      if (activeKeyframes.size()) {
-        tmpWindow += *cvo_frames[0]->points;
-        pose_tmp_first = activeKeyframes[0]->camToWorld().matrix();
-      }
-      for (int i = 1; i < activeKeyframes.size()-1; i++) {
-        //if (counter == max_frames) break;
-        auto ptr = activeKeyframes[i];
-        cvo::CvoPointCloud new_pc(covisMapCvo.num_features(), covisMapCvo.num_classes());
-        Eigen::Matrix4f pose_f = pose_tmp_first.inverse() * ptr->camToWorld().matrix(); //Eigen::Matrix4d::Identity();
-        cvo::CvoPointCloud::transform(pose_f, *cvo_frames[i]->points, new_pc);
-        tmpWindow += new_pc;
-      }
-      covisMapAlign(tmpWindow,
-                    covisMapCvo, activeKeyframes );
-
-    }
-    */
 
     updateActivePointsInliers(edges_frame_ptrs, associations);
 
@@ -3249,7 +3222,7 @@ namespace dsm
       this->createCandidatesVoxel(frame);
     else
       this->createCandidatesPlanar(frame);
-    // this->trackCandidatesCvo(frame, true);
+
     this->trackCandidatesCvo(frame);
     
     // insert new keyframe
@@ -3285,7 +3258,7 @@ namespace dsm
     // std::list<std::pair<CovisibilityNode*, CovisibilityNode*>> edgesCovisibleToTemporal;
     if (!settings.doOnlyTemporalOpt)
       //edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
-      this->lmcw->selectSampledCovisibleMap(covisMapCvo);
+      this->lmcw->selectRaySampledCovisibleMap(covisMapCvo);
 
     //this->lmcw->selectCovisibleWindowCvo2();
     //if (lmcw->allKeyframes().size() > 1 && lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->activePoints().size())
@@ -3322,7 +3295,8 @@ namespace dsm
       // }
       ///////////////////////////////////////////////////////////////////
 
-      this->lmcw->updateVoxelMapCovisGraph();
+      if (settings.insertPointToMapAfterBA == 1)
+        this->lmcw->updateVoxelMapCovisGraph();
 
       // updateCovis Debug use
       // save voxel map to pcd
@@ -3463,6 +3437,8 @@ namespace dsm
 
     // drop keyframes and remove covisible keyframes
     // we will only estimate new candidates from the temporal window
+    if (settings.insertPointToMapAfterBA == 2)
+      this->lmcw->insertFlaggedKeyframesToMap();
     this->lmcw->dropFlaggedKeyframes();
 
     // create new candidates for last keyframe

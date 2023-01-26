@@ -35,6 +35,7 @@
 #include "Utils/Projection.h"
 #include "Utils/Settings.h"
 #include "Utils/UtilFunctions.h"
+#include "Utils/DepthModel.hpp"
 #include "Mapping/point3f.h"
 #include "Mapping/bkioctomap.h"
 #include "Mapping/bki.h"
@@ -152,7 +153,7 @@ namespace dsm
     {
       if ((*it)->flaggedToDrop()) // TODO: if exceeds the max temporal kf number
       {
-        (*it)->deactivate();
+        (*it)->deactivate(); // set to INACTIVE and free memory
         (*it)->setFlaggedToDrop(false);
 
         // remove from keframe list
@@ -519,6 +520,15 @@ namespace dsm
     }
   }
 
+  /*
+  void LMCW::updateNonzerosLastBA(const std::list<cvo::BinaryState::Ptr> & edge_states) {
+    for (int i = 0 ; i < this->activeKeyframes_.size(); i++)
+      activeKeyframes_[i]->setNonzerosLastBA(0);
+    for (auto && edge : edge_states) {
+      auto edge_ptr = dynamic_cast<cvo::BinaryStateGPU>(edge);
+      
+    }
+    }*/
   
   void LMCW::selectCovisibleWindow(const std::unique_ptr<CeresPhotometricBA>& photometricBA)
 
@@ -928,7 +938,8 @@ namespace dsm
     
   }  
 
-  void LMCW::selectSampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo) {
+  void LMCW::selectSampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo){
+
     assert(this->temporalWindowIndex == 0);
 
     Utils::Time t1 = std::chrono::steady_clock::now();
@@ -961,10 +972,11 @@ namespace dsm
         /***************
          * for debugging
          ***************/
-        
         const Voxel<ActivePoint> * p_voxel = voxelMap_->query_point_raycasting(p);
-        if (p_voxel && covisVoxels.find(p_voxel) == covisVoxels.end())
+        if (p_voxel && covisVoxels.find(p_voxel) == covisVoxels.end()) {
           covisVoxels.insert(p_voxel);
+        }
+
       }
     }
 
@@ -1095,6 +1107,76 @@ namespace dsm
 
 
   }
+
+  void LMCW::selectRaySampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo){
+
+    assert(this->temporalWindowIndex == 0);
+
+    Utils::Time t1 = std::chrono::steady_clock::now();
+    
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+    const Eigen::Matrix3f& K = calib.matrix3f(0);
+    const int w = calib.width(0);
+    const int h = calib.height(0);
+    
+    const int firstKeyframeID = this->activeKeyframes_.front()->keyframeID();
+
+    std::list<const ActivePoint*> covisPoints;
+    int numFeatures = 0, numSemantics=0;
+    for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
+      
+      const std::vector<std::unique_ptr<ActivePoint>> & activePoints = activeKeyframes_[i]->activePoints();
+      #ifdef OMP
+      #pragma omp parallel for
+      #endif
+      for (int j = 0; j < activePoints.size(); j++) {
+        const ActivePoint * p = activePoints[j].get();
+        std::vector<const Voxel<ActivePoint> *> observed_voxels_along_ray;
+        Eigen::Vector3f curr_cam_pose = activeKeyframes_[i]->camToWorld().matrix().col(3);
+        float depth = (p->getVector3fMap() - curr_cam_pose).norm();
+        float uncertainty = squared_uncertainty(depth);
+        voxelMap_->query_point_raycasting(p, observed_voxels_along_ray,
+                                          depth-uncertainty, depth+uncertainty
+                                          );
+        if (observed_voxels_along_ray.size() ) {
+          const ActivePoint * p_voxel = sample_voxel_gaussian_observations(observed_voxels_along_ray);
+          #ifdef OMP
+          #pragma omp critical
+          #endif
+          {
+            covisPoints.insert(p_voxel);
+          }
+
+      }
+    }
+
+    if (covisPoints.size() < settings.covisMinPoints) {
+      return;
+    }
+
+    covisMapCvo.reserve(covisPoints.size(),
+                        (*covisPoints.begin())->features().size(),
+                        (*covisPoints.begin())->semantics().size());
+
+    /// transform to the frame of the first frame;
+    auto firstTemporalToWorld = activeKeyframes_[0]->camToWorld();
+    int index = 0;
+    for (auto && p: covisPoints) {
+      auto camToWorld = p->reference()->camToWorld();
+      //Sophus::SE3f covisFrameToFirstTemporal = camToWorld.inverse() * firstTemporalToWorld;
+      Sophus::SE3f covisFrameToFirstTemporal =  firstTemporalToWorld.inverse() * camToWorld;
+      Eigen::Vector3f xyz = covisFrameToFirstTemporal * p->xyz();
+      covisMapCvo.add_point(index, xyz, p->features(), p->semantics(), p->geometricType());
+      index++;
+    }
+
+    covisMapCvo.write_to_color_pcd("covisMap.pcd");
+
+    Utils::Time t2 = std::chrono::steady_clock::now();
+    std::cout<<"Ray tracing covis sampling takes "<<std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1)<<"ms\n";
+  }
+  
 
   void LMCW::selectCovisibleMap(cvo::CvoPointCloud & covisMapCvo) {
     assert(this->temporalWindowIndex == 0);
@@ -1820,6 +1902,55 @@ namespace dsm
     }
     std::cout<<"Total Added to map is "<<total_added_to_map<<std::endl;
   }
+
+
+  void LMCW::insertFlaggedKeyframesToMap()
+  {
+    auto & settings = Settings::getInstance();
+    //newly_added_activePts.clear();
+    const int numActiveKeyframes = (int)this->activeKeyframes_.size();
+    int total_added_to_map = 0;
+    for (int i = this->temporalWindowIndex; i < numActiveKeyframes - 1; i++)
+    {
+      // for each temporal frame, update its activePoints location
+      const std::shared_ptr<Frame> owner = this->activeKeyframes_[i];
+
+      if (!owner->flaggedToDrop()) continue;
+      
+      std::vector<std::unique_ptr<ActivePoint>>& activePoints = owner->activePoints();
+      CovisibilityNode* curFrameNode = owner->graphNode;
+      for (int j = 0; j < activePoints.size(); j++)
+      {
+        ActivePoint * actPt = activePoints[j].get();
+
+        if (actPt->status() == ActivePoint::Status::ISOLATED) continue;
+        if (settings.insertPointToMapAfterBA == 2
+            && actPt->status() == ActivePoint::Status::SURROUNDED) {
+          this->voxelMap_->insert_point(actPt);
+          actPt->setStatus(ActivePoint::Status::MAPPED);
+          actPt->setVoxel(this->voxelMap_->query_point(actPt));
+          total_added_to_map ++;
+          //newly_added_activePts.push_back(actPt);
+          continue;
+        } 
+
+        // for each Active point in the new voxel, increase the edge weight
+        std::vector<ActivePoint*> newPoints = this->voxelMap_->query_point(actPt)->voxPoints;
+        for (ActivePoint* newPt : newPoints)
+        {
+          CovisibilityNode* covisFrameNode = newPt->reference()->graphNode;
+          const std::shared_ptr<Frame>& covisFrame = this->allKeyframes_[newPt->reference()->keyframeID()];
+          // no edge between a frame and itself
+          if (covisFrame == owner) continue;
+          int newWeight = curFrameNode->edges[covisFrameNode] + 1;
+          covisibilityGraph_->connect(covisFrame, owner, newWeight);
+        }
+
+      }
+    }
+    std::cout<<"Total Added to map is "<<total_added_to_map<<std::endl;
+  }
+  
 
 
 }
