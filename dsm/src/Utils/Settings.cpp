@@ -196,6 +196,7 @@ namespace dsm
                 this->covisMinPoints = 1000;
                 this->cvoIRLSConstFrames = 1;
                 this->insertPointToMapAfterBA = 1;
+                this->insertFreeSpacePointsToMap = 0;
 
                 bkiMapOn = 0;
                 bkiMapResolution = 0.1f;
@@ -437,6 +438,12 @@ namespace dsm
                   std::cout<<"insertPointToMapAfterBA is "<<this->insertPointToMapAfterBA<<std::endl;
                   return;
                 }
+
+                if (this->checkParameter("insertfreespacepointstomap", name, value, this->insertFreeSpacePointsToMap)) {
+                  std::cout<<"insertFreeSpacePointsToMap is "<<this->insertFreeSpacePointsToMap<<std::endl;
+                  return;
+                }
+                
 
                 if (this->checkParameter("bkimapresolution", name, value, this->bkiMapResolution)) {
                   return;

@@ -81,6 +81,10 @@ namespace dsm {
         Voxel() {}
 
         Voxel(float x, float y, float z) : xc(x), yc(y), zc(z) {}
+      Voxel(float x, float y, float z,
+            int occupancy) : xc(x), yc(y), zc(z), occupancy(occupancy) {}
+
+      void update_occupancy(int val) { occupancy+= val; }
 
       Eigen::Vector3f centroid() const {
         Eigen::Vector3f v;
@@ -95,6 +99,12 @@ namespace dsm {
         float zc;
         // points in the voxel
         std::vector<PointType*> voxPoints;
+
+      int occupancy;
+
+      const static int occupied_limit = 90;
+      const static int free_limit = 30;
+      const static int occupancy_step = 10;
     };
 
     template <typename PointType>
@@ -109,7 +119,7 @@ namespace dsm {
          * @return true if insertion is successful; False if point already exists
          */
         bool insert_point(PointType* pt);
-
+        bool insert_point_raytracing_with_free_points(PointType * pt);
 
         /**
          * @brief remove a 3D point from the voxel map

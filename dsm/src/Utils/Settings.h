@@ -225,6 +225,7 @@ namespace dsm
           int cvoIRLSConstFrames;
 
           int insertPointToMapAfterBA; // 0: insert in activePoint();  1: insert after BA;   2: insert after removing from window
+          int insertFreeSpacePointsToMap;
 
 
           //// bki map params

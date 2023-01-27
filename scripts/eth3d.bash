@@ -9,7 +9,7 @@ cd ..
     for seq in sfm_lab_room_1
     #for seq in  ceiling_1 planar_2 sfm_garden  sfm_lab_room_1 repetitive sfm_house_loop
     do
-	    folder=eth3d_$seq_$date
+	    folder=eth3d_${seq}_${date}
         rm -rf $folder
         mkdir -p $folder
         #gdb -ex run --args 
