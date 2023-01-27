@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     std::shared_ptr<cvo::ImageStereo> source_stereo(new cvo::ImageStereo(source_left, source_right, num_class, semantics));
     std::shared_ptr<cvo::CvoPointCloud> pc_with_semantics(new cvo::CvoPointCloud(*source_stereo,
                                                                                  calib
-                                                                                 ,cvo::CvoPointCloud::DSO_EDGES
+                                                                                 ,cvo::CvoPointCloud::FULL
                                                                                  ));
 
 

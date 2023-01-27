@@ -343,6 +343,119 @@ namespace dsm {
     
   }
 
+
+  template <typename PointType>
+  const Voxel<PointType>* VoxelMap<PointType>::query_point_raycasting(const Eigen::Vector3f & pt_xyz,
+                                                                      const Sophus::SE3f & Tcw_sophus,
+                                                                      float minDist, float maxDist) {
+    
+    //Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
+    Eigen::Matrix4f Tcw = Tcw_sophus.matrix();
+    Eigen::Vector3f xyz_cam = pt_xyz;// = //Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f xyz_w = Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f p_c_normalized = xyz_cam / pt_xyz(2);
+    Eigen::Vector3f p_cam = p_c_normalized * minDist; // pt in cam frame normalized
+    Eigen::Vector3f p_cam_max = p_c_normalized * maxDist;
+    Eigen::Vector4f p_cam_4;
+    p_cam_4 << p_cam(0), p_cam(1), p_cam(2), 1.0;
+    Eigen::Vector3f p = (Tcw * p_cam_4).head<3>();
+    Eigen::Vector3f p_max = Tcw.block<3,3>(0,0) * p_cam_max + Tcw.block<3,1>(0,3);
+
+    
+    Eigen::Vector3f dir = (p_max - p).normalized();  //(Tcw.block<3,3>(0,0) * (p_max - p_cam)).normalized(); //''Eigen::Map<Eigen::Vector3f>(dirArr);
+    
+    //int ix = std::floor(p(0));// | 0
+    //int iy = std::floor(p(1));// | 0
+    //int iz = std::floor(p(2));// | 0
+    VoxelCoord p_voxel = point_to_voxel_center(p(0), p(1), p(2));
+    float ix = p_voxel.xc;
+    float iy = p_voxel.yc;
+    float iz = p_voxel.zc;
+      
+ 
+    float stepx = ((dir(0) > 0) ? voxelSize_ : -voxelSize_);
+    float stepy = ((dir(1) > 0) ? voxelSize_ : -voxelSize_);
+    float stepz = ((dir(2) > 0) ? voxelSize_ : -voxelSize_);
+    
+    float txDelta = std::abs(voxelSize_ / dir(0));
+    float tyDelta = std::abs(voxelSize_ / dir(1));
+    float tzDelta = std::abs(voxelSize_ / dir(2));
+    
+    float xdist = (stepx > 0) ? (ix + voxelSize_ /2 - p(0)) : ( ix - voxelSize_/2 - p(0) );
+    float ydist = (stepy > 0) ? (iy + voxelSize_ /2 - p(1)) : ( iy - voxelSize_/2 - p(1));
+    float zdist = (stepz > 0) ? (iz + voxelSize_ /2 - p(2)) : ( iz - voxelSize_/2 - p(2));    
+
+    //float txMax = (txDelta < std::numeric_limits<float>::max()) ? txDelta * xdist : std::numeric_limits<float>::max();
+    //float tyMax = (tyDelta < std::numeric_limits<float>::max()) ? tyDelta * ydist : std::numeric_limits<float>::max();
+    //float tzMax = (tzDelta <  std::numeric_limits<float>::max()) ? tzDelta * zdist :  std::numeric_limits<float>::max();
+    float txMax = (txDelta < std::numeric_limits<float>::max()) ? xdist / dir(0) : std::numeric_limits<float>::max();
+    float tyMax = (tyDelta < std::numeric_limits<float>::max()) ? ydist / dir(1) : std::numeric_limits<float>::max();
+    float tzMax = (tzDelta <  std::numeric_limits<float>::max()) ? zdist / dir(2) :  std::numeric_limits<float>::max();
+        
+    int steppedIndex = -1 ;
+
+    float t = 0;
+    VoxelCoord p_voxel_actual = point_to_voxel_center(xyz_w(0), xyz_w(1), xyz_w(2));
+    //std::cout<<"voxelSize is "<<voxelSize_<<"Starting position "<<p.transpose()<<", ending position "<<p_max.transpose()<<", actual depth "<<xyz_w.transpose()
+    //         <<", actual voxel coord is "<<p_voxel_actual.xc<<", "<<p_voxel_actual.yc<<", "<<p_voxel_actual.zc<<"\n";
+    while (t < maxDist) {
+      //Eigen::Vector3f curr_p = p + dir * t;
+      //p_voxel_actual = point_to_voxel_center(curr_p(0), curr_p(1), curr_p(2));
+      /// std::cout<<"Current Point "<<curr_p.transpose()<< ", query voxel "<<ix<<", "<<iy<<", "<<iz<<", t="<<t<<", raw position is "<<xyz_w.transpose()
+      //         <<", actual voxel coord is "<<p_voxel_actual.xc<<", "<<p_voxel_actual.yc<<", "<<p_voxel_actual.zc
+      //         <<std::endl;              
+      const Voxel<ActivePoint> * nextVoxel = query_point( ix, iy, iz);
+      
+      if (nextVoxel) {
+        return nextVoxel;
+      }
+      if (txMax < tyMax) {
+        if (txMax < tzMax) {
+          ix += stepx;
+          t = txMax;
+          txMax += txDelta;
+          // tyMax += txDelta * dir(1);
+          //tzMax += txDelta * dir(2);
+          //std::cout<<"Update tx, tx="<<txMax<<", ty="<<tyMax<<", tzMax="<<tzMax<<std::endl;
+          //steppedIndex = 0;
+        } else {
+          iz += stepz;
+          t = tzMax;
+          tzMax += tzDelta;
+          //std::cout<<"Update tz, tx="<<txMax<<", ty="<<tyMax<<", tzMax="<<tzMax<<std::endl;
+          //steppedIndex = 2;
+        }
+      } else {
+        if (tyMax < tzMax) {
+          iy += stepy;
+          t = tyMax;
+          tyMax += tyDelta;
+          //std::cout<<"Update ty, tx="<<txMax<<", ty="<<tyMax<<", tzMax="<<tzMax<<std::endl;          
+          //steppedIndex = 1;
+        } else {
+          iz += stepz;
+          t = tzMax;
+          tzMax += tzDelta;
+          // std::cout<<"Update tz, tx="<<txMax<<", ty="<<tyMax<<", tzMax="<<tzMax<<std::endl;          
+          //steppedIndex = 2;
+        }
+      }
+
+
+    }
+
+    return nullptr;
+
+    // raycast algo paper
+    // http://www.cse.chalmers.se/edu/year/2010/course/TDA361/grid.pdf    
+    // consider raycast vector to be parametrized by t
+    //   vec = [px,py,pz] + t * [dx,dy,dz]
+
+    
+  }
+
+  
+
   template <>
   void VoxelMap<ActivePoint>::query_point_raycasting(const ActivePoint * pt,
                                                      std::vector<const Voxel<ActivePoint>*> & occupied_voxels_along_ray,

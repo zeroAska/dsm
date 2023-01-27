@@ -145,6 +145,14 @@ namespace dsm {
         const Voxel<PointType>* query_point(float globalX, float globalY, float globalZ) const;
 
         const Voxel<PointType>* query_point_raycasting(const PointType * pt, float minDist=0.5, float maxDist=55.0);
+        
+        template<typename Functor>
+        static const Voxel<PointType>* query_point_raycasting(const Eigen::Vector3f & pt_xyz,
+                                                              const Sophus::SE3f & Tcw_sophus,
+                                                              float minDist, float maxDist,
+                                                              
+                                                              );
+          
         void query_point_raycasting(const PointType * pt, std::vector<const Voxel<PointType>*> & occupied_voxels_along_ray,
                                     float minDist=0.5, float maxDist=55.0) const;
         

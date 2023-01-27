@@ -1926,7 +1926,8 @@ namespace dsm
         {
           ActivePoint * actPt = activePoints[j].get();
 
-          if (actPt->status() == ActivePoint::Status::ISOLATED) continue;
+          if (actPt->status() == ActivePoint::Status::ISOLATED
+              || actiPt->status() == ActivePoint::Status::MAPPED ) continue;
           if (settings.insertPointToMapAfterBA == 2
               && actPt->status() == ActivePoint::Status::SURROUNDED) {
             this->voxelMap_->insert_point(actPt);
