@@ -136,7 +136,7 @@ namespace dsm
           cv::cvtColor(color_img, gray_img, cv::COLOR_BGR2GRAY);
 
           // TL: terminate at 10th frame
-          //if (id == startFrameId + 10) this->shouldStop = true; 
+          //if (id == startFrameId + 5) this->shouldStop = true; 
 
           if (DSM == nullptr)
           {
@@ -193,12 +193,12 @@ namespace dsm
         std::vector<double> timestamps;
         std::vector<int> ids;
         DSM->getFullTrajectory(poses, timestamps, ids);
-
+	std::vector<std::string> vstrRGBName = reader.get_rgb_name_list();  	
         int l = 0;
         for (auto && accum_mat : poses) {
           std::ofstream trajFile(trajFileName, std::ios::app);
           Eigen::Quaternionf q(accum_mat.block<3,3>(0,0));
-          trajFile<<std::fixed << std::setprecision(18) << std::scientific << accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 
+          trajFile<<std::fixed << std::setprecision(18) << std::scientific << vstrRGBName[l]<<" "<<accum_mat(0,3)<<" "<<accum_mat(1,3)<<" "<<accum_mat(2,3)<<" "; 
           trajFile<<q.x()<<" "<<q.y()<<" "<<q.z()<<" "<<q.w()<<"\n";
           trajFile.flush();
           trajFile.close();          
