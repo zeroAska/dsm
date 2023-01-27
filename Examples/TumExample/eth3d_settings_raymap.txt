@@ -1,0 +1,135 @@
+debugPrintLog = true
+debugLogTracking = true
+debugLogKeyframes = true
+debugLogPixelDetection = false
+debugLogCandidatesTracking = true
+debugLogCandidatesOpt = true
+debugLogDistanceMap = false
+debugLogActivePoints = true
+
+debugCandidates = true
+
+debugShowTrackResult = false
+debugShowTrackError = false
+debugShowTrackWeights = false
+debugShowTrackLight = false
+debugShowTrackDistribution = false
+
+debugShowPointDetection = true
+
+debugShowDistanceTransformBefore = true
+debugShowDistanceTransformAfter = true
+
+debugShowOptKeyframes = true
+
+debugShowOptError = true
+debugShowOptWeight = true
+debugShowOptLight = true
+debugShowOptErrorDist = true
+debugShowOptErrorDistLast = true
+
+depthMapsDir = ./DepthMaps
+saveDepthMaps = true
+
+optErrorDistDir = ./ErrorDistribution
+saveOptErrorDist = true
+
+blockUntilMapped = false
+singleThreaded = true
+mappingThreads = 6
+
+minimizeMemory = false
+
+useFixedHuberScale = false
+huberScale = 9
+
+useTDistribution = true
+nuFixed = -1
+muFixed = 0
+sigmaFixed = -1
+
+defaultNu = 5
+defaultMu = 0
+defaultSigma = 7.5
+
+inlierPercentile = 0.95
+maxPixelOutlier = 0.3
+maxPixelDiscard = 0.6
+
+maxEnergyFit = 60
+
+weightConstant = 2500
+
+trackingMaxLevel = 3
+
+pointDetectionLevels = 2
+numCandidates = 10000
+numBlocksPerDimension = 20
+minGradAdd = 7
+
+maxUnmappedFrames = 3
+
+maxEplLengthFactor = 0.0375			
+minEplLengthSkip = 1.5
+stereoMaxEnergy = 20
+secondBestRadius = 2.0
+epiLineSigma = 0.25			
+subpixelIterations = 3
+subpixelStepThreshold = 0.1
+
+maxViewChange = 0.5
+
+candidateOptIterations = 3
+minDistToActivate = 5
+maxCandidateUncertainty = 2
+minCandidateQuality = 2
+
+doOnlyTemporalOpt = false
+printSummary = true
+showFullReport = false
+minOptimizationGrad = 2
+minBAIterations = 1
+maxBAIterations = 100
+optMaxLevel = 2				
+
+numActivePoints = 2000
+
+maxTemporalKeyframes = 3
+maxCovisibleKeyframes = 1
+numAlwaysKeepKeyframes = 1
+
+minPointCovisible = 0.2
+maxLightCovisible = 0.7
+
+minNumKFToConsiderNew = 2
+minNumGoodObservations = 3
+
+newKFDistWeight = 4
+newKFUsageWeight = 3
+newKFAffineWeight = 4
+newKFResidualWeight = 2
+minNumTrackedFramesToCreateKF = 1
+
+showDepthMap = true
+showDepthMapLvl = 0
+
+
+iDepthUncertainty = 0.1
+trackingCosLimit = 0.76
+enableDepthRegression = false
+depthNormalEll = 0.0004
+depthDirEll = 0.001
+gapCovisibleToTemporal = 10
+
+covisMinPoints = 300
+voxelSize = 0.02
+candidatePointsSampling = 0
+inputSurfaceDownsampleVoxelSize = 0.1
+inputEdgeDownsampleVoxelSize = 0.01
+covisEll = 0.075
+
+cvoIRLSConstFrames = 0
+
+covisUpdateFrames = 1
+
+insertPointToMapAfterBA = 2
