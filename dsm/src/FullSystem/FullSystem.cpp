@@ -3039,7 +3039,7 @@ namespace dsm
                                        [&](size_t minPointsAccum, auto pt2) {
                                          return (minPointsAccum < pt2->points->size() )? minPointsAccum : pt2->points->size();
                                        });
-    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints &&  !settings.doOnlyTemporalOpt;
+    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints / 2 &&  !settings.doOnlyTemporalOpt;
     std::cout<<"const flags are\n";
     for (int j = 0; j < const_flags_in_BA.size(); j++){
       const_flags_in_BA[j] = false;
