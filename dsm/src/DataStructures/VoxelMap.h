@@ -148,7 +148,7 @@ namespace dsm {
                                     const Sophus::SE3f & camToWorld,
                                     std::vector<const Voxel<PointType>*> & occupied_voxels_along_ray,                                    
 
-                                    float minDist=0.5, float maxDist=55.0) const;
+                                    float minDist=0.1, float maxDist=55.0) const;
 
         const Voxel<PointType>* query_point_raycasting(const ActivePoint * pt, float minDist=0.1, float maxDist=55);
         
