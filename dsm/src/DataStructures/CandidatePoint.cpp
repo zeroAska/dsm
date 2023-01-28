@@ -855,7 +855,7 @@ namespace dsm
     return vis;
   }
 
-  Eigen::Vector3f CandidatePoint::xyz() {
+  Eigen::Vector3f CandidatePoint::xyz() const {
     const auto& calib = GlobalCalibration::getInstance();
     const Eigen::Matrix3f& invK = calib.invMatrix3f(0);
 

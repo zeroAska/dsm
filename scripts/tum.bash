@@ -13,7 +13,7 @@ do
         mkdir -p tum_fr${idx}_${seq}
         	
 	#gdb --args \
-		./build/bin/TumExample /home/rayzhang/media/Samsung_T5/tum/freiburg${idx}_${seq} Examples/TumExample/cvo_rgbd_params_eth3d.yaml Examples/TumExample/eth3d_settings.txt 0 test_tum_fr${idx}_${seq}.txt
+		./build/bin/TumExample /home/rayzhang/media/Samsung_T5/tum/freiburg${idx}_${seq} Examples/TumExample/cvo_rgbd_params_eth3d.yaml Examples/TumExample/eth3d_settings_raymap.txt 0 test_tum_fr${idx}_${seq}.txt
         
         mv *.pcd tum_fr${idx}_${seq}/
         mv *_graph.txt tum_fr${idx}_${seq}/

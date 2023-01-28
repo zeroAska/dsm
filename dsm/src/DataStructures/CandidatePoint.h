@@ -115,7 +115,8 @@ namespace dsm
     Eigen::VectorXf features() {return features_;}
     Eigen::VectorXf semantics() {return semantics_;}
     Eigen::VectorXf geometricType() {return geometric_type_;}
-    Eigen::Vector3f xyz();
+    Eigen::Vector3f xyz() const;
+    Eigen::Vector3f getVector3fMap() const {return xyz();}
     void addIdepthObservation(float newObsIdepth, float newWeight);
     std::vector<float> & observedIdepths() {return observedIdepths_;}
     float regressIdepth();

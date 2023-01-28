@@ -3,17 +3,19 @@
 #include <limits>
 #include "DataStructures/VoxelMap.h"
 namespace dsm {
+
+  
   inline
   float squared_uncertainty(float input_dist) {
     //float uncertainty = input_dist * input_dist * 0.005;
-    float uncertainty = input_dist * 0.01;
+    float uncertainty = input_dist * 0.1;
     return uncertainty;
   }
 
   template <typename PointT>
   const PointT * sample_voxel_gaussian_observations(const std::vector<const Voxel<PointT >*> & observations,
                                                     const Sophus::SE3f & camToWorld,
-                                                    const PointT * p){
+                                                    const Eigen::Vector3f & p_local){
                  
     if (observations.size() == 0)
       return nullptr;

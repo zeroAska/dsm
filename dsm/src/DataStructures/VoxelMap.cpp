@@ -1,6 +1,7 @@
 #include "VoxelMap.h"
 #include "Frame.h"
 #include <random>
+
 // updateCovis Debug use
 // #include <pcl/point_types.h>
 // #include <pcl/point_cloud.h>
@@ -344,16 +345,23 @@ namespace dsm {
   }
 
 
-  template <typename PointType>
-  const Voxel<PointType>* VoxelMap<PointType>::query_point_raycasting(const Eigen::Vector3f & pt_xyz,
-                                                                      const Sophus::SE3f & Tcw_sophus,
-                                                                      float minDist, float maxDist) {
+
+  template<typename PointType>
+  template<typename MapT, typename QueryFunctor, typename BlockT>
+  void VoxelMap<PointType>::query_point_raycasting (const Eigen::Vector3f & pt_local,
+                                                    const Sophus::SE3f & Tcw_sophus,
+                                                    float minDist, float maxDist,
+                                                    const MapT & map,
+                                                    std::vector<BlockT> & results,
+                                                    QueryFunctor query_function
+                                                    ) const  {
+    
     
     //Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
     Eigen::Matrix4f Tcw = Tcw_sophus.matrix();
-    Eigen::Vector3f xyz_cam = pt_xyz;// = //Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
-    Eigen::Vector3f xyz_w = Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
-    Eigen::Vector3f p_c_normalized = xyz_cam / pt_xyz(2);
+    Eigen::Vector3f xyz_cam = pt_local;// = //Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f xyz_w = Tcw.block<3,3>(0,0) * pt_local + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f p_c_normalized = xyz_cam / pt_local(2);
     Eigen::Vector3f p_cam = p_c_normalized * minDist; // pt in cam frame normalized
     Eigen::Vector3f p_cam_max = p_c_normalized * maxDist;
     Eigen::Vector4f p_cam_4;
@@ -404,10 +412,12 @@ namespace dsm {
       /// std::cout<<"Current Point "<<curr_p.transpose()<< ", query voxel "<<ix<<", "<<iy<<", "<<iz<<", t="<<t<<", raw position is "<<xyz_w.transpose()
       //         <<", actual voxel coord is "<<p_voxel_actual.xc<<", "<<p_voxel_actual.yc<<", "<<p_voxel_actual.zc
       //         <<std::endl;              
-      const Voxel<ActivePoint> * nextVoxel = query_point( ix, iy, iz);
-      
-      if (nextVoxel) {
-        return nextVoxel;
+      //const Voxel<ActivePoint> * nextVoxel = query_point( ix, iy, iz);
+      //BlockT nextVoxel =
+      BlockT result_voxel;
+      bool hit = query_function(map, result_voxel);
+      if ( hit ) {
+        results.push_back(result_voxel);
       }
       if (txMax < tyMax) {
         if (txMax < tzMax) {
@@ -444,7 +454,7 @@ namespace dsm {
 
     }
 
-    return nullptr;
+
 
     // raycast algo paper
     // http://www.cse.chalmers.se/edu/year/2010/course/TDA361/grid.pdf    
@@ -456,17 +466,18 @@ namespace dsm {
 
   
 
-  template <>
-  void VoxelMap<ActivePoint>::query_point_raycasting(const ActivePoint * pt,
-                                                     std::vector<const Voxel<ActivePoint>*> & occupied_voxels_along_ray,
-                                                     float minDist, float maxDist) const {
+  template <typename PointType>
+  void VoxelMap<PointType>::query_point_raycasting(const Eigen::Vector3f & p_local,
+                                                   const Sophus::SE3f & camToWorld,
+                                                   std::vector<const Voxel<PointType>*> & occupied_voxels_along_ray,
+                                                   float minDist, float maxDist) const {
 
     occupied_voxels_along_ray.clear();
-    
-    Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
-    Eigen::Vector3f xyz_cam = pt->xyz();// = //Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
-    Eigen::Vector3f xyz_w = Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
-    Eigen::Vector3f p_c_normalized = xyz_cam * pt->iDepth();
+    Eigen::Matrix4f Tcw = camToWorld.matrix();
+    //Eigen::Matrix4f Tcw = pt->reference()->camToWorld().matrix(); //camToWorld
+    Eigen::Vector3f xyz_cam = p_local;// = //Tcw.block<3,3>(0,0) * pt->xyz() + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f xyz_w = Tcw.block<3,3>(0,0) * p_local + Tcw.block<3,1>(0,3);
+    Eigen::Vector3f p_c_normalized = xyz_cam / p_local(2);
     Eigen::Vector3f p_cam = p_c_normalized * minDist; // pt in cam frame normalized
     Eigen::Vector3f p_cam_max = p_c_normalized * maxDist;
     Eigen::Vector4f p_cam_4;
@@ -517,7 +528,7 @@ namespace dsm {
       /// std::cout<<"Current Point "<<curr_p.transpose()<< ", query voxel "<<ix<<", "<<iy<<", "<<iz<<", t="<<t<<", raw position is "<<xyz_w.transpose()
       //         <<", actual voxel coord is "<<p_voxel_actual.xc<<", "<<p_voxel_actual.yc<<", "<<p_voxel_actual.zc
       //         <<std::endl;              
-      const Voxel<ActivePoint> * nextVoxel = query_point( ix, iy, iz);
+      const Voxel<PointType> * nextVoxel = query_point( ix, iy, iz);
       
       if (nextVoxel) {
         //return nextVoxel;

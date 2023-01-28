@@ -1128,6 +1128,7 @@ namespace dsm
     for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
       
       const std::vector<std::unique_ptr<ActivePoint>> & activePoints = activeKeyframes_[i]->activePoints();
+      const std::vector<std::unique_ptr<CandidatePoint>> & candidatePoints = activeKeyframes_[i]->candidates();
 #ifdef OMP
       #pragma omp parallel for
 #endif
@@ -1135,14 +1136,15 @@ namespace dsm
         const ActivePoint * p = activePoints[j].get();
         std::vector<const Voxel<ActivePoint> *> observed_voxels_along_ray;
         Eigen::Vector3f curr_cam_pose = activeKeyframes_[i]->camToWorld().translation();
-        float depth = (p->getVector3fMap() - curr_cam_pose).norm();
+        Eigen::Vector3f p_local = p->getVector3fMap();
+        float depth = (p_local - curr_cam_pose).norm();
         float uncertainty = squared_uncertainty(depth);
-        voxelMap_->query_point_raycasting(p, observed_voxels_along_ray,
+        voxelMap_->query_point_raycasting(p_local, activeKeyframes_[i]->camToWorld(), observed_voxels_along_ray,
                                           //0, 55
                                           depth-uncertainty, depth+uncertainty
                                           );
         if (observed_voxels_along_ray.size() ) {
-          const ActivePoint * p_voxel = sample_voxel_gaussian_observations(observed_voxels_along_ray, activeKeyframes_[i]->camToWorld(), p);
+          const ActivePoint * p_voxel = sample_voxel_gaussian_observations(observed_voxels_along_ray, activeKeyframes_[i]->camToWorld(), p->getVector3fMap());
 #ifdef OMP
           #pragma omp critical
 #endif
@@ -1152,9 +1154,38 @@ namespace dsm
 
         }
       }
+
+#ifdef OMP
+      #pragma omp parallel for
+#endif
+      for (int j = 0; j < candidatePoints.size(); j++) {
+        const CandidatePoint * p = candidatePoints[j].get();
+        Eigen::Vector3f p_local = p->getVector3fMap();
+        std::vector<const Voxel<ActivePoint> *> observed_voxels_along_ray;
+        Eigen::Vector3f curr_cam_pose = activeKeyframes_[i]->camToWorld().translation();
+        float depth = (p_local - curr_cam_pose).norm();
+        float uncertainty = squared_uncertainty(depth);
+        voxelMap_->query_point_raycasting(p_local, activeKeyframes_[i]->camToWorld(),
+                                          observed_voxels_along_ray,
+                                          //0, 55
+                                          depth-uncertainty, depth+uncertainty
+                                          );
+        if (observed_voxels_along_ray.size() ) {
+          const ActivePoint * p_voxel = sample_voxel_gaussian_observations(observed_voxels_along_ray, activeKeyframes_[i]->camToWorld(), p_local);
+#ifdef OMP
+          #pragma omp critical
+#endif
+          {
+            covisPoints.insert(p_voxel);
+          }
+
+        }
+      }      
     }
-    
+
+    std::cout<<__func__<<": covisPoint size is "<<covisPoints.size()<<"\n";
     if (covisPoints.size() < settings.covisMinPoints) {
+
       return;
     }
     
@@ -1927,7 +1958,7 @@ namespace dsm
           ActivePoint * actPt = activePoints[j].get();
 
           if (actPt->status() == ActivePoint::Status::ISOLATED
-              || actiPt->status() == ActivePoint::Status::MAPPED ) continue;
+              || actPt->status() == ActivePoint::Status::MAPPED ) continue;
           if (settings.insertPointToMapAfterBA == 2
               && actPt->status() == ActivePoint::Status::SURROUNDED) {
             this->voxelMap_->insert_point(actPt);
