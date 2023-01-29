@@ -4,9 +4,13 @@
 #include "DataStructures/VoxelMap.h"
 namespace dsm {
 
+
+
+  const int pixel_raycast_pattern[8][2] = {{0,0}, {-2, 0},{-1,-1}, {-1,1}, {0,2},{0,-2},{1,1},{2,0} };
+  
   
   inline
-  float squared_uncertainty(float input_dist) {
+  float linear_uncertainty(float input_dist) {
     //float uncertainty = input_dist * input_dist * 0.005;
     float uncertainty = input_dist * 0.1;
     return uncertainty;
@@ -45,4 +49,6 @@ namespace dsm {
 
     return inds[min_id];
   }
+
+  
 }

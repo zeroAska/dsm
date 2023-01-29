@@ -74,6 +74,7 @@ namespace dsm
     void addExpiringTemporalActivePointsToBkiMap(semantic_bki::SemanticBKIOctoMap & map);
     void dropFlaggedKeyframes();
     void insertFlaggedKeyframesToMap();
+    void insertFlaggedKeyframesToBkiDenseMap(semantic_bki::SemanticBKIOctoMap & bki_map);
 
     // activates new points from the window
     void activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
@@ -141,9 +142,12 @@ namespace dsm
     void selectCovisibleMap(cvo::CvoPointCloud & covisMapOutput);
     void selectSampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo);
     void selectRaySampledCovisibleMap(cvo::CvoPointCloud & covisMapCvo);
-    
     void selectBkiCovisMap(const semantic_bki::SemanticBKIOctoMap & map,
-                           cvo::CvoPointCloud & covisMapCvo) const;
+                           cvo::CvoPointCloud & pc, // output
+                           int num_features,
+                           int num_semantics,
+                           int num_geotypes) const;
+
     //void updateNonzerosLastBA(const std::list<cvo::BinaryState::Ptr> & edge_states);
 
     // voxelMap based covisbility selection

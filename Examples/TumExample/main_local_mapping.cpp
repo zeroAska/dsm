@@ -86,15 +86,15 @@ int main(int argc, char *argv[]) {
   // Set parameters
   int block_depth = 1;
   double sf2 = 1.0;
-  double ell = 0.075;
+  double ell = 0.1; //0.075;
   float prior = 0.0f;
   float var_thresh = 1.0f;
-  double free_thresh = 0.85;
-  double occupied_thresh = 0.95;
-  double resolution = 0.02;
-  double free_resolution = 0.02;
+  double free_thresh = 0.3;
+  double occupied_thresh = 0.9;
+  double resolution = 0.025; //0.02;
+  double free_resolution = 0.025;
   double ds_resolution = -1;
-  double max_range = -1;
+  double max_range = 5;
 
   // Read camera poses
   std::vector<Eigen::Matrix4d,

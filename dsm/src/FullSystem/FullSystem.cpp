@@ -238,6 +238,7 @@ namespace dsm
     this->map = std::make_unique<semantic_bki::SemanticBKIOctoMap>(settings.bkiMapResolution,
                                                                    settings.bkiMapBlockDepth,
                                                                    settings.bkiMapNumClass,
+                                                                   settings.bkiMapNumFeatures,
                                                                    settings. bkiMapSf2,
                                                                    settings. bkiMapEll,
                                                                    settings. bkiMapPrior,
@@ -2350,6 +2351,8 @@ namespace dsm
     std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }
 
+
+
   void FullSystem::trackCandidatesCvo(const Frame::Ptr frame, bool include_curr) {
 
     const auto& settings = Settings::getInstance();
@@ -3080,7 +3083,7 @@ namespace dsm
       const_flags_in_BA.push_back(true);
     }
 
-    if(isUsingCovis && covisMapCvo.num_points() ) 
+    if(covisMapCvo.num_points() ) 
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
     
     double time = 0;
@@ -3256,9 +3259,18 @@ namespace dsm
 
     cvo::CvoPointCloud covisMapCvo;    
     // std::list<std::pair<CovisibilityNode*, CovisibilityNode*>> edgesCovisibleToTemporal;
-    if (!settings.doOnlyTemporalOpt)
+    if (!settings.doOnlyTemporalOpt) {
       //edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
-      this->lmcw->selectRaySampledCovisibleMap(covisMapCvo);
+      if (settings.bkiMapOn) {
+        this->lmcw->selectBkiCovisMap(*map, covisMapCvo,
+                                      5,
+                                      frame->getRawImage()->num_classes(),
+                                      2
+                                      );
+        
+      } else
+        this->lmcw->selectRaySampledCovisibleMap(covisMapCvo);
+    }
 
     //this->lmcw->selectCovisibleWindowCvo2();
     //if (lmcw->allKeyframes().size() > 1 && lmcw->allKeyframes()[lmcw->allKeyframes().size()-2]->activePoints().size())
@@ -3437,8 +3449,22 @@ namespace dsm
 
     // drop keyframes and remove covisible keyframes
     // we will only estimate new candidates from the temporal window
-    if (settings.insertPointToMapAfterBA == 2)
-      this->lmcw->insertFlaggedKeyframesToMap();
+    if (settings.insertPointToMapAfterBA == 2) {
+      if (settings.bkiMapOn) {
+        this->lmcw->insertFlaggedKeyframesToBkiDenseMap(*map);
+        cvo::CvoPointCloud pc_map(5, frame->getRawImage()->num_classes());
+        semantic_bki::map_to_pc(*map, pc_map, 5, frame->getRawImage()->num_classes(), 2);
+        std::cout<<"pc_map exported from bki has size "<<pc_map.size()<<"\n";
+        pcl::PointCloud<cvo::CvoPoint> pc_cvo;
+        pc_map.export_to_pcd<cvo::CvoPoint>(pc_cvo);
+        if (pc_map.size())
+          pcl::io::savePCDFileASCII ("full_bki_map.pcd", pc_cvo);
+          //pc_map.write_to_color_pcd("full_bki_map.pcd");
+      }
+      else
+        this->lmcw->insertFlaggedKeyframesToMap();
+    }
+    
     this->lmcw->dropFlaggedKeyframes();
 
     // create new candidates for last keyframe

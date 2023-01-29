@@ -228,11 +228,15 @@ namespace dsm
           int insertFreeSpacePointsToMap;
 
 
+
+
           //// bki map params
           int bkiMapOn;
           float bkiMapResolution;
           unsigned short bkiMapBlockDepth;
           int bkiMapNumClass;
+          int bkiMapNumFeatures;
+          
           float bkiMapSf2;
           float bkiMapEll;
           float bkiMapPrior;
@@ -242,7 +246,8 @@ namespace dsm
           float bkiMapFreeResolution;
           float bkiMapDsResolution;
           float bkiMapMaxRange;
-          
+          int isDepthMultiSamplingFromMap;
+
 
           // Secure Division
           static const float DIVISION_EPS;

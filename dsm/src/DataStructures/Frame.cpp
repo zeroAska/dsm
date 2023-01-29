@@ -96,7 +96,8 @@ namespace dsm
     //stereoDisparity(color_img.disparity().begin(), disparity.end()),
     depthType(DepthType::STEREO),
     depthScale(1.0),
-    fullPoints_(full_pc)
+    fullPoints_(full_pc),
+    validFlagToMapFullPoints_(full_pc->size(), false)    
   {
     const auto& settings = Settings::getInstance();
     const auto& calib = GlobalCalibration::getInstance();
@@ -129,6 +130,15 @@ namespace dsm
     this->setErrorDistribution(errorDist);
   }
 
+  void Frame::eraseFullPointAt(int index) {
+    if (fullPoints_ == nullptr)
+      return;
+    if (index >= fullPoints_->size())
+      return;
+    
+    fullPoints_->erase(index);
+  }
+
 
   Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD<float>> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,  float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
 
@@ -144,7 +154,8 @@ namespace dsm
     //rgbdDepth(color_img->depth_image().begin(), color_img->depth_image().end()),
     depthType(DepthType::RGBD_FLOAT),
     depthScale(depth_scale),
-    fullPoints_(full_pc)
+    fullPoints_(full_pc),
+    validFlagToMapFullPoints_(full_pc->size(), false)
   {
     const auto& settings = Settings::getInstance();
     const auto& calib = GlobalCalibration::getInstance();

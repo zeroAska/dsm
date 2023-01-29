@@ -192,6 +192,7 @@ namespace dsm
                 const std::vector <float> & getStereoDisparity();
                 const std::vector<uint16_t> & getRgbdDepth();
                 const std::shared_ptr<cvo::CvoPointCloud> getFullPoints() {return fullPoints_;}
+                void eraseFullPointAt(int index);
                 const float depthScale;
                 const DepthType depthType;
 
@@ -233,6 +234,7 @@ namespace dsm
                 
                 pcl::PointCloud<cvo::CvoPoint>::Ptr trackingPoints_; // for CVO coarse tracking
                 std::shared_ptr<cvo::CvoPointCloud> fullPoints_;
+                std::vector<bool> validFlagToMapFullPoints_; 
                 std::shared_ptr<cvo::RawImage> rawImg;
                 //std::vector<float> stereoDisparity;
                 //std::vector<uint16_t> rgbdDepth;

@@ -76,6 +76,7 @@ namespace dsm
 		// point center
 		float u(int32_t lvl) const;
 		float v(int32_t lvl) const;
+                Eigen::Vector3f ray() const {return ray_;}
 
 		// point reference image
 		// the first image in which the point was observed

@@ -4,7 +4,7 @@ date=$2
 ip=${hostname}.engin.umich.edu
 #for seq in sfm_lab_room_1
 mkdir -p ${hostname}_results
-    for seq in desk desk2 room
+    for seq in desk2 
 
     do
 	    folder=tum_freiburg1_${seq}_${date}

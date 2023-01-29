@@ -202,6 +202,8 @@ namespace dsm
                 bkiMapResolution = 0.1f;
                 bkiMapBlockDepth = 4;
                 bkiMapNumClass = 3;
+                bkiMapNumFeatures = 5;
+                
                 bkiMapSf2 = 1.0;
                 bkiMapEll = 1.0;
                 bkiMapPrior = 1.0;
@@ -210,9 +212,9 @@ namespace dsm
                 bkiMapOccupiedThresh = 0.7;
                 bkiMapFreeResolution = 0.02;
                 bkiMapDsResolution = -1;
-                bkiMapMaxRange -1;
+                bkiMapMaxRange = -1;
                 
-                
+                isDepthMultiSamplingFromMap = 0;
                 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -458,6 +460,10 @@ namespace dsm
                 if (this->checkParameter("bkimapnumclass", name, value, this->bkiMapNumClass)) {
                   return;
                 }
+                if (this->checkParameter("bkimapnumfeatures", name, value, this->bkiMapNumFeatures)) {
+                  return;
+                }
+                
                 if (this->checkParameter("bkimapsf2", name, value, this->bkiMapSf2)) {
                   return;
                 }
@@ -486,6 +492,9 @@ namespace dsm
                   return;
                 }
                 if (this->checkParameter("bkimapmaxrange", name, value, this->bkiMapMaxRange)) {
+                  return;
+                }
+                if (this->checkParameter("isdepthmultisamplingfrommap", name, value, this->isDepthMultiSamplingFromMap)) {
                   return;
                 }
  

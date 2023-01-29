@@ -77,6 +77,7 @@ namespace dsm
     // point in reference frame
     float u0() const;
     float v0() const;
+    Eigen::Vector3f ray() const { return ray_; }
 
     int32_t detectedLevel() const;
 

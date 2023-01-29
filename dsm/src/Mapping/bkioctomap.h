@@ -221,6 +221,80 @@ namespace semantic_bki {
                 return valid;
             }
 
+
+            SemanticOcTreeNode * next(point3f &p,  BlockHashKey &block_key, OcTreeHashKey &node_key) {
+                assert(!end());
+                bool valid = false;
+                unsigned short index = x + y * lim + z * lim * lim;
+                node_key = Block::index_map[index];
+                block_key = _block_key;
+                SemanticOcTreeNode * node = nullptr;
+                if (block != nullptr) {
+                    valid = true;
+                    node = &((*block)[node_key]);
+                    current_p = block->get_point(x, y, z);
+                    p = current_p;
+                } else {
+                    p = current_p;
+                }
+
+                if (xy_error > 0 && xz_error > 0) {
+                    x += x_inc;
+                    current_p.x() += x_inc * resolution;
+                    xy_error -= dy;
+                    xz_error -= dz;
+                    if (x >= lim || x < 0) {
+                        block_lim.x() += x_inc * block_size;
+                        _block_key = block_to_hash_key(block_lim);
+                        block = map->search(_block_key);
+                        x = x_inc > 0 ? 0 : lim - 1;
+                    }
+                } else if (xy_error < 0 && yz_error > 0) {
+                    y += y_inc;
+                    current_p.y() += y_inc * resolution;
+                    xy_error += dx;
+                    yz_error -= dz;
+                    if (y >= lim || y < 0) {
+                        block_lim.y() += y_inc * block_size;
+                        _block_key = block_to_hash_key(block_lim);
+                        block = map->search(_block_key);
+                        y = y_inc > 0 ? 0 : lim - 1;
+                    }
+                } else if (yz_error < 0 && xz_error < 0) {
+                    z += z_inc;
+                    current_p.z() += z_inc * resolution;
+                    xz_error += dx;
+                    yz_error += dy;
+                    if (z >= lim || z < 0) {
+                        block_lim.z() += z_inc * block_size;
+                        _block_key = block_to_hash_key(block_lim);
+                        block = map->search(_block_key);
+                        z = z_inc > 0 ? 0 : lim - 1;
+                    }
+                } else if (xy_error == 0) {
+                    x += x_inc;
+                    y += y_inc;
+                    n -= 2;
+                    current_p.x() += x_inc * resolution;
+                    current_p.y() += y_inc * resolution;
+                    if (x >= lim || x < 0) {
+                        block_lim.x() += x_inc * block_size;
+                        _block_key = block_to_hash_key(block_lim);
+                        block = map->search(_block_key);
+                        x = x_inc > 0 ? 0 : lim - 1;
+                    }
+                    if (y >= lim || y < 0) {
+                        block_lim.y() += y_inc * block_size;
+                        _block_key = block_to_hash_key(block_lim);
+                        block = map->search(_block_key);
+                        y = y_inc > 0 ? 0 : lim - 1;
+                    }
+                }
+                n--;
+                return node;
+            }
+          
+
         private:
             const SemanticBKIOctoMap *map;
             Block *block;
