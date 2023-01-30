@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     std::shared_ptr<cvo::ImageRGBD<uint16_t>> source_raw(new cvo::ImageRGBD(source_rgb, source_dep_data));
     std::shared_ptr<cvo::CvoPointCloud> pc_original(new cvo::CvoPointCloud(*source_raw,
                                                                            calib
-                                                                           //,cvo::CvoPointCloud::CANNY_EDGES
+                                                                           ,cvo::CvoPointCloud::FULL
                                                                            ));
 
 

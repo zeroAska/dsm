@@ -2346,7 +2346,7 @@ namespace dsm
     auto& activePoints = frame->activePoints();
     activePoints.reserve(candidates.size());
 
-    std::string fname("candidates_after_creation.pcd");
+    std::string fname = std::to_string(frame->frameID()) + ("_candidate.pcd");
     frame->dump_candidates_to_pcd(fname);
     std::cout << "Select pixels: " << Utils::elapsedTime(t1, t2) << std::endl;
   }
@@ -2975,19 +2975,24 @@ namespace dsm
     //cvo::CvoPointCloud covisMapCvo;
     //activePointsToCvoPointCloud(covisMap, covisMapCvo);
     int temporalStartIndex = 0;
-    
-    //if (activeKeyframes.size() < 4) return;
-    
     std::vector<cvo::CvoPointCloud> cvo_pcs;
     std::vector<cvo::CvoFrame::Ptr> cvo_frames;
-    cvo_pcs.resize(activeKeyframes.size()-1); // only temporal 
-    std::vector<bool> const_flags_in_BA(cvo_pcs.size()); // only temporal
+    cvo_pcs.resize(activeKeyframes.size()-1); // only temporal
+    std::vector<bool> const_flags_in_BA(cvo_pcs.size()); // only temporal    
+
+    int minNumPoints = std::accumulate(activeKeyframes.begin(), activeKeyframes.end(), activeKeyframes[0]->activePoints().size(),
+                                       [&](size_t minPointsAccum, auto f2) {
+                                         return (minPointsAccum < f2->activePoints().size() )? minPointsAccum : f2->activePoints().size();
+                                       });
+    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints * 4 / 5 &&  !settings.doOnlyTemporalOpt;
+
+
+
     std::cout<<"CvoMultiAlign: Temporal Frames are ";    
     for (int i = 0; i < activeKeyframes.size()-1; i++) {
       auto kf = activeKeyframes[i];
       std::cout<<kf->frameID()<<", ";
-      
-      kf->activePointsToCvoPointCloud(cvo_pcs[i]);
+      kf->activePointsToCvoPointCloud(cvo_pcs[i]);  /// in local frame
       assert(kf->activePoints().size() != 0);
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
       cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrameGPU(&cvo_pcs[i], kf_to_world.data()));
@@ -2995,9 +3000,6 @@ namespace dsm
 
       //const_flags_in_BA[i] = (i <= temporalStartIndex);
     }
-    
-    //if (temporalStartIndex == 0)
-
 
     // read edges to construct graph
     // TODO: edges will be constructed from the covisibility graph later
@@ -3038,11 +3040,9 @@ namespace dsm
                      edges_frame_ptrs);
     write_transformed_pc(cvo_frames, "before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
 
-    int minNumPoints = std::accumulate(cvo_frames.begin(), cvo_frames.end(), cvo_frames[0]->points->size(),
-                                       [&](size_t minPointsAccum, auto pt2) {
-                                         return (minPointsAccum < pt2->points->size() )? minPointsAccum : pt2->points->size();
-                                       });
-    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints / 2 &&  !settings.doOnlyTemporalOpt;
+
+
+    /// adding covisible map if eligible
     std::cout<<"const flags are\n";
     for (int j = 0; j < const_flags_in_BA.size(); j++){
       const_flags_in_BA[j] = false;
@@ -3050,20 +3050,32 @@ namespace dsm
         const_flags_in_BA[j] = true;
       std::cout<<const_flags_in_BA[j]<<" ";
     }
-    if (!isUsingCovis)
+    if (!isUsingCovis) {
       const_flags_in_BA[0] = true;
+
+      //// newly added: no BA if no covis frame
+      for (int j = 0; j < const_flags_in_BA.size(); j++){
+        const_flags_in_BA[j] = true;
+      }
+     
+    }
     std::cout<<std::endl;
     std::cout<<"covisMapCvo.num_points is "<<covisMapCvo.num_points()<<", minNumPoints is "<<minNumPoints<<"\n";
     if (isUsingCovis ) {
-    //if (false) {
       std::cout<<"Now adding the covisMap into the end of the sliding window. covisMap has initially "<<covisMapCvo.num_points()<<std::endl;
-      auto kf = activeKeyframes[0];
-      Eigen::Matrix<double, 3,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>().block<3,4>(0,0);
-      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrameGPU(&covisMapCvo, kf_to_world.data()));
 
+      /// the pose of the covisible map is transformed to the first keyframe in the temporal window
+      //auto kf = activeKeyframes[0];
+      //Eigen::Matrix<double, 3,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>().block<3,4>(0,0);
+      Eigen::Matrix<double, 3,4, Eigen::RowMajor> identity = Eigen::Matrix<double, 3,4, Eigen::RowMajor>::Zero();
+      identity(0,0) = 1;
+      identity(1,1) = 1;
+      identity(2,2) = 1;
+      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrameGPU(&covisMapCvo, identity.data()));
+
+      /// adding an edge between the covisible window and all the temporal keyframes
       for (int i = 0; i < cvo_frames.size(); i++) {
         std::pair<cvo::CvoFrame::Ptr, cvo::CvoFrame::Ptr> p(cvo_ptr, cvo_frames[i]);
-        //edges.push_back(p);
         
         const cvo::CvoParams & params = cvo_align->get_params();
         const cvo::CvoParams * params_gpu = cvo_align->get_params_gpu();
@@ -3087,10 +3099,11 @@ namespace dsm
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
     
     double time = 0;
-    std::list<std::shared_ptr<cvo::Association>> associations;        
+     std::list<std::shared_ptr<cvo::Association>> associations;        
     cvo_align->align(cvo_frames, const_flags_in_BA,  edge_states, &time, &associations);
     std::cout<<"cvo BA time is "<<time<<", for "<<cvo_frames.size()<<" frames\n";
 
+    /// copy registration results to the Frame data structure
     for (int i = 0; i < activeKeyframes.size()-1; i++) {
       auto kf = activeKeyframes[i];
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = Eigen::Matrix<double, 4,4, Eigen::RowMajor>::Identity();
@@ -3104,10 +3117,10 @@ namespace dsm
 
     std::cout<<"covis map has size "<<covisMapCvo.num_points()<<", isUsingCovis is "<<isUsingCovis<<std::endl;
 
-
+    // update active point status. It will decide which can go into the map.
     updateActivePointsInliers(edges_frame_ptrs, associations);
 
-    
+    /// set the latest keyframe added to the window. It is not included in BA
     Frame::Ptr lastKf = activeKeyframes.back();
     Frame::Ptr secondLastKf = activeKeyframes[activeKeyframes.size()-2];
     Sophus::SE3f lastKfToWorld = secondLastKf->camToWorld() * lastKf->thisToParentPose();
@@ -3227,6 +3240,9 @@ namespace dsm
       this->createCandidatesPlanar(frame);
 
     this->trackCandidatesCvo(frame);
+
+    //// log tracking points
+    pcl::io::savePCDFileASCII(std::to_string(frame->frameID())+"_tracking.pcd", *frame->getTrackingPoints() );
     
     // insert new keyframe
     this->lmcw->insertNewKeyframe(frame);
@@ -3455,11 +3471,18 @@ namespace dsm
         cvo::CvoPointCloud pc_map(5, frame->getRawImage()->num_classes());
         semantic_bki::map_to_pc(*map, pc_map, 5, frame->getRawImage()->num_classes(), 2);
         std::cout<<"pc_map exported from bki has size "<<pc_map.size()<<"\n";
+        int cc = 0;
+        for (int j = 0; j < pc_map.size(); j++) {
+          if (pc_map.geometry_type_at(j)(0) < 0.5)
+            cc++;
+        }
+        std::cout<<cc<<"points have geotype= 0,1 \n";
         pcl::PointCloud<cvo::CvoPoint> pc_cvo;
         pc_map.export_to_pcd<cvo::CvoPoint>(pc_cvo);
-        if (pc_map.size())
+        if (pc_map.size()) {
           pcl::io::savePCDFileASCII ("full_bki_map.pcd", pc_cvo);
-          //pc_map.write_to_color_pcd("full_bki_map.pcd");
+          pc_map.write_to_color_pcd("full_bki_map_color.pcd");
+        }
       }
       else
         this->lmcw->insertFlaggedKeyframesToMap();

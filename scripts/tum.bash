@@ -7,12 +7,13 @@ cd .. && \
 for idx in 1 #3
 do
     
-    for seq in  desk2 #360
+    for seq in desk2 #360
     do
         rm -rf tum_fr${idx}_${seq}
         mkdir -p tum_fr${idx}_${seq}
-        	
-	gdb --args \
+        rm *_graph.txt
+        rm *.pcd
+	#gdb --args \
 		./build/bin/TumExample /home/rayzhang/media/Samsung_T5/tum/freiburg${idx}_${seq} Examples/TumExample/cvo_rgbd_params_eth3d.yaml Examples/TumExample/eth3d_settings_bki.txt 0 test_tum_fr${idx}_${seq}.txt
         
         mv *.pcd tum_fr${idx}_${seq}/

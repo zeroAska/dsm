@@ -1000,9 +1000,10 @@ namespace dsm
       }
       if (num_geotypes) {
         float geometric_type_label = feature_vec[num_features];
+        std::cout<<"geometic_type_label is "<<geometric_type_label<<"\n";
         geometric_type << 1.0 - geometric_type_label , geometric_type_label;
       }
-      
+
       pc.add_point(i, xyz, feature, label, geometric_type);
       i++;
     }
@@ -1272,8 +1273,9 @@ namespace dsm
     for (auto && p: covisPoints) {
       auto camToWorld = p->reference()->camToWorld();
       //Sophus::SE3f covisFrameToFirstTemporal = camToWorld.inverse() * firstTemporalToWorld;
-      Sophus::SE3f covisFrameToFirstTemporal =  firstTemporalToWorld.inverse() * camToWorld;
-      Eigen::Vector3f xyz = covisFrameToFirstTemporal * p->xyz();
+      //Sophus::SE3f covisFrameToFirstTemporal =  firstTemporalToWorld.inverse() * camToWorld;
+      //Eigen::Vector3f xyz = covisFrameToFirstTemporal * p->xyz();
+      Eigen::Vector3f xyz = p->xyz();
       covisMapCvo.add_point(index, xyz, p->features(), p->semantics(), p->geometricType());
       index++;
     }
@@ -2026,6 +2028,11 @@ namespace dsm
       /// TODO: remove those outlier points
       auto p = owner->camToWorld().translation();
       semantic_bki::point3f origin(p(0), p(1), p(2));
+
+      //cvo::CvoPointCloud activePc, candidatePc;
+      //ActivePoint::activePointsToCvoPointCloud(owner->activePoints(), activePc);
+      //ActivePoint::activePointsToCvoPointCloud(owner->activePoints(), activePc);
+      
       cvo::CvoPointCloud full_pc_transformed(5, owner->getFullPoints()->num_classes());
       cvo::CvoPointCloud::transform(owner->camToWorld().matrix(), *owner->getFullPoints(),
                                     full_pc_transformed);
@@ -2035,9 +2042,12 @@ namespace dsm
                                 settings.bkiMapMaxRange);
 
       std::cout<<"Just inserted tracking points to bki\n";
-      //static int c = 0;
-      //owner->getFullPoints()->write_to_color_pcd(std::to_string(c) + "newly_added_to_bki.pcd");
-      //c++;
+      static int c = 0;
+      //cvo::CvoPointCloud pc_added;
+      pcl::PointCloud<cvo::CvoPoint> pc_added;      
+      owner->getFullPoints()->export_to_pcd<cvo::CvoPoint>(pc_added); 
+      pcl::io::savePCDFileASCII(std::to_string(c) + "newly_added_to_bki.pcd", pc_added);
+      c++;
 
     }
 

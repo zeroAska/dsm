@@ -649,6 +649,7 @@ namespace semantic_bki {
 
     /// loop through all the input points
     int property_dim = 0;
+    int edge_counter  = 0;
     for (int i = 0; i < cloud->num_points(); ++i) {
 
       /// center
@@ -676,7 +677,9 @@ namespace semantic_bki {
       if (cloud->num_geometric_types()) {
         int pix_label = 0;              
         cloud->geometry_type_at(i).maxCoeff(&pix_label);
-        properties.emplace_back(pix_label);              
+        properties.emplace_back(pix_label);
+        if (pix_label == 0)
+          edge_counter++;
       }
       xy.emplace_back(p, properties);
       if (i == 0) property_dim = properties.size();
