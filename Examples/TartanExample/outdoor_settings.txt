@@ -94,7 +94,7 @@ optMaxLevel = 2
 
 numActivePoints = 2000
 
-maxTemporalKeyframes = 7
+maxTemporalKeyframes = 4
 maxCovisibleKeyframes = 3
 numAlwaysKeepKeyframes = 3
 
@@ -113,7 +113,7 @@ minNumTrackedFramesToCreateKF = 1
 showDepthMap = true
 showDepthMapLvl = 0
 
-candidatePointsSampling = 2
+candidatePointsSampling = 0
 
 iDepthUncertainty = 0.1
 trackingCosLimit = 0.55
@@ -127,3 +127,8 @@ inputEdgeDownsampleVoxelSize = 0.5
 covisEll = 2.5
 
 covisUpdateFrames = 1
+
+depthNormalEll = 0.04
+depthDirEll = 0.5
+cvoIRLSConstFrames = 0
+insertPointToMapAfterBA = 2
