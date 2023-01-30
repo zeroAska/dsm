@@ -1836,28 +1836,30 @@ namespace dsm
     std::vector<cv::KeyPoint> keypoints;
     detector->detect(left_gray, keypoints);
     std::cout<<"Fast sampled "<<keypoints.size()<<" points \n";
-    */
-
-    /*
+    
     int starting_threshold = 20;
     cv::FAST(left_gray, keypoints, starting_threshold, true);
     int counter;
     while (keypoints.size() < expected_points * 0.9)
       cv::FAST(left_gray, keypoints, starting_threshold, true);
-
+    */
     int minHessian = 400;
-    std::vector<cv::KeyPoint> keypoints;    
-    cv::FAST(left_gray,keypoints, 20,false);
+    //std::vector<cv::KeyPoint> keypoints;    
+    cv::FAST(left_gray,keypoints, 5,false);
 
     //// for geometric
-    int thresh, max_points, min_points, break_thresh;
-    if (pt_type == RGBD) {
-      thresh = 9; num_want = 15000; num_min = 12000; break_thresh = 13;
-    } else if (pt_type == STEREO) {
+    //int thresh, max_points, min_points, break_thresh;
+    //if (pt_type == RGBD) {
+    int  thresh = 9;
+    int num_want = 15000;
+    int num_min = 12000;
+    int break_thresh = 13;
+      //}
+    /*else if (pt_type == STEREO) {
       thresh = 4; num_want = 24000; num_min = 15000; break_thresh = 50;
       if (left_image.num_classes() > 0)
         num_want = 28000;
-        }
+        }*/
     while (keypoints.size() > num_want)  {
       keypoints.clear();
       thresh++;
@@ -1872,19 +1874,21 @@ namespace dsm
 
     }
     
-    */
+   
 
-    cv::Ptr< cv::ORB > orb_detector = cv::ORB::create (expected_points,
-                                                     /* float scaleFactor=*/1.2f,
-                                                     /* int nlevels=*/8,
-                                                     /* int edgeThreshold=*/31,
-                                                     /*int firstLevel=*/0,
-                                                     /*int WTA_K=*/2,
-                                                     /*int scoreType=*/cv::ORB::HARRIS_SCORE,
-                                                     /*int patchSize=*/31,
-                                                     /*int fastThreshold=*/20);
+    //  cv::Ptr< cv::ORB > orb_detector = cv::ORB::create (expected_points,
+    //                                                 /* float scaleFactor=*/1.2f,
+    //                                                 /* int nlevels=*/8,/
+    //
+    //                                                   /* int edgeThreshold=*/31,
+    //                                                 /*int firstLevel=*/0,
+    //                                                 /*int WTA_K=*/2,
+    //                                                /*int scoreType=*/cv::ORB::HARRIS_SCORE,
+    //                                                 /*int patchSize=*/31,
+    //                                                 /*int fastThreshold=*/20);
     
-    orb_detector->detect ( left_gray, keypoints );
+    //orb_detector->detect ( left_gray, keypoints );
+
     
     //cv::KeyPointsFilter::retainBest(keypoints, 1000);
     for (auto && kp: keypoints) {
@@ -2385,8 +2389,8 @@ namespace dsm
       // remove outliers
       auto& candidates = kf->candidates();
       cvo::CvoPointCloud candidates_cvo;
-      kf->candidatesToCvoPointCloud(candidates_cvo);
-
+      kf->candidatesToCvoPointCloud(candidates_cvo)
+;
       Sophus::SE3f parentToCurrKF = kf->camToWorld().inverse() *  parent->camToWorld();
       Sophus::SE3f kfToFrame = (parentToCurrKF * camToRef).inverse();
       Eigen::Matrix4f kfToFrameEigen = kfToFrame.matrix();
@@ -2984,8 +2988,38 @@ namespace dsm
                                        [&](size_t minPointsAccum, auto f2) {
                                          return (minPointsAccum < f2->activePoints().size() )? minPointsAccum : f2->activePoints().size();
                                        });
-    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints * 4 / 5 &&  !settings.doOnlyTemporalOpt;
+    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints * 2 / 3  &&  !settings.doOnlyTemporalOpt;
 
+    if (!isUsingCovis && activeKeyframes.size() == 3) {
+      cvo::CvoPointCloud frame1_activePts, frame2_activePts;
+      activeKeyframes[0]->activePointsToCvoPointCloud(frame1_activePts);
+      activeKeyframes[1]->activePointsToCvoPointCloud(frame2_activePts);
+      Eigen::Matrix4f frame2_to_1_eigen = (activeKeyframes[1]->camToWorld().inverse() * activeKeyframes[0]->camToWorld()).matrix();
+      cvo::Association association;
+      cvo_align->compute_association_gpu(frame1_activePts,
+                                         frame2_activePts,
+                                         frame2_to_1_eigen,
+                                         cvo_align->get_params().ell_min,
+                                         association);
+      auto & f1_pts = activeKeyframes[0]->activePoints();
+      auto & f2_pts = activeKeyframes[1]->activePoints();
+      auto batch_set_active_status = [&](const std::vector<int> & inliers_ids,
+                                         std::vector<std::unique_ptr<ActivePoint>> & pts) {
+#pragma omp parallel for
+        for (int i = 0; i < inliers_ids.size(); i++) {
+          int pt_id = inliers_ids[i];
+          ActivePoint::Status curr_status = pts.at(pt_id)->status();
+          if (curr_status != ActivePoint::Status::MAPPED
+              && curr_status != ActivePoint::Status::SURROUNDED)
+            pts.at(pt_id)->setStatus(ActivePoint::Status::SURROUNDED);
+        }
+      };
+      batch_set_active_status(association.source_inliers, f1_pts);
+      batch_set_active_status(association.target_inliers, f2_pts);
+
+      
+      return;
+    }
 
 
     std::cout<<"CvoMultiAlign: Temporal Frames are ";    

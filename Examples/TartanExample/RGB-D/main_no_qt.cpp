@@ -258,9 +258,8 @@ int main(int argc, char *argv[])
 
   // read sequence
   cvo::TartanAirHandler tartan(imageFolder);
-
-
-  std::string cvo_calib_file = imageFolder + "/cvo_calib.txt"; 
+  tartan.set_depth_folder_name("deep_depth");
+  std::string cvo_calib_file = imageFolder + "/cvo_calib_deep_depth.txt"; 
   cvo::Calibration calib(cvo_calib_file, cvo::Calibration::RGBD);
 
   // add image size to the visualizer
