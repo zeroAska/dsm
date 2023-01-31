@@ -129,3 +129,7 @@ covisEll = 2.5
 covisUpdateFrames = 1
 
 bkiMapOn = 0
+depthNormalEll = 0.04
+depthDirEll = 0.5
+cvoIRLSConstFrames = 0
+insertPointToMapAfterBA = 2

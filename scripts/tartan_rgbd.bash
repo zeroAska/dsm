@@ -4,4 +4,4 @@ make -j && \
 cd .. && \ 
 # gdb -ex r --args \
 # gdb --args \
-./build/bin/TartanRGBDExample /home/tannerliu/datasets/Tartan/carwelding/P001 Examples/TartanExample/RGB-D/cvo_rgbd_params.yaml Examples/TartanExample/RGB-D/settings.txt 0 test_tartan.txt
+./build/bin/TartanRGBDExample /home/rayzhang/media/Samsung_T5/tartanair/abandonedfactory/Easy/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/outdoor_settings.txt 0 test_tartan.txt
