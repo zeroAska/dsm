@@ -121,7 +121,7 @@ enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000
-voxelSize = 0.05
+voxelSize = 0.2
 inputSurfaceDownsampleVoxelSize = 3.5
 inputEdgeDownsampleVoxelSize = 0.5   
 covisEll = 2.5
