@@ -116,7 +116,7 @@ showDepthMapLvl = 0
 candidatePointsSampling = 0
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.55
+trackingCosLimit = 0.65
 enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
@@ -127,23 +127,9 @@ inputEdgeDownsampleVoxelSize = 0.5
 covisEll = 2.5
 
 covisUpdateFrames = 1
+
+bkiMapOn = 0
 depthNormalEll = 0.04
 depthDirEll = 0.5
 cvoIRLSConstFrames = 0
 insertPointToMapAfterBA = 2
-
-bkiMapOn = 0
-bkiMapBlockDepth = 2
-bkiMapSf2 = 1.0
-bkiMapEll = 1.0
-bkiMapPrior = 0.0
-bkiMapVarThresh = 1.0
-bkiMapFreeThresh = 0.4
-bkiMapOccupiedThresh = 0.9
-bkiMapResolution = 0.2
-bkiMapFreeResolution = 0.2
-bkiMapDsResolution = 0.1
-bkiMapMaxRange = 55.0
-bkiMapNumClass = 2
-bkiMapNumFeatures = 6
-

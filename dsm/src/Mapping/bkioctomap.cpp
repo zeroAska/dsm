@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <pcl/filters/voxel_grid.h>
 
 #include "bkioctree_node.h"
@@ -154,8 +155,8 @@ namespace semantic_bki {
     Block::key_loc_map = init_key_loc_map(resolution, block_depth);
   }
 
-  /*
-    void SemanticBKIOctoMap::insert_pointcloud(const PCLPointCloud &cloud, const point3f &origin, float ds_resolution,
+
+    void SemanticBKIOctoMap::insert_pointcloud(const CVOPointCloud *cloud, const point3f &origin, float ds_resolution,
     float free_res, float max_range) {
 
     #ifdef DEBUG
@@ -210,19 +211,23 @@ namespace semantic_bki {
     if (block_xy.size() < 1)
     continue;
 
-    vector<float> block_x, block_y;
+    vector<float> block_x, block_y, block_f;
     for (auto it = block_xy.cbegin(); it != block_xy.cend(); ++it) {
     block_x.push_back(it->first.x());
     block_x.push_back(it->first.y());
     block_x.push_back(it->first.z());
-    block_y.push_back(it->second);
+    block_y.push_back(it->second[0]);
+    for (int j = 0; j < it->second.size()-1; j++)
+      block_f.push_back( it->second[j+1]);
             
             
     //std::cout << search(it->first.x(), it->first.y(), it->first.z()) << std::endl;
     }
 
-    SemanticBKI3f *bgk = new SemanticBKI3f(SemanticOcTreeNode::num_class, SemanticOcTreeNode::sf2, SemanticOcTreeNode::ell);
-    bgk->train(block_x, block_y);
+    SemanticBKI3f *bgk = new SemanticBKI3f(SemanticOcTreeNode::num_class,
+                                           SemanticOcTreeNode::num_features,
+                                           SemanticOcTreeNode::sf2, SemanticOcTreeNode::ell);
+    bgk->train(block_x, block_y, block_f);
     #ifdef OPENMP
     #pragma omp critical
     #endif
@@ -267,14 +272,15 @@ namespace semantic_bki {
     continue;
 
     vector<vector<float>> ybars;
-    bgk->second->predict(xs, ybars);
+    vector<vector<float>> fbars;
+    bgk->second->predict(xs, ybars, fbars);
 
     int j = 0;
     for (auto leaf_it = block->begin_leaf(); leaf_it != block->end_leaf(); ++leaf_it, ++j) {
     SemanticOcTreeNode &node = leaf_it.get_node();
     // Only need to update if kernel density total kernel density est > 0
     //if (kbar[j] > 0.0)
-    node.update(ybars[j]);
+    node.update(ybars[j], fbars[j]);
     }
     }
     }
@@ -289,7 +295,7 @@ namespace semantic_bki {
 
     rtree.RemoveAll();
     }
-  */
+
 
   void SemanticBKIOctoMap::insert_pointcloud_csm(const CVOPointCloud *cloud, const point3f &origin, float ds_resolution,
                                                  float free_res, float max_range) {
@@ -656,7 +662,7 @@ namespace semantic_bki {
       point3f p(cloud->at(i)(0), cloud->at(i)(1), cloud->at(i)(2));
       if (max_range > 0) {
         double l = (p - origin).norm();
-        if (l > max_range)
+        if (l > max_range || std::isnan(l) || std::isinf(l))
           continue;
       }
 
@@ -675,10 +681,12 @@ namespace semantic_bki {
           properties.emplace_back(cloud->feature_at(i)(j));
       }
       if (cloud->num_geometric_types()) {
-        int pix_label = 0;              
-        cloud->geometry_type_at(i).maxCoeff(&pix_label);
-        properties.emplace_back(pix_label);
-        if (pix_label == 0)
+        //int pix_label = 0;              
+        //cloud->geometry_type_at(i).maxCoeff(&pix_label);
+        //if (pix_label == 0)
+        //  pix_label = 1;
+        properties.emplace_back(cloud->geometry_type_at(i)(0));
+        if (cloud->geometry_type_at(i)(0) > 0.5)
           edge_counter++;
       }
       xy.emplace_back(p, properties);
@@ -692,6 +700,9 @@ namespace semantic_bki {
         xy.emplace_back(*p, properties_free);
       }
     }
+
+    std::cout<<edge_counter<<" edge points input to the map\n";
+      
 
     point3f p(origin.x(), origin.y(), origin.z());
     std::vector<float> properties;
@@ -730,9 +741,11 @@ namespace semantic_bki {
           properties.emplace_back(cloud[i]->features()(j));
       }
       if (cloud[i]->geometricType().size()) {
-        int pix_label = 0;              
-        cloud[i]->geometricType().maxCoeff(&pix_label);
-        properties.emplace_back(pix_label);              
+        //int pix_label = 0;              
+        //cloud[i]->geometricType().maxCoeff(&pix_label);
+        //pix_label++;
+        //properties.emplace_back(1-pix_label);
+        properties.emplace_back(cloud[i]->geometricType()(0));        
       }
       xy.emplace_back(p, properties);
       if (i == 0) property_dim = properties.size();
@@ -1001,8 +1014,9 @@ namespace semantic_bki {
           label = Eigen::VectorXf::Map(probs.data(), num_class);
         }
         if (num_geometric_types) {
-          float geometric_type_label = feature_vec[num_features];
-          geometric_type << 1.0 - geometric_type_label , geometric_type_label;
+          int geometric_type_label = feature_vec[num_features] ;
+          std::cout<<"geometric type label is "<<feature_vec[num_features] <<"\n";          
+          geometric_type << geometric_type_label , 1-geometric_type_label;
         }
         pc.add_point(ind, xyz, feature,label, geometric_type );
         ind++;      
@@ -1055,7 +1069,8 @@ namespace semantic_bki {
         }
         if (num_geometric_types) {
           float geometric_type_label = feature_vec[num_features];
-          geometric_type << 1.0 - geometric_type_label , geometric_type_label;
+          std::cout<<"geometric type label is "<<geometric_type_label<<"\n";
+          geometric_type << geometric_type_label , 1- geometric_type_label;
         }
         pc.add_point(ind, xyz, feature,label, geometric_type );
         ind++;      

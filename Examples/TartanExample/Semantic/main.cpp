@@ -107,7 +107,7 @@ namespace dsm
 
         cv::Mat source_left;
         std::vector<float> source_dep, source_semantics;
-        int num_semantic_class = 10;
+        int num_semantic_class = 19;
         std::cout<< " Read new image "<<id<<std::endl;
         bool read_fails = reader.read_next_rgbd(source_left, source_dep, num_semantic_class, source_semantics);
 
@@ -119,8 +119,11 @@ namespace dsm
 
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
 
-          cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib);
-          std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib));
+          // cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib);
+          // std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib));
+          cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib, cvo::CvoPointCloud::DSO_EDGES);
+          std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib, cvo::CvoPointCloud::FULL));
+          
 
           cvo::CvoPointCloud_to_pcl(source_cvo, *source_pcd);
 
@@ -252,10 +255,10 @@ int main(int argc, char *argv[])
 
   // read sequence
   cvo::TartanAirHandler tartan(imageFolder);
-
-
-  std::string cvo_calib_file = imageFolder + "/cvo_calib.txt"; 
+  tartan.set_depth_folder_name("deep_depth");
+  std::string cvo_calib_file = imageFolder + "/cvo_calib_deep_depth.txt"; 
   cvo::Calibration calib(cvo_calib_file, cvo::Calibration::RGBD);
+
 
   // add image size to the visualizer
   visualizer.setImageSize(calib.image_cols(), calib.image_rows());

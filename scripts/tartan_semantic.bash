@@ -1,16 +1,21 @@
+cd build
+make -j
+cd ..
+
+
 clear
 #cd build && make -j && cd ..
 
 for difficulty in Easy #Hard
 do
 #for i in abandonedfactory abandonedfactory_night seasonsforest seasonsforest_winter ocean
-for i in seasidetown endofworld gascola  soulcity ocean
+for i in abandonedfactory #seasidetown #endofworld gascola  soulcity ocean
 do
 	 rm -rf tartan_semantic_${difficulty}_$i
 	mkdir -p tartan_semantic_${difficulty}_$i
         # gdb -ex r --args \
             echo " Current Seq: ${i} ${difficulty}"
-./build/bin/TartanSemanticExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/outdoor_settings.txt 0 test_semantic_${difficulty}_$i.txt > log_tartan_semantic_${difficulty}_${i}.txt
+./build/bin/TartanSemanticExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_semantic_params.yaml Examples/TartanExample/semantic_settings.txt 0 test_semantic_${difficulty}_$i.txt #> log_tartan_semantic_${difficulty}_${i}.txt
 mv *.pcd tartan_semantic_${difficulty}_$i/
 mv *_graph.txt tartan_semantic_${difficulty}_$i/
 mv test_semantic_${difficulty}_$i.txt tartan_semantic_${difficulty}_$i/

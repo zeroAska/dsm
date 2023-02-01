@@ -87,6 +87,8 @@ namespace semantic_bki {
          * @param free_res resolution for sampling free training points along sensor beams (default 2.0)
          * @param max_range maximum range for beams to be considered as valid measurements (-1 if no limitation)
          */
+
+      
         void insert_pointcloud_csm(const CVOPointCloud * cloud, const point3f &origin, float ds_resolution,
                                float free_res = 2.0f,
                                float max_range = -1);
@@ -99,7 +101,7 @@ namespace semantic_bki {
       
 
 
-        void insert_pointcloud(const PCLPointCloud &cloud, const point3f &origin, float ds_resolution,
+        void insert_pointcloud(const CVOPointCloud *cloud, const point3f &origin, float ds_resolution,
                                float free_res = 2.0f,
                                float max_range = -1);
 

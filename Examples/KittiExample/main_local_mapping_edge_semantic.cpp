@@ -34,7 +34,10 @@ void write_to_geotype_pcd(const cvo::CvoPointCloud & pc,
     pcl::PointXYZL p;
     p.getVector3fMap() = pc.at(i);
     int l;
-    pc.geometry_type_at(i).maxCoeff(&l);
+    //pc.geometry_type_at(i).maxCoeff(&l);
+    if (pc.geometry_type_at(i)(0) > 0.06)
+      l = 0;
+    else l = 1;
     p.label = (uint32_t) l;
     pcd.push_back(p);
   }
@@ -70,15 +73,15 @@ int main(int argc, char *argv[]) {
   // Set parameters
   int block_depth = 1;
   double sf2 = 1.0;
-  double ell = 2.0;
+  double ell = 1.0;
   float prior = 0.0f;
   float var_thresh = 1.0f;
-  double free_thresh = 0.4;
-  double occupied_thresh = 0.9;
+  double free_thresh = 0.3;
+  double occupied_thresh = 0.8;
   double resolution = 0.2;
   double free_resolution = 1;
-  double ds_resolution =0.1;
-  double max_range = -1;
+  double ds_resolution =0.2;
+  double max_range = 40;
 
   // Read camera poses
   std::vector<Eigen::Matrix4d,
@@ -132,15 +135,18 @@ int main(int argc, char *argv[]) {
     origin.z() = transform(2, 3);
 
     // insert point cloud
-    map_csm.insert_pointcloud_csm(&transformed_pc, origin, ds_resolution, free_resolution, max_range);
+    map_csm.insert_pointcloud(&transformed_pc, origin, ds_resolution, free_resolution, max_range);
     transformed_pc.write_to_color_pcd(std::to_string(i+start_frame)+".pcd");
     kitti.next_frame_index();
     
   }
-  
+
+  std::cout<<"finish all frames\n";
   // Map to CVOPointCloud
   //cvo::CvoPointCloud cloud_out(&map_csm, num_class);
   cvo::CvoPointCloud pc_map(5,num_class);
+
+  std::cout<<"map to pc\n";  
   semantic_bki::map_to_pc(map_csm, pc_map, 5, num_class, 2);
   //pc_vec[0].write_to_color_pcd(output_dir + "/" + "input_color.pcd");
   //pc_vec[0].write_to_label_pcd(output_dir + "/" + "input_semantics.pcd");
