@@ -939,14 +939,16 @@ namespace dsm
         Eigen::Vector3f cam_xyz = activeKeyframes_[i]->camToWorld().translation();
         Eigen::Vector3f p_local = p->getVector3fMap();
         float depth = (p_local).norm();
+        if (depth > settings.bkiQueryMaxDepth)
+          continue;
         float uncertainty = linear_uncertainty(depth);
-        float start_depth = 0; //depth - uncertainty;
-        float end_depth = 8;//depth + uncertainty;
+        float start_depth = depth - uncertainty;
+        float end_depth = depth + uncertainty;
 
         Eigen::Vector3f p_global = activeKeyframes_[i]->camToWorld() * p_local;
         Eigen::Vector3f dir = (p_global - cam_xyz).normalized();
-        Eigen::Vector3f start_p = p_global + dir * start_depth;
-        Eigen::Vector3f end_p = p_global + dir * end_depth;
+        Eigen::Vector3f start_p = cam_xyz + dir * start_depth;
+        Eigen::Vector3f end_p = cam_xyz + dir * end_depth;
 
         semantic_bki::point3f start(start_p(0), start_p(1), start_p(2));
         semantic_bki::point3f end(end_p(0), end_p(1), end_p(2));

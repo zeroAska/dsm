@@ -144,6 +144,6 @@ bkiMapResolution = 0.2
 bkiMapFreeResolution = 0.2
 bkiMapDsResolution = 0.1
 bkiMapMaxRange = 55.0
-bkiMapNumClass = 19
+bkiMapNumClass = 20
 bkiMapNumFeatures = 6
-
+bkiQueryMaxDepth = 8.0

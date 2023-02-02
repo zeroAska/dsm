@@ -213,6 +213,7 @@ namespace dsm
                 bkiMapFreeResolution = 0.02;
                 bkiMapDsResolution = -1;
                 bkiMapMaxRange = -1;
+                bkiQueryMaxDepth = 8.0;                
                 
                 isDepthMultiSamplingFromMap = 0;
                 
@@ -494,6 +495,10 @@ namespace dsm
                 if (this->checkParameter("bkimapmaxrange", name, value, this->bkiMapMaxRange)) {
                   return;
                 }
+                if (this->checkParameter("bkiquerymaxdepth", name, value, this->bkiQueryMaxDepth)) {
+                  return;
+                }
+                
                 if (this->checkParameter("isdepthmultisamplingfrommap", name, value, this->isDepthMultiSamplingFromMap)) {
                   return;
                 }

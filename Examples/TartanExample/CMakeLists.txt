@@ -28,3 +28,4 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 add_subdirectory(RGB-D)
 add_subdirectory(Stereo)
 add_subdirectory(Semantic)
+

@@ -690,7 +690,8 @@ namespace semantic_bki {
           edge_counter++;
       }
       xy.emplace_back(p, properties);
-      if (i == 0) property_dim = properties.size();
+      if (property_dim == 0)
+        property_dim = properties.size();
 
       /// free space samples
       PointCloud frees_n;
@@ -703,11 +704,12 @@ namespace semantic_bki {
 
     std::cout<<edge_counter<<" edge points input to the map\n";
       
-
-    point3f p(origin.x(), origin.y(), origin.z());
-    std::vector<float> properties;
-    properties.resize(property_dim, 0);
-    xy.emplace_back(p, properties);
+    if (property_dim) {
+      point3f p(origin.x(), origin.y(), origin.z());
+      std::vector<float> properties;
+      properties.resize(property_dim, 0);
+      xy.emplace_back(p, properties);
+    }
   }
 
   template <typename PointT>
@@ -990,6 +992,8 @@ namespace semantic_bki {
     std::vector<std::vector<float>> labels;
     pc.reserve(num_pts, num_features, num_class);
     int ind = 0;
+    int edge_counter = 0;
+  
     for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
       if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
         // position
@@ -1014,9 +1018,10 @@ namespace semantic_bki {
           label = Eigen::VectorXf::Map(probs.data(), num_class);
         }
         if (num_geometric_types) {
-          int geometric_type_label = feature_vec[num_features] ;
+          float geometric_type_label = feature_vec[num_features] ;
           std::cout<<"geometric type label is "<<feature_vec[num_features] <<"\n";          
           geometric_type << geometric_type_label , 1-geometric_type_label;
+          
         }
         pc.add_point(ind, xyz, feature,label, geometric_type );
         ind++;      
@@ -1042,7 +1047,7 @@ namespace semantic_bki {
     //num_classes_ = num_classes;
     std::vector<std::vector<float>> features;
     std::vector<std::vector<float>> labels;
-    pc.reserve(num_pts, num_features, num_class);
+    pc.reserve(num_pts, num_features, 1);
     int ind = 0;
     for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
       if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
@@ -1061,12 +1066,12 @@ namespace semantic_bki {
         //std::vector<float> label(num_classes_, 0);
         //it.get_node().get_occupied_probs(label);
         //labels.push_back(label);
-        Eigen::VectorXf label(num_class), geometric_type(num_geometric_types);
-        if (num_class) {
-          std::vector<float> probs(num_class);
-          it.get_node().get_vars(probs);
-          label = Eigen::VectorXf::Map(probs.data(), num_class);
-        }
+        
+        Eigen::VectorXf label(1), geometric_type(num_geometric_types);
+        std::vector<float> probs(num_class+1);
+        it.get_node().get_vars(probs);
+        label(0) = probs[0];
+
         if (num_geometric_types) {
           float geometric_type_label = feature_vec[num_features];
           std::cout<<"geometric type label is "<<geometric_type_label<<"\n";
