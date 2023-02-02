@@ -16,12 +16,12 @@ do
 	mkdir -p $folder
         # gdb -ex r --args \
             echo " Current Seq: ${i} ${difficulty}"
-./build/bin/TartanSemanticExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_semantic_params.yaml Examples/TartanExample/semantic_settings.txt 0 test_semantic_${difficulty}_$i.txt #> log_tartan_semantic_${difficulty}_${i}.txt
-mv *.pcd tartan_semantic_${difficulty}_$i/
-mv *_graph.txt tartan_semantic_${difficulty}_$i/
-mv test_semantic_${difficulty}_$i.txt tartan_semantic_${difficulty}_$i/
-mv covisResult.txt tartan_semantic_${difficulty}_$i/
-mv log_tartan_semantic_${difficulty}_${i}.txt tartan_semantic_${difficulty}_$i/
+./build/bin/TartanSemanticExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_semantic_params.yaml Examples/TartanExample/semantic_settings.txt 0 test_semantic_${difficulty}_$i.txt > log_tartan_semantic_${difficulty}_${i}.txt
+mv *.pcd $folder/
+mv *_graph.txt $folder
+mv test_semantic_${difficulty}_$i.txt $folder/rkhs_slam.txt
+mv covisResult.txt $folder
+mv log_tartan_semantic_${difficulty}_${i}.txt $folder
 sleep 5
     
 #gdb -ex r --args \
