@@ -37,7 +37,9 @@
 #include "utils/ImageRGBD.hpp"
 #include "utils/RawImage.hpp"
 #include "utils/CvoPoint.hpp"
+#include "Utils/DepthModel.hpp"
 #include <iostream>
+#include <memory>
 
 namespace dsm
 {
@@ -128,6 +130,14 @@ namespace dsm
     }
 
     this->setErrorDistribution(errorDist);
+
+    this->fullPcDownsampled_ = std::make_shared<cvo::CvoPointCloud>();
+    downsample_cvo_pc(*fullPoints_,
+                      settings.voxelSize,
+                      *fullPcDownsampled_);
+    this->trackingPointsCvo_ = std::make_shared<cvo::CvoPointCloud>(*trackingPoints_);
+
+    
   }
 
   void Frame::eraseFullPointAt(int index) {
@@ -187,6 +197,12 @@ namespace dsm
 
     this->setErrorDistribution(errorDist);
 
+    this->fullPcDownsampled_ = std::make_shared<cvo::CvoPointCloud>();
+    downsample_cvo_pc(*fullPoints_,
+                      settings.voxelSize,
+                      *fullPcDownsampled_);
+    this->trackingPointsCvo_ = std::make_shared<cvo::CvoPointCloud>(*trackingPoints_);    
+
   }
 
   Frame::Frame(int id, double timestamp, unsigned char* image, std::shared_ptr<cvo::ImageRGBD<uint16_t>> color_img,  pcl::PointCloud<cvo::CvoPoint>::Ptr new_frame_pcd,  float depth_scale, std::shared_ptr<cvo::CvoPointCloud> full_pc) :
@@ -234,7 +250,11 @@ namespace dsm
     }
 
     this->setErrorDistribution(errorDist);
-
+    this->fullPcDownsampled_ = std::make_shared<cvo::CvoPointCloud>();
+    downsample_cvo_pc(*fullPoints_,
+                      settings.voxelSize,
+                      *fullPcDownsampled_);
+    this->trackingPointsCvo_ = std::make_shared<cvo::CvoPointCloud>(*trackingPoints_);
   }
 
   /*  

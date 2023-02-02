@@ -33,188 +33,189 @@
 
 namespace dsm
 {
-	// float variables must be initialized in the cpp
-	const float Settings::DIVISION_EPS = 1e-10f;
-	const float Settings::PI = 3.14159265358979323846f;
+// float variables must be initialized in the cpp
+const float Settings::DIVISION_EPS = 1e-10f;
+const float Settings::PI = 3.14159265358979323846f;
 
-	Settings::Settings() 
-	{
-		this->reset();
-	}
+Settings::Settings() 
+{
+	this->reset();
+}
 
-	Settings::~Settings()
-	{
-	}
+Settings::~Settings()
+{
+}
 
-	Settings& Settings::getInstance()
-	{
-		static Settings theOneAndOnly;
-		return theOneAndOnly;
-	}
+Settings& Settings::getInstance()
+{
+	static Settings theOneAndOnly;
+	return theOneAndOnly;
+}
 
-	void Settings::reset()
-	{
-		// log
-		this->debugPrintLog = false;
-		this->debugLogTracking = false;
-		this->debugLogKeyframes = false;
-		this->debugLogPixelDetection = false;
-		this->debugLogCandidatesTracking = false;
-		this->debugLogCandidatesOpt = false;
-		this->debugLogDistanceMap = false;
-		this->debugLogActivePoints = false;
+void Settings::reset()
+{
+	// log
+	this->debugPrintLog = false;
+	this->debugLogTracking = false;
+	this->debugLogKeyframes = false;
+	this->debugLogPixelDetection = false;
+	this->debugLogCandidatesTracking = false;
+	this->debugLogCandidatesOpt = false;
+	this->debugLogDistanceMap = false;
+	this->debugLogActivePoints = false;
 
-		// candidate tracking
-		this->debugCandidates = false;
+	// candidate tracking
+	this->debugCandidates = false;
 
-		// coarse tracking
-		this->debugShowTrackResult = false;
-		this->debugShowTrackError = false;
-		this->debugShowTrackWeights = false;
-		this->debugShowTrackLight = false;
-		this->debugShowTrackDistribution = false;
+	// coarse tracking
+	this->debugShowTrackResult = false;
+	this->debugShowTrackError = false;
+	this->debugShowTrackWeights = false;
+	this->debugShowTrackLight = false;
+	this->debugShowTrackDistribution = false;
 
-		// pixel detector
-		this->debugShowPointDetection = false;
+	// pixel detector
+	this->debugShowPointDetection = false;
 
-		// distance transform
-		this->debugShowDistanceTransformBefore = false;
-		this->debugShowDistanceTransformAfter = false;
+	// distance transform
+	this->debugShowDistanceTransformBefore = false;
+	this->debugShowDistanceTransformAfter = false;
 
-		// debug optimization
-		this->debugShowOptKeyframes = false;
+	// debug optimization
+	this->debugShowOptKeyframes = false;
 
-		this->debugShowOptError = false;
-		this->debugShowOptWeight = false;
-		this->debugShowOptLight = false;
-		this->debugShowOptErrorDist = false;
-		this->debugShowOptErrorDistLast = false;
+	this->debugShowOptError = false;
+	this->debugShowOptWeight = false;
+	this->debugShowOptLight = false;
+	this->debugShowOptErrorDist = false;
+	this->debugShowOptErrorDistLast = false;
 
-		this->depthMapsDir = "./DepthMaps";
-		this->saveDepthMaps = false;
+	this->depthMapsDir = "./DepthMaps";
+	this->saveDepthMaps = false;
 
-		this->optErrorDistDir = "./ErrorDistribution";
-		this->saveOptErrorDist = false;
+	this->optErrorDistDir = "./ErrorDistribution";
+	this->saveOptErrorDist = false;
 
-		// Parallelization
-		this->blockUntilMapped = false;
-		this->singleThreaded = true;									
-		this->mappingThreads = 6;										// 6
+	// Parallelization
+	this->blockUntilMapped = false;
+	this->singleThreaded = true;									
+	this->mappingThreads = 6;										// 6
 
-		this->minimizeMemory = false;
+	this->minimizeMemory = false;
 
-		this->useFixedHuberScale = false;								// false
-		this->huberScale = 9.f;											// 9
+	this->useFixedHuberScale = false;								// false
+	this->huberScale = 9.f;											// 9
 
-		this->useTDistribution = true;									// true
-		this->nuFixed = -1.f;											// -1
-		this->muFixed = 0.f;											// 0
-		this->sigmaFixed = -1.f;										// -1
+	this->useTDistribution = true;									// true
+	this->nuFixed = -1.f;											// -1
+	this->muFixed = 0.f;											// 0
+	this->sigmaFixed = -1.f;										// -1
 
-		this->defaultNu = 5.f;											// 5
-		this->defaultMu = 0.f;											// 0
-		this->defaultSigma = 7.5f;										// 7.5
+	this->defaultNu = 5.f;											// 5
+	this->defaultMu = 0.f;											// 0
+	this->defaultSigma = 7.5f;										// 7.5
 
-		this->inlierPercentile = 0.95f;									// 0.95
-		this->maxPixelOutlier = 0.3f;									// 0.3
-		this->maxPixelDiscard = 0.6f;									// 0.6
+	this->inlierPercentile = 0.95f;									// 0.95
+	this->maxPixelOutlier = 0.3f;									// 0.3
+	this->maxPixelDiscard = 0.6f;									// 0.6
 
-		this->maxEnergyFit = 60.f;										// 60
+	this->maxEnergyFit = 60.f;										// 60
 
-		this->weightConstant = 50.f*50.f;								// 50*50
+	this->weightConstant = 50.f*50.f;								// 50*50
 
-		this->trackingMaxLevel = 3;										// 3
-			
-		this->pointDetectionLevels = 2;									// 2
-		this->numCandidates = 3000;										// 1500
-		this->numBlocksPerDimension = 20;								// 20
-		this->minGradAdd = 7.f;											// 7
+	this->trackingMaxLevel = 3;										// 3
+		
+	this->pointDetectionLevels = 2;									// 2
+	this->numCandidates = 3000;										// 1500
+	this->numBlocksPerDimension = 20;								// 20
+	this->minGradAdd = 7.f;											// 7
 
-		this->maxUnmappedFrames = 3;									// 3
+	this->maxUnmappedFrames = 3;									// 3
 
-		this->maxEplLengthFactor = 0.0375f;								// 0.0375‬
-		this->minEplLengthSkip = 1.5f;									// 1.5
-		this->stereoMaxEnergy = 20.f;									// 20
-		this->secondBestRadius = 2;										// 2
-		this->epiLineSigma = 0.5f*0.5f;									// 0.25
-		this->subpixelIterations = 3;									// 3
-		this->subpixelStepThreshold = 0.1f;								// 0.1
+	this->maxEplLengthFactor = 0.0375f;								// 0.0375‬
+	this->minEplLengthSkip = 1.5f;									// 1.5
+	this->stereoMaxEnergy = 20.f;									// 20
+	this->secondBestRadius = 2;										// 2
+	this->epiLineSigma = 0.5f*0.5f;									// 0.25
+	this->subpixelIterations = 3;									// 3
+	this->subpixelStepThreshold = 0.1f;								// 0.1
 
-		this->maxViewChange = cos(60.f*Settings::PI / 180.f);			// cos(60)
+	this->maxViewChange = cos(60.f*Settings::PI / 180.f);			// cos(60)
 
-		this->candidateOptIterations = 3;								// 3
-		this->minDistToActivate = Pattern::width();						// Pattern::width()
-		this->maxCandidateUncertainty = 2.f;							// 2
-		this->minCandidateQuality = 2.f;								// 2
+	this->candidateOptIterations = 3;								// 3
+	this->minDistToActivate = Pattern::width();						// Pattern::width()
+	this->maxCandidateUncertainty = 2.f;							// 2
+	this->minCandidateQuality = 2.f;								// 2
 
-		this->doOnlyTemporalOpt = false;								// false
-		this->printSummary = true;										// true
-		this->showFullReport = false;									// false
-		this->minOptimizationGrad = 2.f;								// 2
-		this->minBAIterations = 1;										// 1
-		this->maxBAIterations = 100;									// 100
-		this->optMaxLevel = 2;											// 2
-                this->fixFramePoses = false;
+	this->doOnlyTemporalOpt = false;								// false
+	this->printSummary = true;										// true
+	this->showFullReport = false;									// false
+	this->minOptimizationGrad = 2.f;								// 2
+	this->minBAIterations = 1;										// 1
+	this->maxBAIterations = 100;									// 100
+	this->optMaxLevel = 2;											// 2
+	this->fixFramePoses = false;
 
-		this->numActivePoints = 1500;									// 1500
+	this->numActivePoints = 1500;									// 1500
 
-		this->maxTemporalKeyframes = 5;									// 5
-		this->maxCovisibleKeyframes = 3;								// 3
-		this->numAlwaysKeepKeyframes = 3;								// 3: 2 + latest one
+	this->maxTemporalKeyframes = 5;									// 5
+	this->maxCovisibleKeyframes = 3;								// 3
+	this->numAlwaysKeepKeyframes = 3;								// 3: 2 + latest one
 
-		this->minPointCovisible = 0.05f;								// 0.05
-		this->maxLightCovisible = 0.7f;									// 0.7
+	this->minPointCovisible = 0.05f;								// 0.05
+	this->maxLightCovisible = 0.7f;									// 0.7
 
-		this->minNumKFToConsiderNew = 2;								// 2
-		this->minNumGoodObservations = 3;								// 3
+	this->minNumKFToConsiderNew = 2;								// 2
+	this->minNumGoodObservations = 3;								// 3
 
-		this->newKFDistWeight = 4.f;									// 4		
-		this->newKFUsageWeight = 3.f;									// 3 
-		this->newKFAffineWeight = 4.f;									// 4
-		this->newKFResidualWeight = 2.f;								// 2
-		this->minNumTrackedFramesToCreateKF = 1;							// 1
+	this->newKFDistWeight = 4.f;									// 4		
+	this->newKFUsageWeight = 3.f;									// 3 
+	this->newKFAffineWeight = 4.f;									// 4
+	this->newKFResidualWeight = 2.f;								// 2
+	this->minNumTrackedFramesToCreateKF = 1;							// 1
 
-		this->showDepthMap = true;										// true
-		this->showDepthMapLvl = 0;										// 0
+	this->showDepthMap = true;										// true
+	this->showDepthMapLvl = 0;										// 0
 
-                this->iDepthUncertainty = 0.025f;
-                this->trackingCosLimit = 0.75f;
-                this->enableDepthRegression = true;
-                this->depthNormalEll = 0.02;
-                this->depthDirEll = 0.1;
-                this->gapCovisibleToTemporal = 10;
-                this->numPointsPerFrame = 2000;
-                this->candidatePointsSampling = 0; // 0: voxel 1: canny   2: FAST  3: DSO 
-                this->maxInitIdepth = 0.02f;
-                this->covisMapSize = 2000;
-                this->voxelSize = 0.2;
-                this->inputEdgeDownsampleVoxelSize = 0.6;
-                this->inputSurfaceDownsampleVoxelSize = 0.05;
-                this->covisEll = 4.0;
+	this->iDepthUncertainty = 0.025f;
+	this->trackingCosLimit = 0.75f;
+	this->enableDepthRegression = true;
+	this->depthNormalEll = 0.02;
+	this->depthDirEll = 0.1;
+	this->gapCovisibleToTemporal = 10;
+	this->numPointsPerFrame = 2000;
+	this->candidatePointsSampling = 0; // 0: voxel 1: canny   2: FAST  3: DSO 
+	this->maxInitIdepth = 0.02f;
+	this->covisMapSize = 2000;
+	this->voxelSize = 0.2;
+	this->inputEdgeDownsampleVoxelSize = 0.6;
+	this->inputSurfaceDownsampleVoxelSize = 0.05;
+	this->covisEll = 4.0;
 
-                this->covisUpdateFrames = 7;
-                this->covisMinPoints = 1000;
-                this->cvoIRLSConstFrames = 1;
-                this->insertPointToMapAfterBA = 1;
-                this->insertFreeSpacePointsToMap = 0;
+	this->covisUpdateFrames = 7;
+	this->covisMinPoints = 1000;
+	this->cvoIRLSConstFrames = 1;
+	this->insertPointToMapAfterBA = 1;
+	this->insertFreeSpacePointsToMap = 0;
 
-                bkiMapOn = 0;
-                bkiMapResolution = 0.1f;
-                bkiMapBlockDepth = 4;
-                bkiMapNumClass = 3;
-                bkiMapNumFeatures = 5;
-                
-                bkiMapSf2 = 1.0;
-                bkiMapEll = 1.0;
-                bkiMapPrior = 1.0;
-                bkiMapVarThresh = 1.0;
-                bkiMapFreeThresh = 0.3;
-                bkiMapOccupiedThresh = 0.7;
-                bkiMapFreeResolution = 0.02;
-                bkiMapDsResolution = -1;
-                bkiMapMaxRange = -1;
+	bkiMapOn = 0;
+	bkiMapResolution = 0.1f;
+	bkiMapBlockDepth = 4;
+	bkiMapNumClass = 3;
+	bkiMapNumFeatures = 5;
+	
+	bkiMapSf2 = 1.0;
+	bkiMapEll = 1.0;
+	bkiMapPrior = 1.0;
+	bkiMapVarThresh = 1.0;
+	bkiMapFreeThresh = 0.3;
+	bkiMapOccupiedThresh = 0.7;
+	bkiMapFreeResolution = 0.02;
+	bkiMapDsResolution = -1;
+	bkiMapMaxRange = -1;
                 bkiQueryMaxDepth = 8.0;                
                 
+                bkiMapRayCasting = 0;                
                 isDepthMultiSamplingFromMap = 0;
                 
 		// update the rest
@@ -496,6 +497,9 @@ namespace dsm
                   return;
                 }
                 if (this->checkParameter("bkiquerymaxdepth", name, value, this->bkiQueryMaxDepth)) {
+                  return;
+                }
+                if (this->checkParameter("bkimapraycasting", name, value, this->bkiMapRayCasting)) {
                   return;
                 }
                 

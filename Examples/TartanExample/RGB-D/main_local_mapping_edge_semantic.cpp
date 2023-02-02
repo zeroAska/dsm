@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
   // Set parameters
   int block_depth = 1;
   double sf2 = 1.0;
-  double ell = 1.0;
+  double ell = 2.0;
   float prior = 0.0f;
   float var_thresh = 1.0f;
   double free_thresh = 0.2;
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
   double resolution = 0.25;
   double free_resolution = 0.25;
   double ds_resolution =0.25;
-  double max_range = 10;
+  double max_range = 15;
 
   // Read camera poses
   std::vector<Eigen::Matrix4d,
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     cv::Mat source_left;
     std::vector<float> source_dep, source_semantics;        
     std::cout<< " Read new image "<<i<<std::endl;
-    bool read_fails = tartan.read_next_rgbd(source_left, source_dep, num_class, source_semantics);
+    bool read_fails = tartan.read_next_rgbd_without_sky(source_left, source_dep, num_class, source_semantics, 196);
     
     std::shared_ptr<cvo::ImageRGBD<float>> source_raw(new cvo::ImageRGBD<float>(source_left, source_dep, num_class, source_semantics));
     std::shared_ptr<cvo::CvoPointCloud> pc_with_semantics(new cvo::CvoPointCloud(*source_raw,

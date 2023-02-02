@@ -15,8 +15,8 @@ do
 	folder=tartan_semantic_${difficulty}_${i}_${date}
 	 rm -rf $folder
 	mkdir -p $folder
-        # gdb -ex r --args \
             echo " Current Seq: ${i} ${difficulty}"
+        #gdb --args \
 ./build/bin/TartanSemanticExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_semantic_params.yaml Examples/TartanExample/semantic_settings.txt 0 test_semantic_${difficulty}_$i.txt > log_tartan_semantic_${difficulty}_${i}.txt
 mv *.pcd $folder/
 mv *_graph.txt $folder/

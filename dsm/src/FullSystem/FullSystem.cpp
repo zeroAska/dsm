@@ -3312,12 +3312,21 @@ namespace dsm
     if (!settings.doOnlyTemporalOpt) {
       //edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
       if (settings.bkiMapOn) {
-        this->lmcw->selectBkiCovisMap(*map, covisMapCvo,
-                                      5,
-                                      frame->getRawImage()->num_classes(),
-                                      2
-                                      );
+        if (settings.bkiMapRayCasting) {
         
+          this->lmcw->selectBkiCovisMap(*map, covisMapCvo,
+                                        5,
+                                        frame->getRawImage()->num_classes(),
+                                        2
+                                      );
+          
+        } else {
+        this->lmcw->selectProjectedBkiCovisMap(*map, covisMapCvo,
+                                               5,
+                                               frame->getRawImage()->num_classes(),
+                                               2
+                                               );
+        }
       } else
         this->lmcw->selectRaySampledCovisibleMap(covisMapCvo);
     }
@@ -3501,7 +3510,7 @@ namespace dsm
     // we will only estimate new candidates from the temporal window
     if (settings.insertPointToMapAfterBA == 2) {
       if (settings.bkiMapOn) {
-        this->lmcw->insertFlaggedKeyframesToBkiDenseMap(*map);
+        this->lmcw->insertFlaggedKeyframesToBkiDenseMap(*map, *cvo_align);
         cvo::CvoPointCloud pc_map(5, frame->getRawImage()->num_classes());
         semantic_bki::map_to_pc(*map, pc_map, 5, frame->getRawImage()->num_classes(), 2);
         std::cout<<"pc_map exported from bki has size "<<pc_map.size()<<"\n";
