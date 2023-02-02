@@ -32,6 +32,7 @@ extern "C"
 
 namespace dsm
 {
+  int sky_label = -1;
   class TartanProcessor
   {
   public:
@@ -109,7 +110,7 @@ namespace dsm
         std::vector<float> source_dep, source_semantics;
         int num_semantic_class = 19;
         std::cout<< " Read new image "<<id<<std::endl;
-        bool read_fails = reader.read_next_rgbd(source_left, source_dep, num_semantic_class, source_semantics);
+        bool read_fails = reader.read_next_rgbd_without_sky(source_left, source_dep, num_semantic_class, source_semantics);
 
         if (read_fails) this->shouldStop = true;
 
@@ -238,8 +239,10 @@ int main(int argc, char *argv[])
   }
 
   std::string trajFileName;
-  if (argc == 6)
-    trajFileName = std::string(argv[5]);
+  //if (argc == 6)
+  trajFileName = std::string(argv[5]);
+
+  sky_label = std::stoi(argv[6]);
 
   // Initialize logging
   google::InitGoogleLogging(argv[0]);

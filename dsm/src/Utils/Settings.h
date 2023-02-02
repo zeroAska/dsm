@@ -246,6 +246,7 @@ namespace dsm
           float bkiMapFreeResolution;
           float bkiMapDsResolution;
           int bkiMapRayCasting;
+          int bkiMapUseFullPoints;
           
           float bkiMapMaxRange;
           int isDepthMultiSamplingFromMap;

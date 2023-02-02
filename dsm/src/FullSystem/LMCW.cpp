@@ -916,7 +916,7 @@ namespace dsm
 
     int num_pts = 0;
     for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
-      if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
+      if (it.get_node().get_state() != semantic_bki::State::FREE) {
         semantic_bki::point3f p = it.get_loc();
         Eigen::Vector3f xyz;
         xyz << p.x(), p.y(), p.z();
@@ -927,7 +927,7 @@ namespace dsm
           float dist_in_cam = p_in_cam.norm();
           Eigen::Vector3f uvd = K * p_in_cam;
           float depth = uvd(2);
-          std::cout<<"uvd is "<<uvd.transpose() / uvd(2)<<", wxh="<<calib.width(0)<<"x"<<calib.height(0)<<"\n";
+          //std::cout<<"uvd is "<<uvd.transpose() / uvd(2)<<", wxh="<<calib.width(0)<<"x"<<calib.height(0)<<"\n";
           if (uvd(2) > 0 && uvd(0) / depth < calib.width(0) && uvd(0) > 0
               && uvd(1) / depth < calib.height(0) && uvd(0) > 0
               && dist_in_cam  < settings.bkiMapMaxRange) {
@@ -2114,14 +2114,24 @@ namespace dsm
       semantic_bki::point3f origin(p(0), p(1), p(2));
 
       cvo::CvoPointCloud filtered_full;
-      filter_based_on_inner_product(//*owner->getFullPointsDownsampled(),
-                                    *owner->getTrackingPointsCvo(),
-                                    owner->camToWorld().matrix(),
-                                    //*activeKeyframes_[i+1]->getFullPointsDownsampled(),
-                                    *activeKeyframes_[i+1]->getTrackingPointsCvo(),
-                                    activeKeyframes_[i+1]->camToWorld().matrix(),
-                                    cvo_align,
-                                    filtered_full);
+      if (settings.bkiMapUseFullPoints)
+        filter_based_on_inner_product(*owner->getFullPointsDownsampled(),
+                                      //*owner->getTrackingPointsCvo(),
+                                      owner->camToWorld().matrix(),
+                                      *activeKeyframes_[i+1]->getFullPointsDownsampled(),
+                                      //*activeKeyframes_[i+1]->getTrackingPointsCvo(),
+                                      activeKeyframes_[i+1]->camToWorld().matrix(),
+                                      cvo_align,
+                                      filtered_full);
+      else 
+        filter_based_on_inner_product(//*owner->getFullPointsDownsampled(),
+                                      *owner->getTrackingPointsCvo(),
+                                      owner->camToWorld().matrix(),
+                                      //*activeKeyframes_[i+1]->getFullPointsDownsampled(),
+                                      *activeKeyframes_[i+1]->getTrackingPointsCvo(),
+                                      activeKeyframes_[i+1]->camToWorld().matrix(),
+                                      cvo_align,
+                                      filtered_full);
 
       //cvo::CvoPointCloud activePc, candidatePc;
       //ActivePoint::activePointsToCvoPointCloud(owner->activePoints(), activePc);

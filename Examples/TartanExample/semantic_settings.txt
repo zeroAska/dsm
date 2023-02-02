@@ -142,8 +142,11 @@ bkiMapFreeThresh = 0.3
 bkiMapOccupiedThresh = 0.8
 bkiMapResolution = 0.25
 bkiMapFreeResolution = 0.25
-bkiMapDsResolution = 0.1
+bkiMapDsResolution = 0.25
 bkiMapMaxRange = 30.0
 bkiMapNumClass = 20
 bkiMapNumFeatures = 6
+bkiMapRayCasting = 1           
+bkiMapUseFullPoints = 1
+
 
