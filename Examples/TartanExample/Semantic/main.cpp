@@ -122,6 +122,8 @@ namespace dsm
           // cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib);
           // std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib));
           cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib, cvo::CvoPointCloud::DSO_EDGES);
+          source_cvo.write_to_label_pcd("tracking.pcd");
+          
           std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib, cvo::CvoPointCloud::FULL));
           
 

@@ -689,15 +689,27 @@ namespace semantic_bki {
         if (cloud->geometry_type_at(i)(0) > 0.5)
           edge_counter++;
       }
+      if (properties.size() == 0) {
+        std::cerr<<__func__<<"empty GP point\n";
+        //exit(0);
+      }
+      
       xy.emplace_back(p, properties);
-      if (i == 0) property_dim = properties.size();
+      
+      
+      property_dim = properties.size();
 
       /// free space samples
       PointCloud frees_n;
       beam_sample(p, origin, frees_n, free_resolution);
-      for (auto p = frees_n.begin(); p != frees_n.end(); ++p) {
+      for (auto pp = frees_n.begin(); pp != frees_n.end(); ++pp) {
         std::vector<float> properties_free(properties.size(), 0);
-        xy.emplace_back(*p, properties_free);
+        xy.emplace_back(*pp, properties_free);
+        if (properties_free.size() == 0) {
+          std::cerr<<__func__<<"empty GP point\n";
+          //exit(0);
+        }
+        
       }
     }
 
@@ -707,6 +719,11 @@ namespace semantic_bki {
     point3f p(origin.x(), origin.y(), origin.z());
     std::vector<float> properties;
     properties.resize(property_dim, 0);
+    if (property_dim == 0) {
+      std::cerr<<__func__<<"empty GP point\n";
+      return;
+    }
+      
     xy.emplace_back(p, properties);
   }
 
@@ -752,9 +769,9 @@ namespace semantic_bki {
       
       PointCloud frees_n;
       beam_sample(p, origin, frees_n, free_resolution);
-      for (auto p = frees_n.begin(); p != frees_n.end(); ++p) {
+      for (auto pp = frees_n.begin(); pp != frees_n.end(); ++pp) {
         std::vector<float> properties_free(property_dim, 0);
-        xy.emplace_back(*p, properties_free);
+        xy.emplace_back(*pp, properties_free);
       }
     }
 

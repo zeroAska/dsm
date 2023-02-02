@@ -898,6 +898,86 @@ namespace dsm
     return edgesCovisibleToTemporal;
   }
 
+  void LMCW::selectProjectedBkiCovisMap(const semantic_bki::SemanticBKIOctoMap & map,
+                                        cvo::CvoPointCloud & pc, // output
+                                        int num_features,
+                                        int num_class,
+                                        int num_geometric_types) const {
+    const auto& settings = Settings::getInstance();
+    const auto& calib = GlobalCalibration::getInstance();
+    const Eigen::Matrix3f& K = calib.matrix3f(0);
+    const int w = calib.width(0);
+    const int h = calib.height(0);
+    
+    const int firstKeyframeID = this->activeKeyframes_.front()->keyframeID();
+
+    std::unordered_map<semantic_bki::SemanticOcTreeNode * , semantic_bki::point3f> covisVoxels;
+    // std::unordered_map<semantic_bki::SemanticOcTreeNode * > covisVoxels;
+
+    int num_pts = 0;
+    for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
+      if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
+        semantic_bki::point3f p = it.get_loc();
+        Eigen::Vector3f xyz;
+        xyz << p.x(), p.y(), p.z();
+
+        for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
+          auto owner = activeKeyframes_[i];
+          auto p_in_cam = owner->camToWorld().inverse() * xyz;
+          float dist_in_cam = p_in_cam.norm();
+          Eigen::Vector3f uvd = K * p_in_cam;
+          float depth = uvd(2);
+          std::cout<<"uvd is "<<uvd.transpose() / uvd(2)<<", wxh="<<calib.width(0)<<"x"<<calib.height(0)<<"\n";
+          if (uvd(2) > 0 && uvd(0) / depth < calib.width(0) && uvd(0) > 0
+              && uvd(1) / depth < calib.height(0) && uvd(0) > 0
+              && dist_in_cam  < settings.bkiMapMaxRange) {
+            if(covisVoxels.find(&it.get_node() ) == covisVoxels.end())
+              covisVoxels.insert(std::make_pair(&it.get_node(), p));
+          }
+
+        }
+        num_pts++;
+
+        
+      }
+    }
+
+    if (covisVoxels.size() == 0) return;
+    pc.reserve(covisVoxels.size(), num_features, num_class);
+    int ind = 0;
+    for (auto && node_pair : covisVoxels) {
+
+      // position
+      auto node = node_pair.first;
+      auto p = node_pair.second;
+      Eigen::Vector3f xyz;
+      xyz << p.x(), p.y(), p.z();
+
+      std::vector<float> feature_vec(num_features+1);
+      node->get_features(feature_vec);
+      Eigen::VectorXf feature = Eigen::Map<Eigen::VectorXf>(feature_vec.data(), num_features);
+
+      Eigen::VectorXf label(num_class), geometric_type(num_geometric_types);
+      if (num_class) {
+        std::vector<float> probs(num_class);
+        node->get_occupied_probs(probs);
+        label = Eigen::VectorXf::Map(probs.data(), num_class);
+      }
+      if (num_geometric_types) {
+        int geometric_type_label = feature_vec[num_features] ;
+        std::cout<<"geometric type label is "<<feature_vec[num_features] <<"\n";          
+        geometric_type << geometric_type_label , 1-geometric_type_label;
+      }
+      pc.add_point(ind, xyz, feature,label, geometric_type );
+      ind++;      
+    }
+    
+
+  
+
+  }
+  
+
   void LMCW::selectBkiCovisMap(const semantic_bki::SemanticBKIOctoMap & map,
                                cvo::CvoPointCloud & pc, // output
                                int num_features,
@@ -1000,7 +1080,7 @@ namespace dsm
       }
       if (num_geotypes) {
         float geometric_type_label = feature_vec[num_features];
-        std::cout<<"geometic_type_label is "<<geometric_type_label<<"\n";
+        // std::cout<<"geometic_type_label is "<<geometric_type_label<<"\n";
         geometric_type << 1.0 - geometric_type_label , geometric_type_label;
       }
 
@@ -2012,7 +2092,11 @@ namespace dsm
     std::cout<<"Total Added to map is "<<total_added_to_map<<std::endl;
   }
 
-  void LMCW::insertFlaggedKeyframesToBkiDenseMap(semantic_bki::SemanticBKIOctoMap &map) {
+
+  
+
+  void LMCW::insertFlaggedKeyframesToBkiDenseMap(semantic_bki::SemanticBKIOctoMap &map,
+                                                 const cvo::CvoGPU & cvo_align) {
     auto & settings = Settings::getInstance();
     //newly_added_activePts.clear();
     const int numActiveKeyframes = (int)this->activeKeyframes_.size();
@@ -2029,12 +2113,23 @@ namespace dsm
       auto p = owner->camToWorld().translation();
       semantic_bki::point3f origin(p(0), p(1), p(2));
 
+      cvo::CvoPointCloud filtered_full;
+      filter_based_on_inner_product(//*owner->getFullPointsDownsampled(),
+                                    *owner->getTrackingPointsCvo(),
+                                    owner->camToWorld().matrix(),
+                                    //*activeKeyframes_[i+1]->getFullPointsDownsampled(),
+                                    *activeKeyframes_[i+1]->getTrackingPointsCvo(),
+                                    activeKeyframes_[i+1]->camToWorld().matrix(),
+                                    cvo_align,
+                                    filtered_full);
+
       //cvo::CvoPointCloud activePc, candidatePc;
       //ActivePoint::activePointsToCvoPointCloud(owner->activePoints(), activePc);
       //ActivePoint::activePointsToCvoPointCloud(owner->activePoints(), activePc);
       
-      cvo::CvoPointCloud full_pc_transformed(5, owner->getFullPoints()->num_classes());
-      cvo::CvoPointCloud::transform(owner->camToWorld().matrix(), *owner->getFullPoints(),
+      cvo::CvoPointCloud full_pc_transformed(5, filtered_full.num_classes());
+      
+      cvo::CvoPointCloud::transform(owner->camToWorld().matrix(), filtered_full,
                                     full_pc_transformed);
       map.insert_pointcloud_csm(&full_pc_transformed, origin,
                                 settings.bkiMapDsResolution,
@@ -2044,8 +2139,9 @@ namespace dsm
       std::cout<<"Just inserted tracking points to bki\n";
       static int c = 0;
       //cvo::CvoPointCloud pc_added;
-      pcl::PointCloud<cvo::CvoPoint> pc_added;      
-      owner->getFullPoints()->export_to_pcd<cvo::CvoPoint>(pc_added); 
+      pcl::PointCloud<cvo::CvoPoint> pc_added;
+      full_pc_transformed.export_to_pcd<cvo::CvoPoint>(pc_added);
+      full_pc_transformed.write_to_label_pcd(std::to_string(c) + "_label_newly_added_to_bki.pcd");
       pcl::io::savePCDFileASCII(std::to_string(c) + "newly_added_to_bki.pcd", pc_added);
       c++;
 

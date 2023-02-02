@@ -124,6 +124,7 @@ set(SOURCE_FILES
 	${root}/Utils/GlobalCalibration.cpp
 	${root}/Utils/Undistorter.cpp
 	${root}/Utils/EurocReader.cpp
+        ${root}/Utils/DepthModel.cpp
 	${root}/DataStructures/AffineLight.cpp
 	${root}/DataStructures/Frame.cpp
 	${root}/DataStructures/CandidatePoint.cpp

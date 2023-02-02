@@ -184,6 +184,7 @@ namespace dsm
 
                 // access cvo points
                 pcl::PointCloud<cvo::CvoPoint>::Ptr getTrackingPoints() {return trackingPoints_;}
+                
                 void activePointsToCvoPointCloud(cvo::CvoPointCloud & output);
                 void candidatesToCvoPointCloud(cvo::CvoPointCloud & output);
                 
@@ -191,7 +192,10 @@ namespace dsm
                 std::shared_ptr<cvo::RawImage> getRawImage() {return rawImg;}
                 const std::vector <float> & getStereoDisparity();
                 const std::vector<uint16_t> & getRgbdDepth();
+                const std::shared_ptr<cvo::CvoPointCloud> getTrackingPointsCvo() {return trackingPointsCvo_;}
                 const std::shared_ptr<cvo::CvoPointCloud> getFullPoints() {return fullPoints_;}
+                const std::shared_ptr<cvo::CvoPointCloud> getFullPointsDownsampled() {return fullPcDownsampled_;}
+                
                 void eraseFullPointAt(int index);
                 const float depthScale;
                 const DepthType depthType;
@@ -233,7 +237,7 @@ namespace dsm
 		AffineLight thisToParentLight_;			// from coarse tracking
                 
                 pcl::PointCloud<cvo::CvoPoint>::Ptr trackingPoints_; // for CVO coarse tracking
-                std::shared_ptr<cvo::CvoPointCloud> fullPoints_;
+                std::shared_ptr<cvo::CvoPointCloud> fullPoints_, fullPcDownsampled_, trackingPointsCvo_;
                 std::vector<bool> validFlagToMapFullPoints_; 
                 std::shared_ptr<cvo::RawImage> rawImg;
                 //std::vector<float> stereoDisparity;
