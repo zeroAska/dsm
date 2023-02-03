@@ -116,7 +116,7 @@ showDepthMapLvl = 0
 candidatePointsSampling = 0
 
 iDepthUncertainty = 0.1
-trackingCosLimit = 0.65
+trackingCosLimit = 0.55
 enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
@@ -143,10 +143,10 @@ bkiMapOccupiedThresh = 0.8
 bkiMapResolution = 0.25
 bkiMapFreeResolution = 0.25
 bkiMapDsResolution = 0.25
-bkiMapMaxRange = 20.0
-bkiMapRayCasting = 1 
+bkiMapMaxRange = 15.0
+bkiMapRayCasting = 0
 bkiMapNumClass = 20
 bkiMapNumFeatures = 6
-bkiQueryMaxDepth = 30.0
+bkiQueryMaxDepth = 8.0
 bkiMapUseFullPoints = 1
 

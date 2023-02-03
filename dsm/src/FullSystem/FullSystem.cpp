@@ -2815,7 +2815,9 @@ namespace dsm
   void write_transformed_pc(std::vector<cvo::CvoFrame::Ptr> & frames, const std::string & fname
                             //, int max_frames=-1
                             ) {
+    if (frames.size() == 0) return;
     pcl::PointCloud<pcl::PointXYZRGB> pc_all;
+    cvo::CvoPointCloud pc_label(5, frames[0]->points->num_classes());
     int counter = 0;
     for (auto ptr : frames) {
       //if (counter == max_frames) break;
@@ -2827,12 +2829,18 @@ namespace dsm
       cvo::CvoPointCloud::transform(pose_f, *ptr->points, new_pc);
 
       pcl::PointCloud<pcl::PointXYZRGB> pc_curr;
+      pc_label += new_pc;
       new_pc.export_to_pcd(pc_curr);
 
       pc_all += pc_curr;
       counter++;
     }
     pcl::io::savePCDFileASCII(fname, pc_all);
+    if (frames.size() &&  frames[0]->points->num_classes() > 0) {
+      pc_label.write_to_label_pcd("semantic_"+fname);
+    }
+    
+    
   }
   
 
@@ -2984,11 +2992,11 @@ namespace dsm
     cvo_pcs.resize(activeKeyframes.size()-1); // only temporal
     std::vector<bool> const_flags_in_BA(cvo_pcs.size()); // only temporal    
 
-    int minNumPoints = std::accumulate(activeKeyframes.begin(), activeKeyframes.end(), activeKeyframes[0]->activePoints().size(),
+    int minNumPoints = std::accumulate(activeKeyframes.begin(), --activeKeyframes.end(), activeKeyframes[0]->activePoints().size(),
                                        [&](size_t minPointsAccum, auto f2) {
                                          return (minPointsAccum < f2->activePoints().size() )? minPointsAccum : f2->activePoints().size();
                                        });
-    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints * 2 / 3  &&  !settings.doOnlyTemporalOpt;
+    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints &&  !settings.doOnlyTemporalOpt;
 
     if (!isUsingCovis && activeKeyframes.size() == 3) {
       cvo::CvoPointCloud frame1_activePts, frame2_activePts;
@@ -3130,8 +3138,10 @@ namespace dsm
       const_flags_in_BA.push_back(true);
     }
 
-    if(covisMapCvo.num_points() ) 
+    if(covisMapCvo.num_points() ) {
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
+      covisMapCvo.write_to_label_pcd("semanticCovisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
+    }
     
     double time = 0;
      std::list<std::shared_ptr<cvo::Association>> associations;        

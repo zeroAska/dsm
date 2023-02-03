@@ -917,7 +917,7 @@ namespace dsm
 
     int num_pts = 0;
     for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
-      if (it.get_node().get_state() != semantic_bki::State::FREE) {
+      if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
         semantic_bki::point3f p = it.get_loc();
         Eigen::Vector3f xyz;
         xyz << p.x(), p.y(), p.z();
@@ -931,7 +931,7 @@ namespace dsm
           //std::cout<<"uvd is "<<uvd.transpose() / uvd(2)<<", wxh="<<calib.width(0)<<"x"<<calib.height(0)<<"\n";
           if (uvd(2) > 0 && uvd(0) / depth < calib.width(0) && uvd(0) > 0
               && uvd(1) / depth < calib.height(0) && uvd(0) > 0
-              && dist_in_cam  < settings.bkiMapMaxRange) {
+              && dist_in_cam  < settings.bkiQueryMaxDepth) {
             if(covisVoxels.find(&it.get_node() ) == covisVoxels.end())
               covisVoxels.insert(std::make_pair(&it.get_node(), p));
           }

@@ -31,7 +31,7 @@ namespace dsm {
   inline
   float linear_uncertainty(float input_dist) {
     //float uncertainty = input_dist * input_dist * 0.005;
-    float uncertainty = input_dist * 0.1;
+    float uncertainty = input_dist * 0.2;
     return uncertainty;
   }
 

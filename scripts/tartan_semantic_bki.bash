@@ -22,7 +22,7 @@ do
 	rm *_graph.txt
 
                 #gdb --args \
-                    ./build/bin/TartanSemanticExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_semantic_params.yaml Examples/TartanExample/semantic_settings.txt 0 test_semantic_${difficulty}_$i.txt $sky# > log_tartan_semantic_${difficulty}_${i}.txt
+                    ./build/bin/TartanSemanticExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_semantic_params.yaml Examples/TartanExample/semantic_settings.txt 0 test_semantic_${difficulty}_$i.txt $sky # > log_tartan_semantic_${difficulty}_${i}.txt
                     mv *.pcd $folder/
                     mv *_graph.txt $folder
                     mv test_semantic_${difficulty}_$i.txt $folder/rkhs_slam.txt
