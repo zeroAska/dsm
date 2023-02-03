@@ -3118,7 +3118,8 @@ namespace dsm
                                                                  &params,
                                                                  params_gpu,
                                                                  params.multiframe_num_neighbors,
-                                                                 settings.covisEll
+                                                                 params.multiframe_ell_init
+                                                                 //settings.covisEll
                                                                  ));
         edge_states.push_back(edge_state);
         
