@@ -133,7 +133,7 @@ depthDirEll = 0.25
 cvoIRLSConstFrames = 0
 insertPointToMapAfterBA = 2
 bkiMapOn = 1
-bkiMapBlockDepth = 2
+bkiMapBlockDepth = 1
 bkiMapSf2 = 1.0
 bkiMapEll = 2.0
 bkiMapPrior = 0.0
@@ -147,4 +147,6 @@ bkiMapMaxRange = 20.0
 bkiMapRayCasting = 1 
 bkiMapNumClass = 20
 bkiMapNumFeatures = 6
-bkiQueryMaxDepth = 10.0
+bkiQueryMaxDepth = 30.0
+bkiMapUseFullPoints = 1
+

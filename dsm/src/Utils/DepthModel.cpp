@@ -45,6 +45,7 @@ namespace dsm {
                                   source.label_at(ind),
                                   source.geometry_type_at(ind));
       }
+      std::cout<<__func__<<": filter from "<<source.size()<<" to "<<filtered_source.size()<<" points\n";
     
   }
   

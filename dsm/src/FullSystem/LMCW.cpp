@@ -45,6 +45,7 @@
 #include "utils/CvoPointCloud.hpp"
 #include <fstream>
 #include <memory>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace dsm
@@ -916,7 +917,7 @@ namespace dsm
 
     int num_pts = 0;
     for (auto it = map.begin_leaf(); it != map.end_leaf(); ++it) {
-      if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
+      if (it.get_node().get_state() != semantic_bki::State::FREE) {
         semantic_bki::point3f p = it.get_loc();
         Eigen::Vector3f xyz;
         xyz << p.x(), p.y(), p.z();
@@ -927,7 +928,7 @@ namespace dsm
           float dist_in_cam = p_in_cam.norm();
           Eigen::Vector3f uvd = K * p_in_cam;
           float depth = uvd(2);
-          std::cout<<"uvd is "<<uvd.transpose() / uvd(2)<<", wxh="<<calib.width(0)<<"x"<<calib.height(0)<<"\n";
+          //std::cout<<"uvd is "<<uvd.transpose() / uvd(2)<<", wxh="<<calib.width(0)<<"x"<<calib.height(0)<<"\n";
           if (uvd(2) > 0 && uvd(0) / depth < calib.width(0) && uvd(0) > 0
               && uvd(1) / depth < calib.height(0) && uvd(0) > 0
               && dist_in_cam  < settings.bkiMapMaxRange) {
@@ -976,6 +977,51 @@ namespace dsm
   
 
   }
+
+  static void ray_tracing_bki(const Sophus::SE3f & camToWorld,
+                              const Eigen::Vector3f & p_local,
+                              const semantic_bki::SemanticBKIOctoMap & map,
+                              float max_query_depth,
+                              std::unordered_map<semantic_bki::SemanticOcTreeNode * , semantic_bki::point3f> & covisVoxels                             
+                              ) {
+    Eigen::Vector3f cam_xyz = camToWorld.translation();
+    float depth = (p_local).norm();
+    if (depth > max_query_depth)
+      return;
+    float uncertainty = linear_uncertainty(depth);
+    float start_depth = depth - uncertainty;
+    float end_depth = depth + uncertainty;
+
+    Eigen::Vector3f p_global = camToWorld * p_local;
+    Eigen::Vector3f dir = (p_global - cam_xyz).normalized();
+    Eigen::Vector3f start_p = cam_xyz + dir * start_depth;
+    Eigen::Vector3f end_p = cam_xyz + dir * end_depth;
+
+    semantic_bki::point3f start(start_p(0), start_p(1), start_p(2));
+    semantic_bki::point3f end(end_p(0), end_p(1), end_p(2));
+
+    //std::unordered_set<const semantic_bki::SemanticOctreeNode *> observed_voxels_along_ray;
+    semantic_bki::SemanticOcTreeNode * node = nullptr;
+    semantic_bki::SemanticBKIOctoMap::RayCaster ray(&map, start ,end);
+    while (!ray.end()) {
+      semantic_bki::point3f p;
+
+      semantic_bki::BlockHashKey block_key;
+      semantic_bki::OcTreeHashKey node_key;
+      node = ray.next(p, block_key, node_key);
+      if (node && node->get_state() == semantic_bki::State::OCCUPIED
+          && covisVoxels.find(node) == covisVoxels.end()) {
+#ifdef OMP
+#pragma omp critical
+#endif
+        {            
+          covisVoxels.insert(std::make_pair(node, p));
+        }
+        break;
+      }
+    }    
+    
+  }
   
 
   void LMCW::selectBkiCovisMap(const semantic_bki::SemanticBKIOctoMap & map,
@@ -1016,43 +1062,27 @@ namespace dsm
         /***************
          * for debugging
          ***************/
-        Eigen::Vector3f cam_xyz = activeKeyframes_[i]->camToWorld().translation();
-        Eigen::Vector3f p_local = p->getVector3fMap();
-        float depth = (p_local).norm();
-        if (depth > settings.bkiQueryMaxDepth)
-          continue;
-        float uncertainty = linear_uncertainty(depth);
-        float start_depth = depth - uncertainty;
-        float end_depth = depth + uncertainty;
-
-        Eigen::Vector3f p_global = activeKeyframes_[i]->camToWorld() * p_local;
-        Eigen::Vector3f dir = (p_global - cam_xyz).normalized();
-        Eigen::Vector3f start_p = cam_xyz + dir * start_depth;
-        Eigen::Vector3f end_p = cam_xyz + dir * end_depth;
-
-        semantic_bki::point3f start(start_p(0), start_p(1), start_p(2));
-        semantic_bki::point3f end(end_p(0), end_p(1), end_p(2));
-
-        //std::unordered_set<const semantic_bki::SemanticOctreeNode *> observed_voxels_along_ray;
-        semantic_bki::SemanticOcTreeNode * node = nullptr;
-        semantic_bki::SemanticBKIOctoMap::RayCaster ray(&map, start ,end);
-        while (!ray.end()) {
-          semantic_bki::point3f p;
-
-          semantic_bki::BlockHashKey block_key;
-          semantic_bki::OcTreeHashKey node_key;
-          node = ray.next(p, block_key, node_key);
-          if (node &&  covisVoxels.find(node) == covisVoxels.end()) {
-#ifdef OMP
-#pragma omp critical
-#endif
-            {            
-              covisVoxels.insert(std::make_pair(node, p));
-            }
-            break;
-          }
-        }
+        ray_tracing_bki(activeKeyframes_[i]->camToWorld(),
+                        p->getVector3fMap(),
+                        map,
+                        settings.bkiQueryMaxDepth, covisVoxels);
       }
+
+
+
+#ifdef OMP
+#pragma omp parallel for
+#endif
+      for (int j = 0; j < activeKeyframes_[i]->candidates().size(); j++) {
+        const CandidatePoint * p = activeKeyframes_[i]->candidates()[j].get();
+        Eigen::Vector3f p_local = p->getVector3fMap();
+        ray_tracing_bki(activeKeyframes_[i]->camToWorld(),
+                        p_local,
+                        map,
+                        settings.bkiQueryMaxDepth, covisVoxels);
+
+      }      
+      
     }
     std::cout<<__func__<<": bki map ray tracing tracked "<<covisVoxels.size()<<" occupied cells\n";
 
@@ -2116,14 +2146,25 @@ namespace dsm
       semantic_bki::point3f origin(p(0), p(1), p(2));
 
       cvo::CvoPointCloud filtered_full;
-      filter_based_on_inner_product(//*owner->getFullPointsDownsampled(),
-                                    *owner->getTrackingPointsCvo(),
-                                    owner->camToWorld().matrix(),
-                                    //*activeKeyframes_[i+1]->getFullPointsDownsampled(),
-                                    *activeKeyframes_[i+1]->getTrackingPointsCvo(),
-                                    activeKeyframes_[i+1]->camToWorld().matrix(),
-                                    cvo_align,
-                                    filtered_full);
+      if (settings.bkiMapUseFullPoints)
+        filter_based_on_inner_product(*owner->getFullPointsDownsampled(),
+                                      //*owner->getTrackingPointsCvo(),
+                                      owner->camToWorld().matrix(),
+                                      *activeKeyframes_[i+1]->getFullPointsDownsampled(),
+                                      //*activeKeyframes_[i+1]->getTrackingPointsCvo(),
+                                      activeKeyframes_[i+1]->camToWorld().matrix(),
+                                      cvo_align,
+                                      filtered_full);
+      else 
+        filter_based_on_inner_product(//*owner->getFullPointsDownsampled(),
+                                      *owner->getTrackingPointsCvo(),
+                                      owner->camToWorld().matrix(),
+                                      //*activeKeyframes_[i+1]->getFullPointsDownsampled(),
+                                      *activeKeyframes_[i+1]->getTrackingPointsCvo(),
+                                      activeKeyframes_[i+1]->camToWorld().matrix(),
+                                      cvo_align,
+                                      filtered_full);
+
 
       //cvo::CvoPointCloud activePc, candidatePc;
       //ActivePoint::activePointsToCvoPointCloud(owner->activePoints(), activePc);
@@ -2143,7 +2184,9 @@ namespace dsm
       //cvo::CvoPointCloud pc_added;
       pcl::PointCloud<cvo::CvoPoint> pc_added;
       full_pc_transformed.export_to_pcd<cvo::CvoPoint>(pc_added);
+      owner->getFullPointsDownsampled()->write_to_label_pcd(std::to_string(c) + "_full_newly_added_to_bki.pcd");      
       full_pc_transformed.write_to_label_pcd(std::to_string(c) + "_label_newly_added_to_bki.pcd");
+      full_pc_transformed.write_to_color_pcd(std::to_string(c) + "_color_newly_added_to_bki.pcd");
       pcl::io::savePCDFileASCII(std::to_string(c) + "newly_added_to_bki.pcd", pc_added);
       c++;
 

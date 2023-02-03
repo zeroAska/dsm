@@ -199,9 +199,10 @@ namespace dsm
 
     this->fullPcDownsampled_ = std::make_shared<cvo::CvoPointCloud>();
     downsample_cvo_pc(*fullPoints_,
-                      settings.voxelSize,
+                      settings.voxelSize / 5,
                       *fullPcDownsampled_);
-    this->trackingPointsCvo_ = std::make_shared<cvo::CvoPointCloud>(*trackingPoints_);    
+    this->trackingPointsCvo_ = std::make_shared<cvo::CvoPointCloud>(*trackingPoints_);
+    std::cout<<"Downsample full pc to "<<fullPcDownsampled_->size()<<" from "<< fullPoints_->size()<<" with voxelsize "<<settings.voxelSize<<"\n";
 
   }
 

@@ -217,6 +217,7 @@ void Settings::reset()
                 
                 bkiMapRayCasting = 0;                
                 isDepthMultiSamplingFromMap = 0;
+                bkiMapUseFullPoints = 1;
                 
 		// update the rest
 		this->updateNonIndependentParameters();
@@ -502,6 +503,10 @@ void Settings::reset()
                 if (this->checkParameter("bkimapraycasting", name, value, this->bkiMapRayCasting)) {
                   return;
                 }
+                if (this->checkParameter("bkimapusefullpoints", name, value, this->bkiMapUseFullPoints)) {
+                  return;
+                }
+                
                 
                 if (this->checkParameter("isdepthmultisamplingfrommap", name, value, this->isDepthMultiSamplingFromMap)) {
                   return;
