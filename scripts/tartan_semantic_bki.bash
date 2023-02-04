@@ -8,20 +8,22 @@ clear
 #for i in abandonedfactory #seasidetown #endofworld gascola  soulcity ocean
 for difficulty in Easy #Hard
 do
-    skylabel=(196 112 130 196 146 130)
-    seqs=(abandonedfactory gascola hospital seasidetown seasonsforest seasonsforest_winter soulcity)
+    #skylabel=(196 112 130 196 146 130)
+    #seqs=(abandonedfactory gascola hospital seasidetown seasonsforest seasonsforest_winter soulcity)
+    skylabel=(112 146)
+    seqs=(gascola seasonsforest_winter)
     for ind in ${!seqs[@]}
     do
         i=${seqs[ind]}
         sky=${skylabel[ind]}
-	folder=tartan_semantic_${difficulty}_${i}_${date}
+	folder=tartan_semantic_${difficulty}_${i}_bki_${date}
         echo " Current Seq: ${i} ${difficulty} with sky label ${sky}"        
 	rm -rf $folder
 	mkdir -p $folder
 	rm *.pcd
 	rm *_graph.txt
 
-                #gdb --args \
+                gdb -ex run --args \
                     ./build/bin/TartanSemanticExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_semantic_params.yaml Examples/TartanExample/semantic_settings.txt 0 test_semantic_${difficulty}_$i.txt $sky # > log_tartan_semantic_${difficulty}_${i}.txt
                     mv *.pcd $folder/
                     mv *_graph.txt $folder

@@ -198,6 +198,8 @@ void Settings::reset()
 	this->insertPointToMapAfterBA = 1;
 	this->insertFreeSpacePointsToMap = 0;
 
+        isCvoMultiAlignOn = 1;
+
 	bkiMapOn = 0;
 	bkiMapResolution = 0.1f;
 	bkiMapBlockDepth = 4;
@@ -214,7 +216,7 @@ void Settings::reset()
 	bkiMapDsResolution = -1;
 	bkiMapMaxRange = -1;
                 bkiQueryMaxDepth = 8.0;                
-                
+                bkiMapQueryWithTrackingPoints = 1;                
                 bkiMapRayCasting = 0;                
                 isDepthMultiSamplingFromMap = 0;
                 bkiMapUseFullPoints = 1;
@@ -511,6 +513,11 @@ void Settings::reset()
                 if (this->checkParameter("isdepthmultisamplingfrommap", name, value, this->isDepthMultiSamplingFromMap)) {
                   return;
                 }
+
+                if (this->checkParameter("iscvomultialignon", name, value, this->isCvoMultiAlignOn)) {
+                  return;
+                }
+                
  
 		// not found
 		std::cout << "Could not parse argument: " << argument << std::endl;

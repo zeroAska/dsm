@@ -3126,8 +3126,8 @@ namespace dsm
                                                                  &params,
                                                                  params_gpu,
                                                                  params.multiframe_num_neighbors,
-                                                                 params.multiframe_ell_init
-                                                                 //settings.covisEll
+                                                                 //params.multiframe_ell_init
+                                                                 settings.covisEll
                                                                  ));
         edge_states.push_back(edge_state);
         
@@ -3142,6 +3142,11 @@ namespace dsm
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
       covisMapCvo.write_to_label_pcd("semanticCovisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
     }
+    if (isUsingCovis)
+      write_transformed_pc(cvo_frames, "covis_temporal_before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    else
+      write_transformed_pc(cvo_frames, "before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    
     
     double time = 0;
      std::list<std::shared_ptr<cvo::Association>> associations;        
@@ -3158,7 +3163,10 @@ namespace dsm
       kf->setCamToWorld(pose_BA);
     }
     std::cout<<"just written CVO BA results to all frames\n";
-    write_transformed_pc(cvo_frames, "temporal_after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    if (isUsingCovis)
+      write_transformed_pc(cvo_frames, "covis_temporal_after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    else
+      write_transformed_pc(cvo_frames, "temporal_after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
 
     std::cout<<"covis map has size "<<covisMapCvo.num_points()<<", isUsingCovis is "<<isUsingCovis<<std::endl;
 
@@ -3536,6 +3544,7 @@ namespace dsm
         if (pc_map.size()) {
           pcl::io::savePCDFileASCII ("full_bki_map.pcd", pc_cvo);
           pc_map.write_to_color_pcd("full_bki_map_color.pcd");
+          pc_map.write_to_label_pcd("full_bki_map_label.pcd");
         }
       }
       else

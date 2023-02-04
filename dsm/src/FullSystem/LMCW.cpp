@@ -978,11 +978,11 @@ namespace dsm
 
   }
 
-  static void ray_tracing_bki(const Sophus::SE3f & camToWorld,
-                              const Eigen::Vector3f & p_local,
-                              const semantic_bki::SemanticBKIOctoMap & map,
-                              float max_query_depth,
-                              std::unordered_map<semantic_bki::SemanticOcTreeNode * , semantic_bki::point3f> & covisVoxels                             
+  static void pt_ray_tracing_bki(const Sophus::SE3f & camToWorld,
+                                 const Eigen::Vector3f & p_local,
+                                 const semantic_bki::SemanticBKIOctoMap & map,
+                                 float max_query_depth,
+                                 std::unordered_map<semantic_bki::SemanticOcTreeNode * , semantic_bki::point3f> & covisVoxels                             
                               ) {
     Eigen::Vector3f cam_xyz = camToWorld.translation();
     float depth = (p_local).norm();
@@ -1022,7 +1022,8 @@ namespace dsm
     }    
     
   }
-  
+
+
 
   void LMCW::selectBkiCovisMap(const semantic_bki::SemanticBKIOctoMap & map,
                                cvo::CvoPointCloud & pc, // output
@@ -1043,45 +1044,74 @@ namespace dsm
 
     std::unordered_map<semantic_bki::SemanticOcTreeNode * , semantic_bki::point3f> covisVoxels;
     for (int i = this->temporalWindowIndex; i < activeKeyframes_.size() - 1; i++) {
-
-      const std::vector<std::unique_ptr<ActivePoint>> & activePoints = activeKeyframes_[i]->activePoints();
-      // find best covisible frame for each temporal frame
+      if (settings.bkiMapQueryWithTrackingPoints == 2) {
+        auto tracking_points = activeKeyframes_[i]->getFullPointsDownsampled();
 #ifdef OMP
 #pragma omp parallel for
 #endif      
-      for (int j = 0; j < activePoints.size(); j++) {
-        ActivePoint * p = activePoints[j].get();
-        /***************
-         * for debugging
-         ***************/
-        //bool debug_insert = voxelMap_->insert_point(p);
-        //if (debug_insert)
-        //  std::cout<<"raycast: the point is already inserted before\n";
-        //else
-        //  std::cout<<"raycast: the point has just been inserted\n";
-        /***************
-         * for debugging
-         ***************/
-        ray_tracing_bki(activeKeyframes_[i]->camToWorld(),
-                        p->getVector3fMap(),
-                        map,
-                        settings.bkiQueryMaxDepth, covisVoxels);
+        for (int j = 0; j < tracking_points->size(); j++ ) {
+          pt_ray_tracing_bki(activeKeyframes_[i]->camToWorld(),
+                             tracking_points->at(j),
+                             map,
+                             settings.bkiQueryMaxDepth, covisVoxels);
+          
+        }
+        
+      }  else     if (settings.bkiMapQueryWithTrackingPoints == 1) {
+        auto tracking_points = activeKeyframes_[i]->getTrackingPointsCvo();
+#ifdef OMP
+#pragma omp parallel for
+#endif      
+        for (int j = 0; j < tracking_points->size(); j++ ) {
+          pt_ray_tracing_bki(activeKeyframes_[i]->camToWorld(),
+                             tracking_points->at(j),
+                             map,
+                             settings.bkiQueryMaxDepth, covisVoxels);
+          
+        }
+        
       }
+
+      else {
+        const std::vector<std::unique_ptr<ActivePoint>> & activePoints = activeKeyframes_[i]->activePoints();
+        // find best covisible frame for each temporal frame
+#ifdef OMP
+#pragma omp parallel for
+#endif      
+        for (int j = 0; j < activePoints.size(); j++) {
+          ActivePoint * p = activePoints[j].get();
+          /***************
+           * for debugging
+           ***************/
+          //bool debug_insert = voxelMap_->insert_point(p);
+          //if (debug_insert)
+          //  std::cout<<"raycast: the point is already inserted before\n";
+          //else
+          //  std::cout<<"raycast: the point has just been inserted\n";
+          /***************
+           * for debugging
+           ***************/
+          pt_ray_tracing_bki(activeKeyframes_[i]->camToWorld(),
+                          p->getVector3fMap(),
+                          map,
+                          settings.bkiQueryMaxDepth, covisVoxels);
+        }
 
 
 
 #ifdef OMP
 #pragma omp parallel for
 #endif
-      for (int j = 0; j < activeKeyframes_[i]->candidates().size(); j++) {
-        const CandidatePoint * p = activeKeyframes_[i]->candidates()[j].get();
-        Eigen::Vector3f p_local = p->getVector3fMap();
-        ray_tracing_bki(activeKeyframes_[i]->camToWorld(),
-                        p_local,
-                        map,
-                        settings.bkiQueryMaxDepth, covisVoxels);
+        for (int j = 0; j < activeKeyframes_[i]->candidates().size(); j++) {
+          const CandidatePoint * p = activeKeyframes_[i]->candidates()[j].get();
+          Eigen::Vector3f p_local = p->getVector3fMap();
+          pt_ray_tracing_bki(activeKeyframes_[i]->camToWorld(),
+                          p_local,
+                          map,
+                          settings.bkiQueryMaxDepth, covisVoxels);
 
-      }      
+        }
+      }
       
     }
     std::cout<<__func__<<": bki map ray tracing tracked "<<covisVoxels.size()<<" occupied cells\n";

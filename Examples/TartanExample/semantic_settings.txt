@@ -124,7 +124,9 @@ covisMapSize = 3000
 voxelSize = 0.25
 inputSurfaceDownsampleVoxelSize = 3.5
 inputEdgeDownsampleVoxelSize = 0.5   
-covisEll = 2.5
+covisEll = 1.0
+
+isCvoMultiAlignOn = 0
 
 covisUpdateFrames = 1
 
@@ -139,14 +141,14 @@ bkiMapEll = 2.0
 bkiMapPrior = 0.0
 bkiMapVarThresh = 1.0
 bkiMapFreeThresh = 0.2
-bkiMapOccupiedThresh = 0.8
-bkiMapResolution = 0.25
-bkiMapFreeResolution = 0.25
-bkiMapDsResolution = 0.25
-bkiMapMaxRange = 15.0
-bkiMapRayCasting = 0
+bkiMapOccupiedThresh = 0.85
+bkiMapResolution = 0.15
+bkiMapFreeResolution = 0.15
+bkiMapDsResolution = 0.15
+bkiMapMaxRange = 10.0
+bkiMapRayCasting = 1
 bkiMapNumClass = 20
 bkiMapNumFeatures = 6
-bkiQueryMaxDepth = 8.0
+bkiQueryMaxDepth = 20.0
 bkiMapUseFullPoints = 1
-
+bkiMapQueryWithTrackingPoints = 1

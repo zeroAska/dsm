@@ -228,7 +228,7 @@ namespace dsm
           int insertFreeSpacePointsToMap;
 
 
-
+          int isCvoMultiAlignOn;
 
           //// bki map params
           int bkiMapOn;
@@ -247,7 +247,7 @@ namespace dsm
           float bkiMapDsResolution;
           int bkiMapRayCasting;
           int bkiMapUseFullPoints;
-          
+          int bkiMapQueryWithTrackingPoints; // 0: query with active points.; 1: with tracking; 2:with ful points
           float bkiMapMaxRange;
           float bkiQueryMaxDepth;
           int isDepthMultiSamplingFromMap;
