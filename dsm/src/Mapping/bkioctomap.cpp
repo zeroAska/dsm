@@ -690,22 +690,21 @@ namespace semantic_bki {
           edge_counter++;
       }
       if (properties.size() == 0) {
-        std::cerr<<__func__<<"empty GP point\n";
-      }
-      
-      xy.emplace_back(p, properties);
-      property_dim = properties.size();
-
-      /// free space samples
-      PointCloud frees_n;
-      beam_sample(p, origin, frees_n, free_resolution);
-      for (auto pp = frees_n.begin(); pp != frees_n.end(); ++pp) {
-        std::vector<float> properties_free(properties.size(), 0);
-        xy.emplace_back(*pp, properties_free);
-        if (properties_free.size() == 0) {
-          std::cerr<<__func__<<"empty GP point\n";
-        }
+        std::cerr<<__func__<<"empty GP point, skip this point\n";
+      } else {
+        xy.emplace_back(p, properties);
+        property_dim = properties.size();
         
+        /// free space samples
+        PointCloud frees_n;
+        beam_sample(p, origin, frees_n, free_resolution);
+        for (auto pp = frees_n.begin(); pp != frees_n.end(); ++pp) {
+          std::vector<float> properties_free(properties.size(), 0);
+          xy.emplace_back(*pp, properties_free);
+          if (properties_free.size() == 0) {
+            std::cerr<<__func__<<"empty GP point\n";
+          }
+        }
       }
     }
 
@@ -716,8 +715,7 @@ namespace semantic_bki {
       std::vector<float> properties;
       properties.resize(property_dim, 0);
       xy.emplace_back(p, properties);
-    }
-    if (property_dim == 0) {
+    } else {
       std::cerr<<__func__<<"empty GP point\n";
       return;
     }
