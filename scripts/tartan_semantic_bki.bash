@@ -10,8 +10,8 @@ for difficulty in Easy #Hard
 do
     #skylabel=(196 112 -- 130  196 146 130)
     #seqs=(abandonedfactory gascola hospital seasidetown seasonsforest seasonsforest_winter soulcity)
-    skylabel=(196 112 130  196 146 130)
-    seqs=(abandonedfactory gascola  seasidetown seasonsforest seasonsforest_winter soulcity)
+    skylabel=( 196 146 130)
+    seqs=( seasonsforest seasonsforest_winter soulcity)
     #skylabel=(130 196 112 130 146)
     #seqs=(seasidetown seasonsforest gascola soulcity seasonsforest_winter)
     for ind in ${!seqs[@]}

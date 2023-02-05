@@ -152,4 +152,4 @@ bkiMapNumFeatures = 6
 bkiQueryMaxDepth = 20.0
 bkiMapUseFullPoints = 1
 bkiMapQueryWithTrackingPoints = 1
-maxInitIdepth = 0.1
+maxInitIdepth = 0.05
