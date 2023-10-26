@@ -16,7 +16,7 @@
 #include "utils/ImageStereo.hpp"
 #include "dataset_handler/TartanAirHandler.hpp"
 #include "dataset_handler/PoseLoader.hpp"
-
+#include "viewer/viewer.h"
 using namespace std;
 using namespace boost::filesystem;
 
@@ -85,7 +85,22 @@ int main(int argc, char *argv[]) {
   int start_frame = stoi(argv[3]);
   int num_frames = stoi(argv[4]);
   std::string odom_file(argv[5]);
-  int num_class = std::stoi(argv[6]);   
+  int num_class = std::stoi(argv[6]);
+
+  int is_using_gt_depth = std::stoi(argv[7]);
+  int is_run_viewer = std::stoi(argv[8]);
+
+  std::unique_ptr<perl_registration::Viewer> viewer;
+  if (is_run_viewer) {
+    viewer = std::make_unique<perl_registration::Viewer>();
+    std::string s("title");
+    viewer->addOrUpdateText (s,
+                             0,
+                             0,
+                             "title");
+  
+    
+  }
   
   vector<string> files;
   std::cout<<" cycle through the directory\n";
@@ -120,15 +135,24 @@ int main(int argc, char *argv[]) {
   cvo::CvoPointCloud pc_full(5,num_class);
   int i = 0;
   for (; i+start_frame <= last_frame; i++) {
+
+    if (is_run_viewer) {
+      std::string graph_file_name = "frame_" +  std::to_string(i);
+        viewer->addOrUpdateText ( graph_file_name,
+                                  0,
+                                  0,
+                                  "title");
+    }
+    
     
     std::cout << "Read Frame " << i+start_frame << std::endl;
     //pc_vec[i].read_cvo_pointcloud_from_file(f);
     cv::Mat source_left;
     std::vector<float> source_dep, source_semantics;        
     std::cout<< " Read new image "<<i<<std::endl;
+    std::shared_ptr<cvo::ImageRGBD<float>> source_raw;
     bool read_fails = tartan.read_next_rgbd_without_sky(source_left, source_dep, num_class, source_semantics, 196);
-    
-    std::shared_ptr<cvo::ImageRGBD<float>> source_raw(new cvo::ImageRGBD<float>(source_left, source_dep, num_class, source_semantics));
+    source_raw.reset(new cvo::ImageRGBD<float>(source_left, source_dep, num_class, source_semantics));
     std::shared_ptr<cvo::CvoPointCloud> pc_with_semantics(new cvo::CvoPointCloud(*source_raw,
                                                                                  calib
                                                                                  ,cvo::CvoPointCloud::FULL
@@ -164,7 +188,16 @@ int main(int argc, char *argv[]) {
     map_csm.insert_pointcloud_csm(&transformed_pc, origin, ds_resolution, free_resolution, max_range);
     transformed_pc.write_to_color_pcd(std::to_string(i+start_frame)+".pcd");
     write_to_geotype_pcd(transformed_pc  ,std::to_string(i+start_frame)+ "_geotype.pcd");
-   tartan.next_frame_index();
+    
+    cvo::CvoPointCloud pc_map(5,num_class);
+    std::cout<<"map to pc\n";  
+    semantic_bki::map_to_pc(map_csm, pc_map, 5, num_class, 2);
+    pcl::PointCloud<pcl::PointXYZRGB> map_pcd;
+    pc_map.export_to_pcd<pcl::PointXYZRGB>(map_pcd);
+    
+
+    
+    tartan.next_frame_index();
     
   }
 

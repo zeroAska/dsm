@@ -84,7 +84,7 @@ minDistToActivate = 5
 maxCandidateUncertainty = 2
 minCandidateQuality = 2
 
-doOnlyTemporalOpt = false
+doOnlyTemporalOpt = true
 printSummary = true
 showFullReport = false
 minOptimizationGrad = 2
@@ -117,15 +117,15 @@ showDepthMapLvl = 0
 iDepthUncertainty = 0.1
 trackingCosLimit = 0.76
 enableDepthRegression = false
-depthNormalEll = 0.0004
-depthDirEll = 0.001
+depthNormalEll = 0.0001
+depthDirEll = 0.0004
 gapCovisibleToTemporal = 10
 
 covisMinPoints = 300
 voxelSize = 0.02
 candidatePointsSampling = 0
 inputSurfaceDownsampleVoxelSize = 0.1
-inputEdgeDownsampleVoxelSize = 0.01
+inputEdgeDownsampleVoxelSize = 0.02
 covisEll = 0.075
 
 cvoIRLSConstFrames = 0
@@ -133,3 +133,28 @@ cvoIRLSConstFrames = 0
 covisUpdateFrames = 1
 
 insertPointToMapAfterBA = 2
+
+cvoIRLSConstFrames = 0
+
+
+maxInitIdepth = 0.15
+
+bkiMapOn = 1
+bkiMapBlockDepth = 1
+bkiMapSf2 = 1.0
+bkiMapEll = 0.5
+bkiMapPrior = 0.0
+bkiMapVarThresh = 1.0
+bkiMapFreeThresh = 0.2
+bkiMapOccupiedThresh = 0.85
+bkiMapResolution = 0.1
+bkiMapFreeResolution = 0.1
+bkiMapDsResolution = 0.1
+bkiMapMaxRange = 7.0
+bkiMapRayCasting = 1
+bkiMapNumClass = 2
+bkiMapNumFeatures = 6
+bkiQueryMaxDepth = 10.0
+bkiMapUseFullPoints = 1
+bkiMapQueryWithTrackingPoints = 1
+

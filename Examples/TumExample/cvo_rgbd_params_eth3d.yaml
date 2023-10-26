@@ -34,7 +34,7 @@ is_using_intensity: 1
 is_using_semantics: 0
 is_using_range_ell: 0
 is_using_kdtree: 0
-is_using_geometric_type: 1
+is_using_geometric_type: 0
 # for irls solver
 multiframe_using_cpu: 0
 multiframe_max_iters: 1000

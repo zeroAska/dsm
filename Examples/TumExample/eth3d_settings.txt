@@ -132,3 +132,9 @@ cvoIRLSConstFrames = 0
 
 covisUpdateFrames = 1
 
+depthNormalEll = 0.04
+depthDirEll = 0.25
+cvoIRLSConstFrames = 0
+insertPointToMapAfterBA = 2
+
+maxInitIdepth = 0.05

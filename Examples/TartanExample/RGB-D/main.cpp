@@ -121,7 +121,7 @@ namespace dsm
           pcl::PointCloud<cvo::CvoPoint>::Ptr source_pcd(new pcl::PointCloud<cvo::CvoPoint>);
 
           //cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib, cvo::CvoPointCloud::CANNY_EDGES);
-          cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib, cvo::CvoPointCloud::DSO_EDGES);
+          cvo::CvoPointCloud source_cvo(*source_raw, cvo_calib, cvo::CvoPointCloud::CV_FAST);
           std::shared_ptr<cvo::CvoPointCloud> source_full(new cvo::CvoPointCloud(*source_raw, cvo_calib, cvo::CvoPointCloud::FULL));
           source_full->write_to_color_pcd("source_full.pcd");
 
@@ -134,7 +134,7 @@ namespace dsm
           cv::cvtColor(color_img, gray_img, cv::COLOR_BGR2GRAY);
 
           // TL: terminate at 10th frame
-          // if (id == startFrameId + 10) this->shouldStop = true; 
+           //if (id == startFrameId + 300) this->shouldStop = true; 
 
           if (DSM == nullptr)
           {
@@ -237,8 +237,8 @@ int main(int argc, char *argv[])
   }
 
   std::string trajFileName;
-  if (argc == 6)
-    trajFileName = std::string(argv[5]);
+  //if (argc == 6)
+  trajFileName = std::string(argv[5]);
 
   // Initialize logging
   google::InitGoogleLogging(argv[0]);
@@ -256,9 +256,13 @@ int main(int argc, char *argv[])
 
   // read sequence
   cvo::TartanAirHandler tartan(imageFolder);
-  tartan.set_depth_folder_name("deep_depth");
+  if (std::stoi(argv[6]) == 1)
+    tartan.set_depth_folder_name("deep_depth");
 
-  std::string cvo_calib_file = imageFolder + "/cvo_calib_deep_depth.txt";
+  std::string cvo_calib_file;
+    cvo_calib_file = imageFolder + "/cvo_calib.txt";
+ if (std::stoi(argv[6]) == 1) 
+     cvo_calib_file = imageFolder + "/cvo_calib_deep_depth.txt";
   std::cout<<"cvo_calib file is "<<cvo_calib_file<<"\n";
   cvo::Calibration calib(cvo_calib_file, cvo::Calibration::RGBD);
 

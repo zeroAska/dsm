@@ -371,16 +371,7 @@ namespace dsm
   
   float FullSystem::getCamTrackingMeanTime() const
   {
-    float time = 0.f;
-    if (this->camTrackingTime.size() > 0)
-    {
-      for (int i = 0; i < this->camTrackingTime.size(); ++i)
-      {
-        time += this->camTrackingTime[i];
-      }
-      time /= this->camTrackingTime.size();
-    }
-    return time;
+    return getMeanTime(camTrackingTime);
   }
 
   float FullSystem::getPointTrackingMeanTime() const
@@ -3203,7 +3194,7 @@ namespace dsm
       kf->activePointsToCvoPointCloud(cvo_pcs[i]);
       assert(kf->activePoints().size() != 0);
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
-      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data()));
+      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data(), false));
       cvo_frames.push_back(cvo_ptr);
 
       const_flags_in_BA[i] = (i <= temporalStartIndex + settings.cvoIRLSConstFrames -1);
