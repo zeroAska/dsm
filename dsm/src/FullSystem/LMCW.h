@@ -32,6 +32,7 @@ namespace cvo {
   class CvoGPU;
   class CvoPointCloud;
   class BinaryState;
+  class CvoGPU;
   } // namespace cvo
 namespace semantic_bki {
   class SemanticBKIOctoMap;
@@ -74,7 +75,8 @@ namespace dsm
     void addExpiringTemporalActivePointsToBkiMap(semantic_bki::SemanticBKIOctoMap & map);
     void dropFlaggedKeyframes();
     void insertFlaggedKeyframesToMap();
-    void insertFlaggedKeyframesToBkiDenseMap(semantic_bki::SemanticBKIOctoMap & bki_map);
+    void insertFlaggedKeyframesToBkiDenseMap(semantic_bki::SemanticBKIOctoMap & bki_map,
+                                             const cvo::CvoGPU & cvo_align);
 
     // activates new points from the window
     void activatePoints(const std::unique_ptr<CeresPhotometricBA>& photometricBA);
@@ -147,6 +149,12 @@ namespace dsm
                            int num_features,
                            int num_semantics,
                            int num_geotypes) const;
+    void selectProjectedBkiCovisMap(const semantic_bki::SemanticBKIOctoMap & map,
+                                    cvo::CvoPointCloud & pc, // output
+                                    int num_features,
+                                    int num_semantics,
+                                    int num_geotypes) const;
+    
 
     //void updateNonzerosLastBA(const std::list<cvo::BinaryState::Ptr> & edge_states);
 

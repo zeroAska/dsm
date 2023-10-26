@@ -87,7 +87,8 @@ else()
 endif()
 add_definitions(-DOPENMP)
 
-
+find_package(Sophus REQUIRED)
+message("Sophus path ${Sophus_INCLUDE_DIRS}")
 find_package(UnifiedCvo REQUIRED )
 find_package(PCL REQUIRED)
 

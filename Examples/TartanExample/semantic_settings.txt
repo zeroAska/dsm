@@ -121,29 +121,35 @@ enableDepthRegression = false
 gapCovisibleToTemporal = 10
 
 covisMapSize = 3000
-voxelSize = 0.2
+voxelSize = 0.25
 inputSurfaceDownsampleVoxelSize = 3.5
 inputEdgeDownsampleVoxelSize = 0.5   
-covisEll = 2.5
+covisEll = 1.0
+
+isCvoMultiAlignOn = 0
 
 covisUpdateFrames = 1
+
 depthNormalEll = 0.04
-depthDirEll = 0.5
+depthDirEll = 0.25
 cvoIRLSConstFrames = 0
 insertPointToMapAfterBA = 2
-
-bkiMapOn = 0
-bkiMapBlockDepth = 2
+bkiMapOn = 1
+bkiMapBlockDepth = 1
 bkiMapSf2 = 1.0
-bkiMapEll = 1.0
+bkiMapEll = 2.0
 bkiMapPrior = 0.0
 bkiMapVarThresh = 1.0
-bkiMapFreeThresh = 0.4
-bkiMapOccupiedThresh = 0.9
-bkiMapResolution = 0.2
-bkiMapFreeResolution = 0.2
-bkiMapDsResolution = 0.1
-bkiMapMaxRange = 55.0
-bkiMapNumClass = 2
+bkiMapFreeThresh = 0.2
+bkiMapOccupiedThresh = 0.85
+bkiMapResolution = 0.15
+bkiMapFreeResolution = 0.15
+bkiMapDsResolution = 0.15
+bkiMapMaxRange = 10.0
+bkiMapRayCasting = 1
+bkiMapNumClass = 20
 bkiMapNumFeatures = 6
-
+bkiQueryMaxDepth = 20.0
+bkiMapUseFullPoints = 1
+bkiMapQueryWithTrackingPoints = 1
+maxInitIdepth = 0.05

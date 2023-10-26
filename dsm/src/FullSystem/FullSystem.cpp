@@ -2815,7 +2815,9 @@ namespace dsm
   void write_transformed_pc(std::vector<cvo::CvoFrame::Ptr> & frames, const std::string & fname
                             //, int max_frames=-1
                             ) {
+    if (frames.size() == 0) return;
     pcl::PointCloud<pcl::PointXYZRGB> pc_all;
+    cvo::CvoPointCloud pc_label(5, frames[0]->points->num_classes());
     int counter = 0;
     for (auto ptr : frames) {
       //if (counter == max_frames) break;
@@ -2827,12 +2829,18 @@ namespace dsm
       cvo::CvoPointCloud::transform(pose_f, *ptr->points, new_pc);
 
       pcl::PointCloud<pcl::PointXYZRGB> pc_curr;
+      pc_label += new_pc;
       new_pc.export_to_pcd(pc_curr);
 
       pc_all += pc_curr;
       counter++;
     }
     pcl::io::savePCDFileASCII(fname, pc_all);
+    if (frames.size() &&  frames[0]->points->num_classes() > 0) {
+      pc_label.write_to_label_pcd("semantic_"+fname);
+    }
+    
+    
   }
   
 
@@ -2871,13 +2879,13 @@ namespace dsm
       int index = selectedInds[i];
       Eigen::VectorXf semantic;
       Eigen::Vector2f geoType = Eigen::Vector2f::Zero();
-      if (tmpWindow.geometric_types().size())
-        geoType = Eigen::Map<const Eigen::Vector2f> (&(tmpWindow.geometric_types().data()[ index * 2]));
+      if (tmpWindow.num_geometric_types())
+	      geoType = tmpWindow.geometry_type_at(index);
       if (tmpWindow.num_classes() > 0)
-        semantic = tmpWindow.semantics().row(index);
+	      semantic = tmpWindow.label_at(index);
       tmpCvo.add_point(i,
-                       tmpWindow.positions()[index],
-                       tmpWindow.features().row(index),
+                       tmpWindow.xyz_at(index),
+                       tmpWindow.feature_at(index),
                        semantic,
                        geoType
                        );
@@ -2984,11 +2992,11 @@ namespace dsm
     cvo_pcs.resize(activeKeyframes.size()-1); // only temporal
     std::vector<bool> const_flags_in_BA(cvo_pcs.size()); // only temporal    
 
-    int minNumPoints = std::accumulate(activeKeyframes.begin(), activeKeyframes.end(), activeKeyframes[0]->activePoints().size(),
+    int minNumPoints = std::accumulate(activeKeyframes.begin(), --activeKeyframes.end(), activeKeyframes[0]->activePoints().size(),
                                        [&](size_t minPointsAccum, auto f2) {
                                          return (minPointsAccum < f2->activePoints().size() )? minPointsAccum : f2->activePoints().size();
                                        });
-    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints * 2 / 3  &&  !settings.doOnlyTemporalOpt;
+    bool isUsingCovis = covisMapCvo.num_points() > minNumPoints &&  !settings.doOnlyTemporalOpt;
 
     if (!isUsingCovis && activeKeyframes.size() == 3) {
       cvo::CvoPointCloud frame1_activePts, frame2_activePts;
@@ -3118,6 +3126,7 @@ namespace dsm
                                                                  &params,
                                                                  params_gpu,
                                                                  params.multiframe_num_neighbors,
+                                                                 //params.multiframe_ell_init
                                                                  settings.covisEll
                                                                  ));
         edge_states.push_back(edge_state);
@@ -3129,8 +3138,15 @@ namespace dsm
       const_flags_in_BA.push_back(true);
     }
 
-    if(covisMapCvo.num_points() ) 
+    if(covisMapCvo.num_points() ) {
       covisMapCvo.write_to_color_pcd("covisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
+      covisMapCvo.write_to_label_pcd("semanticCovisMap" + std::to_string(activeKeyframes[0]->frameID()) + ".pcd");
+    }
+    if (isUsingCovis)
+      write_transformed_pc(cvo_frames, "covis_temporal_before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    else
+      write_transformed_pc(cvo_frames, "before_BA_"+ std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    
     
     double time = 0;
      std::list<std::shared_ptr<cvo::Association>> associations;        
@@ -3147,7 +3163,10 @@ namespace dsm
       kf->setCamToWorld(pose_BA);
     }
     std::cout<<"just written CVO BA results to all frames\n";
-    write_transformed_pc(cvo_frames, "temporal_after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    if (isUsingCovis)
+      write_transformed_pc(cvo_frames, "covis_temporal_after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
+    else
+      write_transformed_pc(cvo_frames, "temporal_after_BA_"+std::to_string(activeKeyframes[0]->frameID())+".pcd");
 
     std::cout<<"covis map has size "<<covisMapCvo.num_points()<<", isUsingCovis is "<<isUsingCovis<<std::endl;
 
@@ -3184,7 +3203,7 @@ namespace dsm
       kf->activePointsToCvoPointCloud(cvo_pcs[i]);
       assert(kf->activePoints().size() != 0);
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
-      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data()));
+      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data(), false));
       cvo_frames.push_back(cvo_ptr);
 
       const_flags_in_BA[i] = (i <= temporalStartIndex + settings.cvoIRLSConstFrames -1);
@@ -3312,12 +3331,21 @@ namespace dsm
     if (!settings.doOnlyTemporalOpt) {
       //edgesCovisibleToTemporal = this->lmcw->selectCovisibleWindowCvo();
       if (settings.bkiMapOn) {
-        this->lmcw->selectBkiCovisMap(*map, covisMapCvo,
-                                      5,
-                                      frame->getRawImage()->num_classes(),
-                                      2
-                                      );
+        if (settings.bkiMapRayCasting) {
         
+          this->lmcw->selectBkiCovisMap(*map, covisMapCvo,
+                                        5,
+                                        frame->getRawImage()->num_classes(),
+                                        2
+                                      );
+          
+        } else {
+        this->lmcw->selectProjectedBkiCovisMap(*map, covisMapCvo,
+                                               5,
+                                               frame->getRawImage()->num_classes(),
+                                               2
+                                               );
+        }
       } else
         this->lmcw->selectRaySampledCovisibleMap(covisMapCvo);
     }
@@ -3501,7 +3529,7 @@ namespace dsm
     // we will only estimate new candidates from the temporal window
     if (settings.insertPointToMapAfterBA == 2) {
       if (settings.bkiMapOn) {
-        this->lmcw->insertFlaggedKeyframesToBkiDenseMap(*map);
+        this->lmcw->insertFlaggedKeyframesToBkiDenseMap(*map, *cvo_align);
         cvo::CvoPointCloud pc_map(5, frame->getRawImage()->num_classes());
         semantic_bki::map_to_pc(*map, pc_map, 5, frame->getRawImage()->num_classes(), 2);
         std::cout<<"pc_map exported from bki has size "<<pc_map.size()<<"\n";
@@ -3516,6 +3544,7 @@ namespace dsm
         if (pc_map.size()) {
           pcl::io::savePCDFileASCII ("full_bki_map.pcd", pc_cvo);
           pc_map.write_to_color_pcd("full_bki_map_color.pcd");
+          pc_map.write_to_label_pcd("full_bki_map_label.pcd");
         }
       }
       else

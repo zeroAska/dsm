@@ -61,11 +61,7 @@ namespace semantic_bki {
     std::vector<float> probs(num_class);
     get_probs(probs);
 
-    // update features
-    for (int i = 0; i < Semantics::num_features; ++i) {
-      fs[i] += fbars[i];
-    }
-
+    
     semantics = std::distance(probs.begin(), std::max_element(probs.begin(), probs.end()));
 
     if (semantics == 0)
@@ -74,6 +70,12 @@ namespace semantic_bki {
       state = State::OCCUPIED;
       float p = 1 - probs[0];
       state = p > Semantics::occupied_thresh ? State::OCCUPIED : (p < Semantics::free_thresh ? State::FREE : State::UNKNOWN);
+
+      // update features
+      for (int i = 0; i < Semantics::num_features; ++i) {
+        fs[i] += fbars[i];
+      }
+      
     }
     //else
     //  state = State::OCCUPIED;

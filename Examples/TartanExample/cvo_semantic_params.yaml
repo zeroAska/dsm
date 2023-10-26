@@ -10,7 +10,7 @@ sigma: 0.1
 sp_thres: 0.007 #for tracking
 c: 7.0
 d: 7.0
-c_ell: 0.1 
+c_ell: 0.075 
 c_sigma: 1 
 s_ell: 0.1 #0.15 #0.04
 s_sigma: 1 #0.7
@@ -31,10 +31,10 @@ is_dense_kernel: 0
 is_full_ip_matrix: 0
 is_using_geometry: 1
 is_using_intensity: 1
-is_using_semantics: 0
+is_using_semantics: 1
 is_using_range_ell: 0
 is_using_kdtree: 0
-is_using_geometric_type: 1
+is_using_geometric_type: 0
 # for irls solver
 multiframe_using_cpu: 1
 multiframe_max_iters: 1999

@@ -7,17 +7,26 @@ cd .. && \
 for difficulty in Easy
 do
 #for i in westerndesert  #hospital abandonedfactory_night #endofworld neighborhood oldtown  
+<<<<<<< HEAD
 #for i in  gascola soulcity abandonedfactory  seasidetown  seasonsforest seasonsforest_winter hospital endofworld  
 
 for i in abandonedfactory  gascola  hospital  seasidetown  seasonsforest  seasonsforest_winter  soulcity	
 #for i in  hospital #seasidetown  soulcity
+=======
+#for i in  gascola soulcity abandonedfactory  seasidetown  seasonsforest seasonsforest_winter hospital endofworld neighborhood oldtown neighborhood  
+for i in abandonedfactory  gascola  hospital  seasidetown  seasonsforest  seasonsforest_winter  soulcity
+>>>>>>> 5caa23044a46024820332a87fdc0917db9c8710c
 	 do
 		 folder=tartan_${difficulty}_${i}_$date
 	 rm -rf tartan_${difficulty}_${i}_$date
 	mkdir -p tartan_${difficulty}_${i}_${date}
 #gdb -ex run  --args \
 #./build/bin/TartanRGBDExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/outdoor_settings.txt 0 test_${difficulty}_$i.txt #> log_tartan_${difficulty}_${i}.txt
+<<<<<<< HEAD
 ./build/bin/TartanRGBDExample_no_qt /home/rzh/media/sdc1/rzh/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/no_qt_settings.txt 0 test_${difficulty}_$i.txt #> log_tartan_${difficulty}_${i}.txt
+=======
+./build/bin/TartanRGBDExample /home/rayzhang/media/Samsung_T5/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_outdoor_params.yaml Examples/TartanExample/outdoor_settings.txt 0 test_${difficulty}_$i.txt > log_tartan_${difficulty}_${i}.txt
+>>>>>>> 5caa23044a46024820332a87fdc0917db9c8710c
 mv *.pcd $folder
 mv *_graph.txt $folder
 mv test_${difficulty}_$i.txt $folder/

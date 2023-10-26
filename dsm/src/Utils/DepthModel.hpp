@@ -2,8 +2,27 @@
 #include <Eigen/Dense>
 #include <limits>
 #include "DataStructures/VoxelMap.h"
+
+
+namespace cvo {
+  class CvoGPU;
+  class CvoPointCloud;
+  class BinaryState;
+  class CvoGPU;
+  } 
+
 namespace dsm {
 
+  void downsample_cvo_pc(const cvo::CvoPointCloud & input,
+                         float voxel_size,
+                         cvo::CvoPointCloud & output);
+
+  void filter_based_on_inner_product(const cvo::CvoPointCloud & source,
+                                     const Eigen::Matrix4f & T_source,
+                                     const cvo::CvoPointCloud & target,
+                                     const Eigen::Matrix4f & T_target,
+                                     const cvo::CvoGPU & cvo_align,
+                                     cvo::CvoPointCloud & filtered_source);
 
 
   const int pixel_raycast_pattern[8][2] = {{0,0}, {-2, 0},{-1,-1}, {-1,1}, {0,2},{0,-2},{1,1},{2,0} };
@@ -12,7 +31,7 @@ namespace dsm {
   inline
   float linear_uncertainty(float input_dist) {
     //float uncertainty = input_dist * input_dist * 0.005;
-    float uncertainty = input_dist * 0.1;
+    float uncertainty = input_dist * 0.2;
     return uncertainty;
   }
 
