@@ -2870,13 +2870,13 @@ namespace dsm
       int index = selectedInds[i];
       Eigen::VectorXf semantic;
       Eigen::Vector2f geoType = Eigen::Vector2f::Zero();
-      if (tmpWindow.geometric_types().size())
-        geoType = Eigen::Map<const Eigen::Vector2f> (&(tmpWindow.geometric_types().data()[ index * 2]));
+      if (tmpWindow.num_geometric_types())
+	      geoType = tmpWindow.geometry_type_at(index);
       if (tmpWindow.num_classes() > 0)
-        semantic = tmpWindow.semantics().row(index);
+	      semantic = tmpWindow.label_at(index);
       tmpCvo.add_point(i,
-                       tmpWindow.positions()[index],
-                       tmpWindow.features().row(index),
+                       tmpWindow.xyz_at(index),
+                       tmpWindow.feature_at(index),
                        semantic,
                        geoType
                        );

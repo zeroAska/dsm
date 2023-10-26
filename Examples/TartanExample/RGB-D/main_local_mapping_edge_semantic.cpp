@@ -15,8 +15,8 @@
 #include "utils/ImageRGBD.hpp"
 #include "utils/ImageStereo.hpp"
 #include "dataset_handler/TartanAirHandler.hpp"
-#include "dataset_handler/PoseLoader.hpp"
 #include "viewer/viewer.h"
+#include "utils/PoseLoader.hpp"
 using namespace std;
 using namespace boost::filesystem;
 

@@ -10,7 +10,7 @@ sigma: 0.1
 sp_thres: 0.007 #for tracking
 c: 7.0
 d: 7.0
-c_ell: 0.075 
+c_ell: 0.1 
 c_sigma: 1 
 s_ell: 0.1 #0.15 #0.04
 s_sigma: 1 #0.7

@@ -36,9 +36,9 @@ include(CompilerFlags)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(Sophus REQUIRED) 
 #find_package(UnifiedCvo REQUIRED)
 #message("cvo include dir is ${UnifiedCvo_INCLUDE_DIRS}, cvo libs are ${UnifiedCvo_LIBRARIES}")
-#find_package(Sophus REQUIRED) 
 
 # Set the name of the Library
 set(LIBRARY_NAME dsm)
@@ -187,7 +187,7 @@ set(DSM_LIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src PARENT_SCOPE)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}	#required to include "BuildFlags.h"
 	${CMAKE_CURRENT_SOURCE_DIR}/src
-        #${Sophus_INCLUDE_DIRS}
+        ${Sophus_INCLUDE_DIRS}
 	${CMAKE_SOURCE_DIR}/thirdparty/Sophus
 	${EIGEN3_INCLUDE_DIR}
 #        ${UnifiedCvo_INCLUDE_DIR}
@@ -208,8 +208,8 @@ target_link_libraries(${LIBRARY_NAME}
 	${OpenCV_LIBS}
 	${CERES_LIBRARIES}
         #${UnifiedCvo_LIBRARIES}
-        UnifiedCvo::cvo_utils_lib
-        UnifiedCvo::cvo_gpu_img_lib
+        UnifiedCvo::cvo_utils
+        UnifiedCvo::cvo_gpu_img
         UnifiedCvo::elas
         )
 target_compile_definitions(${LIBRARY_NAME} PUBLIC ${PCL_DEFINITIONS})   	

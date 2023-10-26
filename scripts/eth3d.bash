@@ -15,7 +15,7 @@ cd ..
         #gdb -ex run --args 
 	#./build/bin/TumExample_no_qt /home/rayzhang/media/Samsung_T5/eth3d/${seq} Examples/TumExample/cvo_rgbd_params.yaml Examples/TumExample/eth3d_settings_raymap.txt  60 rkhs_slam.txt
 	#./build/bin/TumExample_no_qt /home/rayzhang/media/Samsung_T5/eth3d/${seq} Examples/TumExample/cvo_rgbd_params_eth3d.yaml Examples/TumExample/eth3d_settings.txt 0 test_eth3d_${seq}.txt
-	./build/bin/TumExample_no_qt /home/rzh/media/sdc1/rzh/eth3d/${seq} Examples/TumExample/cvo_rgbd_params_eth3d.yaml Examples/TumExample/eth3d_settings_raymap.txt 0 /home/rzh/media/sdc1/rzh/eth3d/${seq}/rkhs_slam.txt
+	./build/bin/TumExample_no_qt /home/rzh/media/sdc1/rzh/eth3d/${seq} Examples/TumExample/cvo_rgbd_params.yaml Examples/TumExample/eth3d_settings_raymap.txt 0 /home/rzh/media/sdc1/rzh/eth3d/${seq}/rkhs_slam.txt
         
         mv *.pcd $folder
         mv *_graph.txt $folder
