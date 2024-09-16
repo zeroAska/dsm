@@ -29,7 +29,7 @@ set(PROGRAM_NAME TumExample)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}
-	${CMAKE_SOURCE_DIR}/thirdparty/Sophus
+	#${CMAKE_SOURCE_DIR}/thirdparty/Sophus
 	${EIGEN3_INCLUDE_DIR}
 	${QT_VISUALIZER_LIB_INCLUDE_DIR}
 	${DSM_LIB_INCLUDE_DIR}

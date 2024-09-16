@@ -23,49 +23,37 @@ using std::vector;
 namespace cvo {
     
   CvoPointCloud::CvoPointCloud(const semantic_bki::SemanticBKIOctoMap * map,
+                               const int feature_dim,
                                const int num_classes) {
     num_classes_ = num_classes;
-    int num_point_counter = 0;
-    std::vector<std::vector<float> > features;
-    std::vector<std::vector<float> > labels;
-    //positions_.reserve(65536);
-    //features.reserve(65536);
-    //labels.reserve(65536);
-    feature_dimensions_ = 5;
+    feature_dimensions_ = feature_dim;
+    
     for (auto it = map->begin_leaf(); it != map->end_leaf(); ++it) {
       if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
         cvo::CvoPoint pt;
         // position
         semantic_bki::point3f  p = it.get_loc();
-        //Vec3f xyz;
-        pt.getVector3fMap() << p.x(), p.y(), p.z();
+        cvo::CvoPoint p_cvo;
+        p_cvo.x = p.x();
+        p_cvo.y = p.y();
+        p_cvo.z = p.z();
+
+        std::vector<float> feature(feature_dimensions_, 0);
+        it.get_node().get_features(feature);
+        std::memcpy(p_cvo.features, feature.data(), sizeof(float)*feature_dimensions_);
         
-        //positions_.push_back(xyz);
-               
-        // features
-        std::vector<float> feature(feature_dimensions_, 0);        
-        if(feature_dimensions_==5){
-          it.get_node().get_features(feature);
-          //features.push_back(feature);
-        }
-        else if(feature_dimensions_==1){
-          it.get_node().get_features(feature);
-          //features.push_back(feature_1);
-        }
-        std::memcpy(pt.features, feature.data(), sizeof(float) * feature_dimensions_);
-       
         // labels
         std::vector<float> label(num_classes_, 0);
         it.get_node().get_occupied_probs(label);
-        std::memcpy(pt.label_distribution, label.data(), sizeof(float) * num_classes_);        
-        
-        //labels.push_back(label);
-        points_.push_back(pt);        
-        num_point_counter++;
+        std::memcpy(p_cvo.label_distribution, label.data(), sizeof(float)*num_classes_);
+        this->push_back(p_cvo);
+
       }
     }
       
-
+    num_points_ = this->size();
+    num_geometric_types_ = 2;
+      
     //std::cout<<"Read labels from map:\nlabel" << labels_.row(0)<<"\n"<<labels_.row(num_points_-1)<<", color: ";
     //std::cout<< features_.row(0)<<"\n"<<features_.row(num_points_-1)<<"\n";
   }
