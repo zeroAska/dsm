@@ -3208,11 +3208,7 @@ if (tmpWindow.num_geometric_types())
       kf->activePointsToCvoPointCloud(cvo_pcs[i]);
       assert(kf->activePoints().size() != 0);
       Eigen::Matrix<double, 4,4, Eigen::RowMajor> kf_to_world = kf->camToWorld().matrix().cast<double>();
-<<<<<<< HEAD
       cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&cvo_pcs[i], kf_to_world.data(), false));
-=======
-      cvo::CvoFrame::Ptr cvo_ptr (new cvo::CvoFrame(&(cvo_pcs[i]), kf_to_world.data()));
->>>>>>> 2221f98 (update for latest unified cvo repo)
       cvo_frames.push_back(cvo_ptr);
 
       const_flags_in_BA[i] = (i <= temporalStartIndex + settings.cvoIRLSConstFrames -1);
