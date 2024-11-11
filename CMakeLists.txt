@@ -91,7 +91,7 @@ find_package(Sophus REQUIRED)
 message("Sophus path ${Sophus_INCLUDE_DIRS}")
 find_package(UnifiedCvo REQUIRED )
 find_package(PCL REQUIRED)
-
+find_package(Sophus REQUIRED)
 add_subdirectory(dsm)
 if (${PROJECT_NAME}_ENABLE_QT)
   add_subdirectory(QtVisualizer)
