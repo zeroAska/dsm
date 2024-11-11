@@ -3,11 +3,11 @@
 #include <cmath>
 #include <pcl/filters/voxel_grid.h>
 
-#include "bkioctree_node.h"
-#include "bkioctomap.h"
-#include "bki.h"
-#include "DataStructures/ActivePoint.h"
+#include "Mapping/bkioctree_node.h"
+#include "Mapping/bkioctomap.h"
+#include "Mapping/bki.h"
 #include "utils/CvoPointCloud.hpp"
+#include "DataStructures/ActivePoint.h"
 using std::vector;
 
 // #define DEBUG true;
@@ -23,49 +23,37 @@ using std::vector;
 namespace cvo {
     
   CvoPointCloud::CvoPointCloud(const semantic_bki::SemanticBKIOctoMap * map,
+                               const int feature_dim,
                                const int num_classes) {
     num_classes_ = num_classes;
-    int num_point_counter = 0;
-    std::vector<std::vector<float> > features;
-    std::vector<std::vector<float> > labels;
-    //positions_.reserve(65536);
-    //features.reserve(65536);
-    //labels.reserve(65536);
-    feature_dimensions_ = 5;
+    feature_dimensions_ = feature_dim;
+    
     for (auto it = map->begin_leaf(); it != map->end_leaf(); ++it) {
       if (it.get_node().get_state() == semantic_bki::State::OCCUPIED) {
         cvo::CvoPoint pt;
         // position
         semantic_bki::point3f  p = it.get_loc();
-        //Vec3f xyz;
-        pt.getVector3fMap() << p.x(), p.y(), p.z();
+        cvo::CvoPoint p_cvo;
+        p_cvo.x = p.x();
+        p_cvo.y = p.y();
+        p_cvo.z = p.z();
+
+        std::vector<float> feature(feature_dimensions_, 0);
+        it.get_node().get_features(feature);
+        std::memcpy(p_cvo.features, feature.data(), sizeof(float)*feature_dimensions_);
         
-        //positions_.push_back(xyz);
-               
-        // features
-        std::vector<float> feature(feature_dimensions_, 0);        
-        if(feature_dimensions_==5){
-          it.get_node().get_features(feature);
-          //features.push_back(feature);
-        }
-        else if(feature_dimensions_==1){
-          it.get_node().get_features(feature);
-          //features.push_back(feature_1);
-        }
-        std::memcpy(pt.features, feature.data(), sizeof(float) * feature_dimensions_);
-       
         // labels
         std::vector<float> label(num_classes_, 0);
         it.get_node().get_occupied_probs(label);
-        std::memcpy(pt.label_distribution, label.data(), sizeof(float) * num_classes_);        
-        
-        //labels.push_back(label);
-        points_.push_back(pt);        
-        num_point_counter++;
+        std::memcpy(p_cvo.label_distribution, label.data(), sizeof(float)*num_classes_);
+        this->push_back(p_cvo);
+
       }
     }
       
-
+    num_points_ = this->size();
+    num_geometric_types_ = 2;
+      
     //std::cout<<"Read labels from map:\nlabel" << labels_.row(0)<<"\n"<<labels_.row(num_points_-1)<<", color: ";
     //std::cout<< features_.row(0)<<"\n"<<features_.row(num_points_-1)<<"\n";
   }
@@ -730,24 +718,25 @@ namespace semantic_bki {
 
       /// occupied points' properties
       std::vector<float> properties;
-      properties.reserve(cloud[i]->features().size() + 1 + 1);
-      if (cloud[i]->semantics().size()) {
-        int pix_label = 0;              
-        cloud[i]->semantics().maxCoeff(&pix_label);
+      properties.reserve(cloud[i]->feature_dimension() + 1 + 1);
+      if (cloud[i]->label_dimension()) {
+        //int pix_label = 0;
+        int pix_label = cloud[i]->label;
+        //cloud[i]->semantics().maxCoeff(&pix_label);
         properties.emplace_back(pix_label+1);              
       } else {
         properties.emplace_back(1);                              
       }
-      if (cloud[i]->features().size()){
-        for (int j = 0; j < cloud[i]->features().size(); ++j)
-          properties.emplace_back(cloud[i]->features()(j));
+      if (cloud[i]->feature_dimension()){
+        for (int j = 0; j < cloud[i]->feature_dimension(); ++j)
+          properties.emplace_back(cloud[i]->features[j]);
       }
-      if (cloud[i]->geometricType().size()) {
+      if (cloud[i]->geometric_type_dimension()) {
         //int pix_label = 0;              
         //cloud[i]->geometricType().maxCoeff(&pix_label);
         //pix_label++;
         //properties.emplace_back(1-pix_label);
-        properties.emplace_back(cloud[i]->geometricType()(0));        
+        properties.emplace_back(cloud[i]->geometric_type[0]);        
       }
       xy.emplace_back(p, properties);
       if (i == 0) property_dim = properties.size();
@@ -1087,14 +1076,77 @@ namespace semantic_bki {
   
 
   template 
-  void SemanticBKIOctoMap::insert_pointcloud_csm<dsm::ActivePoint const>(const std::vector<dsm::ActivePoint const *> & cloud, const point3f &origin, float ds_resolution,
+  void SemanticBKIOctoMap::insert_pointcloud_csm<cvo::CvoPoint const>(const std::vector<cvo::CvoPoint const *> & cloud, const point3f &origin, float ds_resolution,
                                                                    float free_res,
                                                                    float max_range);
 
   template
-  void SemanticBKIOctoMap::get_training_data<dsm::ActivePoint const>(const std::vector<dsm::ActivePoint const*> & cloud, const point3f &origin, float ds_resolution,
+  void SemanticBKIOctoMap::get_training_data<cvo::CvoPoint const>(const std::vector<cvo::CvoPoint const*> & cloud, const point3f &origin, float ds_resolution,
                                float free_resolution, float max_range, GPPointCloud &xy) const;      
 
 
+
+  template 
+  void SemanticBKIOctoMap::insert_pointcloud_csm<dsm::ActivePoint const>(const std::vector<dsm::ActivePoint const *> & cloud, const point3f &origin, float ds_resolution,
+                                                                   float free_res,
+                                                                   float max_range);
+
+  template <>
+  void SemanticBKIOctoMap::get_training_data<dsm::ActivePoint const>(const std::vector<dsm::ActivePoint const*> & cloud, const point3f &origin, float ds_resolution,
+                                                                     float free_resolution, float max_range, GPPointCloud &xy) const {
+    xy.clear();
+    int property_dim = 0;
+    for (int i = 0; i < cloud.size(); ++i) {
+      
+      Eigen::Vector3f xyz = cloud[i]->getVector3fMap();
+      /// center point
+      point3f p(xyz(0), xyz(1), xyz(2));
+      if (max_range > 0) {
+        double l = (p - origin).norm();
+        if (l > max_range)
+          continue;
+      }
+
+      /// occupied points' properties
+      std::vector<float> properties;
+      properties.reserve(cloud[i]->feature_dimension() + 1 + 1);
+      if (cloud[i]->label_dimension()) {
+        //int pix_label = 0;
+        int pix_label = cloud[i]->label();
+        //cloud[i]->semantics().maxCoeff(&pix_label);
+        properties.emplace_back(pix_label+1);              
+      } else {
+        properties.emplace_back(1);                              
+      }
+      if (cloud[i]->feature_dimension()){
+        for (int j = 0; j < cloud[i]->feature_dimension(); ++j)
+          properties.emplace_back(cloud[i]->features()[j]);
+      }
+      if (cloud[i]->geometric_type_dimension()) {
+        //int pix_label = 0;              
+        //cloud[i]->geometricType().maxCoeff(&pix_label);
+        //pix_label++;
+        //properties.emplace_back(1-pix_label);
+        properties.emplace_back(cloud[i]->geometricType()[0]);        
+      }
+      xy.emplace_back(p, properties);
+      if (i == 0) property_dim = properties.size();
+      
+      PointCloud frees_n;
+      beam_sample(p, origin, frees_n, free_resolution);
+      for (auto pp = frees_n.begin(); pp != frees_n.end(); ++pp) {
+        std::vector<float> properties_free(property_dim, 0);
+        xy.emplace_back(*pp, properties_free);
+      }
+    }
+
+    point3f p(origin.x(), origin.y(), origin.z());
+    std::vector<float> properties;
+    properties.resize(property_dim, 0);
+    xy.emplace_back(p, properties);
+    
+  }
+
+  
   
 }

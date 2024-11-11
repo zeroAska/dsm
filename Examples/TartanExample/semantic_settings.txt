@@ -84,7 +84,7 @@ minDistToActivate = 5
 maxCandidateUncertainty = 2
 minCandidateQuality = 2
 
-doOnlyTemporalOpt = false
+doOnlyTemporalOpt = true
 printSummary = true
 showFullReport = false
 minOptimizationGrad = 2
@@ -134,7 +134,7 @@ depthNormalEll = 0.04
 depthDirEll = 0.25
 cvoIRLSConstFrames = 0
 insertPointToMapAfterBA = 2
-bkiMapOn = 1
+bkiMapOn = 0
 bkiMapBlockDepth = 1
 bkiMapSf2 = 1.0
 bkiMapEll = 2.0
