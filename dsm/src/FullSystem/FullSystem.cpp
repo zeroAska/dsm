@@ -3076,22 +3076,23 @@ namespace dsm
 
 
     /// adding covisible map if eligible
-    std::cout<<"const flags are\n";
     for (int j = 0; j < const_flags_in_BA.size(); j++){
       const_flags_in_BA[j] = false;
       if ( j < settings.cvoIRLSConstFrames)
         const_flags_in_BA[j] = true;
-      std::cout<<const_flags_in_BA[j]<<" ";
     }
     if (!isUsingCovis) {
       const_flags_in_BA[0] = true;
 
       //// newly added: no BA if no covis frame
-      for (int j = 0; j < const_flags_in_BA.size(); j++){
-        const_flags_in_BA[j] = true;
-      }
-     
+      //for (int j = 0; j < const_flags_in_BA.size(); j++){
+      //  const_flags_in_BA[j] = true;
+      //}
     }
+
+    std::cout<<"const flags are\n";
+    for (auto && flag : const_flags_in_BA) 
+      std::cout<<flag<<" ";
     std::cout<<std::endl;
     std::cout<<"covisMapCvo.num_points is "<<covisMapCvo.num_points()<<", minNumPoints is "<<minNumPoints<<"\n";
     if (isUsingCovis ) {

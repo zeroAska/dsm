@@ -13,7 +13,7 @@ do
 	 rm -rf $folder
 	mkdir -p $folder
             echo " Current Seq: ${i} ${difficulty}"
-#         gdb -ex r --args \
+    #     gdb -ex r --args \
 ./build/bin/TartanSemanticExample_no_qt /home/rayzhang/media/tartanair/$i/${difficulty}/P001 Examples/TartanExample/cvo_semantic_params.yaml Examples/TartanExample/no_qt_semantic_settings.txt 0 test_semantic_${difficulty}_$i.txt #> log_tartan_semantic_${difficulty}_${i}.txt
 mv *.pcd $folder #tartan_semantic_${difficulty}_$i/
 mv *_graph.txt $folder #tartan_semantic_${difficulty}_$i/

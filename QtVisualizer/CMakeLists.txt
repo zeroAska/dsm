@@ -24,13 +24,14 @@
 cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
+set(QT_VERSION_REQ "5.2")
 ######### Find the dependencies of this project #####
-find_package(OpenGL REQUIRED)
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Gui REQUIRED)
-find_package(Qt5OpenGL REQUIRED)
+find_package(OpenGL ${QT_VERSION_REQ}  REQUIRED)
+#find_package(Qt5Core REQUIRED)
+find_package(Qt5 ${QT_VERSION_REQ}  COMPONENTS REQUIRED Core Widgets Gui OpenGL)
+#find_package(Qt5Widgets REQUIRED)
+#find_package(Qt5Gui REQUIRED)
+#find_package(Qt5OpenGL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 
@@ -103,10 +104,10 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
 add_library(${LIBRARY_NAME} SHARED  ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_MOC_FILES} ${FORM_HEADERS} ${HEADERS_MOC} ${RESOURCES_RCC})
 
 # Use the Widgets module from Qt 5.
-qt5_use_modules(${LIBRARY_NAME} Core  Gui Widgets OpenGL)
+#qt5_use_modules(${LIBRARY_NAME} Core  Gui Widgets OpenGL)
 
 # Define the link libraries used in the project
-target_link_libraries(${LIBRARY_NAME} ${OPENGL_LIBRARIES} ${OpenCV_LIBS} dsm)
+target_link_libraries(${LIBRARY_NAME} ${OPENGL_LIBRARIES} ${OpenCV_LIBS} dsm Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL)
 
 # avoid compiler warnings from OpenGL on macos
 if(APPLE)  

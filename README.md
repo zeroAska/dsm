@@ -7,7 +7,7 @@ Assuming your UnifiedCvo repository path is `/home/user/unified_cvo/`. Then to c
 ```
 mkdir build
 cd build
-cmake .. -DUnifiedCvo_DIR=/home/user/unified_cvo/build/ -DCMAKE_BUILD_TYPE=Release 
+cmake .. -DUnifiedCvo_DIR=/home/user/unified_cvo/build/ -DCMAKE_BUILD_TYPE=Release -DOpenGL_GL_PREFERENCE=GLVND 
 make -j
 ```
 It will compile two libraries `libdsm.so` and `libQtVisualizer.so` at **lib** folder, which can be linked from external projects. It will also create two executables `TumExample` at **bin** folder to run DSM in the Tum dataset and with custom videos respectively.
